@@ -15,8 +15,8 @@ class User(models.Model):
     ambients = models.ManyToManyField('Ambient')
 
 class Invitation(models.Model):
-    inviting_user = models.ForeignKey('User', on_delete=models.CASCADE)
-    invited_user = models.ForeignKey('User', on_delete=models.CASCADE)
+    inviting_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='inviting_user')
+    invited_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invited_user')
     status = models.BooleanField(default=False)
 
 class Member(models.Model):
@@ -102,15 +102,15 @@ class Ambient(models.Model):
     min_actv_in_cicle = models.IntegerField()
     max_actv_in_day = models.IntegerField()
     min_actv_in_day = models.IntegerField()
-    members = models.ManyToManyField('Member')
+    members = models.ManyToManyField('Member', related_name='members')
     formations = models.ManyToManyField('Formation')
     classes = models.ManyToManyField('Class')
     classrooms = models.ManyToManyField('Classroom')
-    professors = models.ManyToManyField('Member')
+    professors = models.ManyToManyField('Member', related_name='professors')
     subjects = models.ManyToManyField('Subject')
     activities = models.ManyToManyField('Activitie')
-    published_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE)
-    edit_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE)
+    published_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='published_timetable')
+    edit_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='edit_timetable')
 
 class Formation(models.Model):
     name = models.CharField(max_length=40)
@@ -127,7 +127,7 @@ class Timetable(models.Model):
     columns = models.IntegerField()
     table = ArrayField(ArrayField(models.IntegerField()))
     available_spaces = ArrayField(ArrayField(models.IntegerField()))
-    available_activities = models.ManyToManyField('Activitie')
-    not_atribuited = models.ManyToManyField('Activitie')
+    available_activities = models.ManyToManyField('Activitie', related_name='available_activities')
+    not_atribuited = models.ManyToManyField('Activitie', related_name='not_atribuited')
     alt_solicitations = ArrayField(models.TextField(max_length=500))
     quality_rate = models.FloatField()
