@@ -14,16 +14,9 @@ class User(models.Model):
     invitations = models.ManyToManyField('Invitation')
     ambients = models.ManyToManyField('Ambient')
 
-class Invitation(models.Model):
-    inviting_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='inviting_user')
-    invited_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invited_user')
-    status = models.BooleanField(default=False)
-
 class Member(models.Model):
     registration = models.CharField(max_length=40)
-    formations = models.ManyToManyField('Formation')
-    professional_experience_time = ArrayField(models.IntegerField())
-    didactic_experience_time = ArrayField(models.IntegerField())
+    formations = models.ManyToManyField('Member_Formation')
     time_in_campus = ArrayField(models.IntegerField())
     time_in_institution = ArrayField(models.IntegerField())
     career_level = models.CharField(max_length=40)
@@ -33,56 +26,34 @@ class Member(models.Model):
     min_actv_in_cicle = models.IntegerField()
     max_actv_in_day = models.IntegerField()
     min_actv_in_day = models.IntegerField()
-    prefered_schedules = ArrayField(ArrayField(models.IntegerField()))
-    schedule_weight = ArrayField(models.FloatField())
-    prefered_classes = models.ManyToManyField('Class')
-    classes_weight = ArrayField(models.FloatField())
-    prefered_classrooms = models.ManyToManyField('Classroom')
-    classrooms_weight = ArrayField(models.FloatField())
-    prefered_subjects = models.ManyToManyField('Subject')
+    prefered_schedules = models.ManyToManyField('Schedule_Preference')
+    prefered_classes = models.ManyToManyField('Class_Preference')
+    prefered_classrooms = models.ManyToManyField('Classroom_Preference')
+    prefered_subjects = models.ManyToManyField('Subject_Preference')
     subjects_weight = ArrayField(models.FloatField())
     num_uses = models.IntegerField()
 
-class AdminTP(models.Model):
-    name = models.CharField(max_length=40)
-    can_configure_ambient = models.BooleanField()
-    can_gerenciate_members = models.BooleanField()
-    can_register_resources = models.BooleanField()
-    can_run_atribuition = models.BooleanField()
-    can_run_alocation = models.BooleanField()
-    can_delete_ambient = models.BooleanField()
-
 class Class(models.Model):
     name = models.CharField(max_length=40)
-    prefered_schedules = ArrayField(ArrayField(models.IntegerField()))
-    ideal_classrooms = models.ManyToManyField('Classroom')   
-    classrooms_weight = ArrayField(models.FloatField())
+    prefered_schedules = models.ManyToManyField('Schedule_Preference')
+    ideal_classrooms = models.ManyToManyField('Classroom_Preference')
     necessary_subjects = models.ManyToManyField('Subject')
-    favorite_professors = models.ManyToManyField('Member')
-    professors_weight = ArrayField(models.FloatField())
-    periods_per_subjtect = ArrayField(models.IntegerField())
+    favorite_professors = models.ManyToManyField('Professor_Preference')
     number_of_students = models.IntegerField()
     num_uses = models.IntegerField()
 
 class Classroom(models.Model):
     name = models.CharField(max_length=40)
-    available_schedules = ArrayField(ArrayField(models.IntegerField()))
+    prefered_schedules = models.ManyToManyField('Schedule_Preference')
     classroom_type = models.ForeignKey('ClassroomTP', on_delete=models.CASCADE)
     classroom_capacity = models.IntegerField()
     num_uses = models.IntegerField()
 
-class ClassroomTP(models.Model):
-    name = models.CharField(max_length=40)
-    num_uses = models.IntegerField()
-
 class Subject(models.Model):
     name = models.CharField(max_length=40)
-    ideal_classrooms = models.ManyToManyField('Classroom')
-    classrooms_weight = ArrayField(models.FloatField())
-    favorite_professors = models.ManyToManyField('Member')
-    professors_weight = ArrayField(models.FloatField())
-    relevant_formations = models.ManyToManyField('Formation')
-    formations_weight = ArrayField(models.FloatField())
+    ideal_classrooms = models.ManyToManyField('Classroom_Preference')
+    favorite_professors = models.ManyToManyField('Professor_Preference')
+    relevant_formations = models.ManyToManyField('Formation_Preference')
     num_uses = models.IntegerField()
 
 class Ambient(models.Model):
@@ -93,7 +64,7 @@ class Ambient(models.Model):
     periods_in_a_day = models.IntegerField()
     days_ins_a_cicle = models.IntegerField()
     breaks = ArrayField(ArrayField(models.IntegerField()))
-    enter_alt_solicitations = ArrayField(models.CharField())
+    enter_solicitations = ArrayField(models.CharField(max_length=9))
     form_opening = models.DateField()
     form_closing = models.DateField()
     alt_solicitations_opening = models.DateField()
@@ -102,15 +73,26 @@ class Ambient(models.Model):
     min_actv_in_cicle = models.IntegerField()
     max_actv_in_day = models.IntegerField()
     min_actv_in_day = models.IntegerField()
-    members = models.ManyToManyField('Member', related_name='members')
+    members = models.ManyToManyField('Member')
     formations = models.ManyToManyField('Formation')
     classes = models.ManyToManyField('Class')
     classrooms = models.ManyToManyField('Classroom')
-    professors = models.ManyToManyField('Member', related_name='professors')
     subjects = models.ManyToManyField('Subject')
     activities = models.ManyToManyField('Activitie')
     published_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='published_timetable')
     edit_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='edit_timetable')
+
+class AdminTP(models.Model):
+    name = models.CharField(max_length=40)
+    can_configure_ambient = models.BooleanField()
+    can_gerenciate_members = models.BooleanField()
+    can_register_resources = models.BooleanField()
+    can_run_atribuition = models.BooleanField()
+    can_run_alocation = models.BooleanField()
+    
+class ClassroomTP(models.Model):
+    name = models.CharField(max_length=40)
+    num_uses = models.IntegerField()
 
 class Formation(models.Model):
     name = models.CharField(max_length=40)
@@ -123,11 +105,54 @@ class Activitie(models.Model):
     tsubject = models.ForeignKey('Subject', on_delete=models.CASCADE)
 
 class Timetable(models.Model):
-    lines = models.IntegerField()
-    columns = models.IntegerField()
-    table = ArrayField(ArrayField(models.IntegerField()))
-    available_spaces = ArrayField(ArrayField(models.IntegerField()))
-    available_activities = models.ManyToManyField('Activitie', related_name='available_activities')
-    not_atribuited = models.ManyToManyField('Activitie', related_name='not_atribuited')
+    lines_number = models.IntegerField()
+    columns_number = models.IntegerField()
+    table = models.ManyToManyField('Alocation')
+    not_alocated = models.ManyToManyField('Unregistered_Activitie', related_name='not_alocated')
+    not_atribuited = models.ManyToManyField('Unregistered_Activitie', related_name='not_atribuited')
     alt_solicitations = ArrayField(models.TextField(max_length=500))
     quality_rate = models.FloatField()
+
+class Alocation(models.Model):
+    line = models.IntegerField()
+    column = models.IntegerField()
+    Activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
+
+class Unregistered_Activitie(models.Model):
+    activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
+    message = models.TextField(max_length=400)
+
+class Invitation(models.Model):
+    inviting_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='inviting_user')
+    invited_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invited_user')
+    status = models.BooleanField(default=False)
+
+class Member_Formation(models.Model):
+    formation = models.ForeignKey('Formation', on_delete=models.CASCADE)
+    professional_experience_time = models.IntegerField()
+    didactic_experience_time = models.IntegerField()
+
+class Schedule_Preference(models.Model):
+    line = models.IntegerField()
+    column = models.IntegerField()
+
+class Class_Preference(models.Model):
+    tclass = models.ForeignKey("Class", on_delete=models.CASCADE)
+    class_weight = models.FloatField()
+
+class Classroom_Preference(models.Model):
+    classroom = models.ForeignKey("Classroom", on_delete=models.CASCADE)
+    classroom_weight = models.FloatField()
+
+class Subject_Preference(models.Model):
+    subject = models.ForeignKey("Subject", on_delete=models.CASCADE)
+    subject_weight = models.FloatField()
+    periods = models.IntegerField()
+
+class Professor_Preference(models.Model):
+    professor = models.ForeignKey("Member", on_delete=models.CASCADE)
+    professor_weight = models.FloatField()
+
+class Formation_Preference(models.Model):
+    formation = models.ForeignKey("Formation", on_delete=models.CASCADE)
+    formation_weight = models.FloatField()
