@@ -1,0 +1,22 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <form action="{% url 'ambient_create_admtypes_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <br>
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name"><br>
+        <label for="can_configure_ambient">Pode Configurar o Ambiente</label>
+        <input type="checkbox" id="can_configure_ambient" name="can_configure_ambient"><br>
+        <label for="can_gerenciate_members">Pode Gerenciar Membros</label>
+        <input type="checkbox" id="can_gerenciate_members" name="can_gerenciate_members"><br>
+        <label for="can_register_resources">Pode Gerenciar Recursos</label>
+        <input type="checkbox" id="can_register_resources" name="can_register_resources"><br>
+        <label for="can_run_atribuition">Pode Executar a Atribuição</label>
+        <input type="checkbox" id="can_run_atribuition" name="can_run_atribuition"><br>
+        <label for="can_run_alocation">Pode Executar a Alocação</label>
+        <input type="checkbox" id="can_run_alocation" name="can_run_alocation"><br>
+        <br>
+        <button type="submit" id="submit" name="submit">Enviar</button>
+    </form>
+{% endblock content %}

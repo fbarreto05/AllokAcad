@@ -1,0 +1,13 @@
+<form action="{% url 'create_ambient_validate' userid %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label for="picture">Foto</label>
+    <input type="file" id="picture" name="picture"><br>
+    <br>
+    <label for="name">Nome</label>
+    <input type="text" id="name" name="name"><br>
+    <label for="description">Descrição</label>
+    <input type="text" id="description" name="description"><br>
+    <br>
+    <button type="submit" id="submit" name="submit">Criar Ambiente</button>
+</form>
+

@@ -1,0 +1,46 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <form action="{% url 'ambient_config_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <p>Informações</p>
+        <label for="picture">Foto</label>
+        <input type="file" id="picture" name="picture"><br>
+        <br>
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name"><br>
+        <br>
+        <label for="description">Descrição</label>
+        <input type="text" id="description" name="description"><br>
+        <p>Dados</p>
+        <label for="periods_in_a_day">Periodos por Dia</label>
+        <input type="number" id="periods_in_a_day" name="periods_in_a_day"><br>
+        <label for="days_in_a_cicle">Dias por Ciclo</label>
+        <input type="number" id="days_in_a_cicle" name="days_in_a_cicle"><br>
+        <br>
+        <label for="form_opening">Abertura do Formulário</label>
+        <input type="date" id="form_opening" name="form_opening"><br>
+        <label for="form_closing">Fechamento do Formulário</label>
+        <input type="date" id="form_closing" name="form_closing"><br>
+        <br>
+        <label for="alt_solicitations_opening">Abertura para Contestação</label>
+        <input type="date" id="alt_solicitations_opening" name="alt_solicitations_opening"><br>
+        <label for="alt_solicitations_closing">Fechamento para Contestação</label>
+        <input type="date" id="alt_solicitations_closing" name="alt_solicitations_closing"><br>
+        <br>
+        <label for="min_actv_in_a_day">Mínimo de Atividades em um Dia</label>
+        <input type="number" id="min_actv_in_a_day" name="min_actv_in_a_day"><br>
+        <label for="max_actv_in_a_day">Máximo de Atividades em um Dia</label>
+        <input type="number" id="max_actv_in_a_day" name="max_actv_in_a_day"><br>
+        <br>
+        <label for="min_actv_in_a_cicle">Mínimo de Atividades em um Ciclo</label>
+        <input type="number" id="min_actv_in_a_cicle" name="min_actv_in_a_cicle"><br>
+        <label for="max_actv_in_a_cicle">Máximo de Atividades em um Ciclo</label>
+        <input type="number" id="max_actv_in_a_cicle" name="max_actv_in_a_cicle"><br>
+        <br>
+        <button type="submit" id="submit" name="submit">Editar Ambiente</button>
+    </form>
+{% endblock content %}
+
+
+

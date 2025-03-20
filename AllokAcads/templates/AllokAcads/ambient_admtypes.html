@@ -1,0 +1,13 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <br>
+    {% for admtype in admtypes %}
+        </br>
+        <a href="">{{ admtype.name }}</a>
+        <a href="">Editar</a>
+        <a href="">Excluir</a>
+    {% endfor %}
+    <br><br>
+    <a href="{% url 'ambient_create_admtypes' ambient.ambientid user.userid %}">Criar Tipo de Administrador</a>
+{% endblock content %}
