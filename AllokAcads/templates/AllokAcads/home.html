@@ -1,0 +1,7 @@
+<p>Bem vindo à página principal, {{ username }}!</p>
+
+{% for ambient in ambients.all %}
+    <a href="{% url 'ambient' ambient.ambientid userid%}">{{ ambient.name }}</a>
+{% endfor %}
+
+<a href="{% url 'create_ambient' userid %}">Criar Ambiente</a>

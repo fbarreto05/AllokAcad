@@ -1,0 +1,22 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <form action="{% url 'ambient_create_rooms_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <br>
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name"><br>
+        <br>
+        <label for="roomtype">Tipo de Sala</label>
+        <select id="roomtype" name="roomtype">
+            {% for roomtype in roomtypes %}
+                <option value="{{ roomtype.id }}">{{ roomtype.name }}</option>
+            {% endfor %}
+        </select>
+        <label for="capacity">Capacidade</label>
+        <input type="number" id="capacity" name="capacity"><br>
+        <br>
+        <button type="submit" id="submit" name="submit">Criar</button>
+    </form>
+{% endblock content %}
+

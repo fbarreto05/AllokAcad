@@ -1,0 +1,13 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <br>
+        {% for subject in subjects %}
+            </br>
+            <a href="">{{ subject.name }}</a>
+            <a href="">Editar</a>
+            <a href="">Excluir</a>
+        {% endfor %}
+    <br><br>
+    <a href="{% url 'ambient_create_subjects' ambient.ambientid user.userid %}">Criar Matéria</a>
+{% endblock content %}

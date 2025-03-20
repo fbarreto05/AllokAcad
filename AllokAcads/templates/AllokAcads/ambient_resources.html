@@ -1,0 +1,11 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <br><br>
+    <a href="{% url 'ambient_classes' ambient.ambientid user.userid %}">Turma</a>
+    <a href="{% url 'ambient_rooms' ambient.ambientid user.userid %}">Sala</a>
+    <a href="{% url 'ambient_subjects' ambient.ambientid user.userid %}">Matéria</a>
+    <a href="{% url 'ambient_formations' ambient.ambientid user.userid %}">Formação</a>
+    <a href="{% url 'ambient_roomtypes' ambient.ambientid user.userid %}">Tipo de Sala</a>
+    <a href="{% url 'ambient_admtypes' ambient.ambientid user.userid %}">Tipo de Administrador</a>
+{% endblock content %}
