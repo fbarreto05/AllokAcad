@@ -3,6 +3,9 @@ from django.db import models
 
 # Create your models here.
 
+def user_image_path(instance, filename):
+    return f'users/{instance.userid}/picture/{filename}'
+
 class User(models.Model):
     userid = models.CharField(max_length=9, blank=True, null=True)
     name = models.CharField(max_length=80, null=False)
@@ -10,7 +13,7 @@ class User(models.Model):
     birthdate = models.DateField(null=False)
     password = models.CharField(max_length=20, null=False)
     description = models.TextField(max_length=500, null=True)
-    picture = models.ImageField(null=True)
+    picture = models.ImageField(upload_to=user_image_path, null=True)
     invitations = models.ManyToManyField('Invitation')
     ambients = models.ManyToManyField('Ambient')
 
@@ -18,15 +21,11 @@ class Member(models.Model):
     user = models.ForeignKey('User', on_delete=models.CASCADE, null=True)
     registration = models.CharField(max_length=40, null=True)
     formations = models.ManyToManyField('Member_Formation')
-    time_in_campus = ArrayField(models.IntegerField(), null=True)
-    time_in_institution = ArrayField(models.IntegerField(), null=True)
+    time_in_campus = models.IntegerField(null=True)
+    time_in_institution = models.IntegerField(null=True)
     career_level = models.CharField(max_length=40, null=True)
     admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=False)
     is_professor = models.BooleanField(default=False, null=False)
-    max_actv_in_cicle = models.IntegerField(null=True)
-    min_actv_in_cicle = models.IntegerField(null=True)
-    max_actv_in_day = models.IntegerField(null=True)
-    min_actv_in_day = models.IntegerField(null=True)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
     prefered_classes = models.ManyToManyField('Class_Preference')
     prefered_classrooms = models.ManyToManyField('Classroom_Preference')

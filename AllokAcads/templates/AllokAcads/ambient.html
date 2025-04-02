@@ -1,7 +1,51 @@
 {% include 'AllokAcads/ambient_bar.html' %}
 
 {% block content %}
+    <br>
+    {% if picture %}
+        <img src="{{ picture.url }}">
+    {% endif %}
+    <br>
+    <p>{{ ambient.description }}</p>
+    <br>
     <p>Bem vindo ao ambiente {{ ambient.name }}, {{ user.name }}!</p>
+    <p>Preencha seu formulário abaixo: </p>
+    <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="available_schedules">Horários Disponíveis</label>
+        <br>
+            {% for schedule in schedules %}
+                {% if forloop.counter0|divisibleby:columns %}
+                    <br>
+                {% endif %}
+                <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+            {% endfor %}
+        <br><br>
+        <label for="prefered_classrooms">Salas Preferidas</label>
+        <br>
+            {% for classroom in classrooms %}
+                <br>
+                <input type="checkbox" name="prefered_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
+                <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+            {% endfor %}
+        <br><br>
+        <label for="prefered_classes">Classes Preferidas</label>
+            {% for aclass in classes %}
+                <br>
+                <input type="checkbox" name="prefered_classes" value="{{ aclass.id }}">{{ aclass.name }}
+                <input type="range" min="0" max="100" value="100" id="class_weight_{{ aclass.id }}" name="class_weight_{{ aclass.id }}"><br>
+            {% endfor %}
+        <br><br>
+            <label for="prefered_subjects">Matérias Preferidas</label>
+            <br>
+            {% for subject in subjects %}
+                <br>
+                <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
+                <br>
+            {% endfor %}
+        <br><br>
+        <button type="submit" id="submit" name="submit">Enviar</button>
+    </form>
 {% endblock content %}
 
 

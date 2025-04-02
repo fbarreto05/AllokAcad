@@ -23,10 +23,13 @@ urlpatterns = [
     path('register', views.register, name='register'),
     path('register_validate', views.register_validate, name='register_validate'),
     path('home/<str:userid>', views.home, name='home'),
+    path('home/profile/<str:userid>', views.profile, name='profile'),
+    path('home/profile/edit/<str:userid>', views.profile_edit, name='profile_edit'),
+    path('home/profile/edit/validate/<str:userid>', views.profile_edit_validate, name='profile_edit_validate'),
     path('home/create_ambient/<str:userid>', views.create_ambient, name='create_ambient'),
     path('home/create_ambient_validate/<str:userid>', views.create_ambient_validate, name='create_ambient_validate'),
     path('ambient/<str:ambientid>/<str:userid>', views.ambient, name='ambient'),
-    path('ambient/form/<str:ambientid>/<str:userid>', views.ambient_form, name='ambient_form'),
+    path('ambient/form/validate/<str:ambientid>/<str:userid>', views.ambient_form_validate, name='ambient_form_validate'),
     path('ambient/config/<str:ambientid>/<str:userid>/', views.ambient_config, name='ambient_config'),
     path('ambient/config_validate/<str:ambientid>/<str:userid>/', views.ambient_config_validate, name='ambient_config_validate'),
     path('ambient/solicitations/<str:ambientid>/<str:userid>', views.ambient_solicitations, name='ambient_solicitations'),
@@ -50,6 +53,8 @@ urlpatterns = [
     path('ambient/resources/admtypes/create/<str:ambientid>/<str:userid>', views.ambient_create_admtypes, name='ambient_create_admtypes'),
     path('ambient/resources/admtypes/create/validate/<str:ambientid>/<str:userid>', views.ambient_create_admtypes_validate, name='ambient_create_admtypes_validate'),
     path('ambient/profile/<str:ambientid>/<str:userid>', views.ambient_profile, name='ambient_profile'),
+    path('ambient/profile/edit/<str:ambientid>/<str:userid>', views.ambient_profile_edit, name='ambient_profile_edit'),
+    path('ambient/profile/edit/validate/<str:ambientid>/<str:userid>', views.ambient_profile_edit_validate, name='ambient_profile_edit_validate'),
     path('ambient/members/<str:ambientid>/<str:userid>', views.ambient_members, name='ambient_members'),
 
     ]
