@@ -1,0 +1,80 @@
+/* Tablets e dispositivos médios */
+@media (max-width: 1024px) {
+    .logo {
+        width: 250px;
+    }
+    
+    .form-logo {
+        width: 250px; 
+    }
+    
+    .logo-container p {
+        font-size: 1.1rem;
+    }
+}
+
+/* Dispositivos móveis */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    /* Remove completamente a sidebar em dispositivos móveis */
+    .sidebar {
+        display: none;
+    }
+    
+    .login-form {
+        padding: 40px 20px;
+        min-height: 100vh;
+    }
+
+    .form-logo {
+        width: 300px; 
+        margin-bottom: 30px;
+    }
+    
+    .form-container {
+        padding: 20px;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+}
+
+/* Dispositivos muito pequenos */
+@media (max-width: 480px) {
+    .login-form {
+        padding: 30px 15px;
+    }
+    
+    .form-logo {
+        width: 250px;
+        margin-bottom: 25px;
+    }
+    
+    .form-container {
+        padding: 15px;
+    }
+    .form-group {
+            margin-bottom: 15px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 10px 14px;
+    }
+
+    .form-options {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}
+ 
