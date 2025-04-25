@@ -3,6 +3,9 @@ from django.db import models
 
 # Create your models here.
 
+def user_image_path(instance, filename):
+    return f'users/{instance.userid}/picture/{filename}'
+
 class User(models.Model):
     userid = models.CharField(max_length=9, blank=True, null=True)
     name = models.CharField(max_length=80, null=False)
@@ -10,23 +13,19 @@ class User(models.Model):
     birthdate = models.DateField(null=False)
     password = models.CharField(max_length=20, null=False)
     description = models.TextField(max_length=500, null=True)
-    picture = models.ImageField(null=True)
-    invitations = models.ManyToManyField('Invitation')
+    picture = models.ImageField(upload_to=user_image_path, null=True)
+    invitations = models.ManyToManyField('Invitation', related_name='invitations')
     ambients = models.ManyToManyField('Ambient')
 
 class Member(models.Model):
     user = models.ForeignKey('User', on_delete=models.CASCADE, null=True)
     registration = models.CharField(max_length=40, null=True)
     formations = models.ManyToManyField('Member_Formation')
-    time_in_campus = ArrayField(models.IntegerField(), null=True)
-    time_in_institution = ArrayField(models.IntegerField(), null=True)
+    time_in_campus = models.IntegerField(null=True)
+    time_in_institution = models.IntegerField(null=True)
     career_level = models.CharField(max_length=40, null=True)
-    admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=False)
+    admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=True)
     is_professor = models.BooleanField(default=False, null=False)
-    max_actv_in_cicle = models.IntegerField(null=True)
-    min_actv_in_cicle = models.IntegerField(null=True)
-    max_actv_in_day = models.IntegerField(null=True)
-    min_actv_in_day = models.IntegerField(null=True)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
     prefered_classes = models.ManyToManyField('Class_Preference')
     prefered_classrooms = models.ManyToManyField('Classroom_Preference')
@@ -67,7 +66,7 @@ class Ambient(models.Model):
     days_in_a_cicle = models.IntegerField(null=True)
     available_schedules = models.ManyToManyField('Schedule_Preference')
     breaks = ArrayField(ArrayField(models.IntegerField(null=False), null=True), null=True)
-    enter_solicitations = ArrayField(models.CharField(max_length=9, null=False), null=True)
+    enter_solicitations = ArrayField(models.CharField(max_length=9, null=False), null=True, blank=True, default=list)
     form_opening = models.DateField(null=True)
     form_closing = models.DateField(null=True)
     alt_solicitations_opening = models.DateField(null=True)
@@ -104,10 +103,11 @@ class Formation(models.Model):
     num_uses = models.IntegerField(null=True)
 
 class Activitie(models.Model):
-    tclass = models.ForeignKey('Class', on_delete=models.CASCADE)
-    tclassroom = models.ForeignKey('Classroom', on_delete=models.CASCADE)
-    tprofessor = models.ForeignKey('Member', on_delete=models.CASCADE)
-    tsubject = models.ForeignKey('Subject', on_delete=models.CASCADE)
+    tclass = models.ForeignKey('Class', on_delete=models.CASCADE, null=True)
+    tclassroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, null=True)
+    tprofessor = models.ForeignKey('Member', on_delete=models.CASCADE, null=True)
+    tsubject = models.ForeignKey('Subject', on_delete=models.CASCADE, null=True)
+    classroom_weight = models.IntegerField(null=True)
 
 class Timetable(models.Model):
     lines_number = models.IntegerField(null=True)
@@ -128,8 +128,9 @@ class Unregistered_Activitie(models.Model):
     message = models.TextField(max_length=400)
 
 class Invitation(models.Model):
-    inviting_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='inviting_user')
-    invited_user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invited_user')
+    ambient = models.ForeignKey('Ambient', on_delete=models.CASCADE, related_name='invitation_ambient')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invitation_user')
+    to_accept = models.BooleanField(null=False, default=False)
     status = models.BooleanField(default=False)
 
 class Member_Formation(models.Model):

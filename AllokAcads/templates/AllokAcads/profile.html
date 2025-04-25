@@ -1,4 +1,4 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% include 'AllokAcads/bar.html' %}
 
 {% block content %}
     <br>
@@ -6,10 +6,10 @@
         <img src="{{ picture.url }}">
     {% endif %}
     <p>{{ user.name }}</p>
-    <p>{{ user.id }}</p>
+    <p>{{ user.userid }}</p>
     {% if user.description %}
         <p>{{ user.description }}</p>
     {% endif %}
     
-    <a href="{% url 'ambient_profile_edit' ambient.ambientid user.userid %}">Editar</a>
+    <a href="{% url 'profile_edit' user.userid %}">Editar</a>
 {% endblock content %}

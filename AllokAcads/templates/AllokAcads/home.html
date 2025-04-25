@@ -1,7 +1,19 @@
-<p>Bem vindo à página principal, {{ username }}!</p>
+{% include 'AllokAcads/bar.html' %}
 
-{% for ambient in ambients.all %}
-    <a href="{% url 'ambient' ambient.ambientid userid%}">{{ ambient.name }}</a>
-{% endfor %}
+{% block content %}
+    <p>Bem vindo à página principal, {{ username }}!</p>
 
-<a href="{% url 'create_ambient' userid %}">Criar Ambiente</a>
+    {% for ambient in ambients.all %}
+        <a href="{% url 'ambient' ambient.ambientid userid%}">{{ ambient.name }}</a>
+    {% endfor %}
+
+    <a href="{% url 'create_ambient' userid %}">Criar Ambiente</a>
+
+    <p>Entrar em grupo </p>
+    <form action="{% url 'enter_ambient' userid %}" method="post">
+        {% csrf_token %}
+        <label for="ambient_identificator">Identificador</label>
+        <input type="text" id="ambient_identificator" name="ambient_identificator"><br>
+        <button id="submit" name="submit">Entrar</button>
+    </form>
+{% endblock content %}
