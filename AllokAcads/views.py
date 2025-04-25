@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os
-from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation
+from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie
 from shutil import copyfile
 
 # Create your views here.
@@ -56,7 +56,7 @@ def register_validate(request):
     copyfile(default_picture_path, os.path.join(directory, 'user.png'))
     picture = f'users/{identificator}/user_picture/user.png'
 
-    user = User(userid=identificator, picture = picture, name=name, email=email, password=password, birthdate=birthdate)
+    user = User(userid=identificator, picture=picture, name=name, email=email, password=password, birthdate=birthdate)
     user.save()
 
     return render(request, "AllokAcads/register.html")
@@ -116,7 +116,7 @@ def create_ambient_validate(request, userid):
         os.makedirs(directory, exist_ok=True)
         default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
         copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
-        picture = f'users/{identificator}/ambient_picture/ambient.png'
+        picture = f'ambients/{identificator}/ambient_picture/ambient.png'
 
     ambient = Ambient(ambientid=identificator, name=name, picture=picture, description=description)
 
@@ -134,12 +134,14 @@ def ambient(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
     picture = ambient[0].picture
     user = User.objects.filter(userid = userid)
+    member = ambient[0].members.filter(user=user[0])
     schedules = ambient[0].available_schedules.all()
     classrooms = ambient[0].classrooms.all()
     classes = ambient[0].classes.all()
     subjects = ambient[0].subjects.all()
     columns = ambient[0].periods_in_a_day
-    return render(request, "AllokAcads/ambient.html", {'ambient' : ambient[0], 'user' : user[0], 'classrooms' : classrooms, 'classes' : classes, 'subjects' : subjects, 'schedules' : schedules, 'columns' : columns, 'picture' : picture})
+    activities = ambient[0].activities.all()
+    return render(request, "AllokAcads/ambient.html", {'ambient' : ambient[0], 'user' : user[0], 'member' : member[0], 'classrooms' : classrooms, 'classes' : classes, 'subjects' : subjects, 'schedules' : schedules, 'columns' : columns, 'picture' : picture, 'activities' : activities})
 
 def ambient_config(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
@@ -249,7 +251,32 @@ def ambient_form_validate(request, ambientid, userid):
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
 
 def ambient_solicitations(request, ambientid, userid):
-    return render(request, "AllokAcads/ambient_solicitations.html")
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.filter(userid = userid)
+    solicitations = ambient.enter_solicitations
+    names = []
+    for solicitation in solicitations:
+        name = User.objects.get(userid = solicitation).name
+        names.append(name)
+    solicitations = zip(names, solicitations)
+    return render(request, "AllokAcads/ambient_solicitations.html", {'solicitations' : solicitations, 'ambient' : ambient, 'user' : user[0]})
+
+def accept_solicitation(request, memberid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    member = User.objects.get(userid = memberid)
+    ambient.enter_solicitations.remove(memberid)
+    new_member = Member(user=member, admin_type=None, is_professor=True)
+    new_member.save()
+    ambient.members.add(new_member)
+    ambient.save()
+    member.ambients.add(ambient)
+    member.save()
+    return redirect(f'/AllokAcad/ambient/solicitations/{ambientid}/{userid}')
+
+def refuse_solicitation(request, memberid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    ambient.enter_solicitations.remove(memberid)
+    return redirect(f'/AllokAcad/ambient/solicitations{ambientid}/{userid}')
 
 def ambient_resources(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
@@ -284,7 +311,6 @@ def ambient_create_subjects_validate(request, ambientid, userid):
             classroom_weight = request.POST.get(f"classroom_weight_{classroom_id}")
             classroom_preference = Classroom_Preference(classroom=classroom, classroom_weight=classroom_weight)
             classroom_preference.save()
-            print("classroom_preference", classroom_preference)
             subject.ideal_classrooms.add(classroom_preference)
     professor_ids = request.POST.getlist("favorite_professors")
     if professor_ids:
@@ -324,7 +350,7 @@ def ambient_create_rooms_validate(request, ambientid, userid):
     name = request.POST.get('name')
     roomtype = ClassroomTP.objects.get(id = request.POST.get('roomtype'))
     capacity = request.POST.get('capacity')
-    room = Classroom(name=name, classroom_type=roomtype, classroom_capacity=capacity)
+    room = Classroom(name=name, classroom_type=roomtype, classroom_capacity=capacity, num_uses=0)
     room.save()
     ambient_instance.classrooms.add(room)
     return redirect(f'/AllokAcad/ambient/resources/rooms/{ambient[0].ambientid}/{user[0].userid}')
@@ -480,7 +506,6 @@ def ambient_profile_edit_validate(request, ambientid, userid):
             formation = Formation.objects.get(id = formation)
             didatic_experience_time = request.POST.get(f"didatic_experience_time_{formation.id}")
             professional_experience_time = request.POST.get(f"professional_experience_time_{formation.id}")
-            print("formação: ", formation, "didat", didatic_experience_time, "profe", professional_experience_time)
             member_formation = Member_Formation(formation=formation, didactic_experience_time = didatic_experience_time, professional_experience_time = professional_experience_time)
             member_formation.save()
             member.formations.add(member_formation)
@@ -519,3 +544,147 @@ def profile_edit_validate(request, userid):
         user.description = description
     user.save()
     return redirect(f'/AllokAcad/home/profile/{user.userid}')
+
+def enter_ambient(request, userid):
+    ambientid = request.POST.get('ambient_identificator')
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if ambient:
+        ambient.enter_solicitations.append(userid)
+        ambient.save()
+    return redirect(f'/AllokAcad/home/{userid}')
+
+def professor_true(request, ambientid, userid):
+    user = User.objects.get(userid = userid)
+    member = Member.objects.get(user=user)
+    member.is_professor = True
+    member.save()
+    return redirect(f'/AllokAcad/ambient/members/{ambientid}/{userid}')
+
+def professor_false(request, ambientid, userid):
+    user = User.objects.get(userid = userid)
+    member = Member.objects.get(user=user)
+    member.is_professor = False
+    member.save()
+    return redirect(f'/AllokAcad/ambient/members/{ambientid}/{userid}')
+
+def change_position(request, memberid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = memberid)
+    member = Member.objects.get(user=user)
+    admtypes = ambient.admin_types.all()
+    return render(request, "AllokAcads/change_position.html", {'ambient' : ambient, 'member' : member, 'user' : user, 'admtypes' : admtypes})
+
+def change_position_validate(request, memberid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = memberid)
+    member = Member.objects.get(user=user)
+    admtype = AdminTP.objects.get(id=request.POST.get('admtype'))
+    member.admin_type = admtype
+    member.save()
+    return redirect(f'/AllokAcad/ambient/members/{ambientid}/{userid}')
+
+def run_atribuition(request, ambientid, userid):   
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    ambient.activities.clear()
+    ambient.save()
+    user = User.objects.get(userid = userid)
+    classes = ambient.classes.all()
+    rooms = ambient.classrooms.all()
+    for room in rooms:
+        room.num_uses = 0
+        room.save()
+    rooms = ambient.classrooms.all()
+    professors = ambient.members.all().filter(is_professor = True)
+    for aclass in classes:
+        necessary_subjects = aclass.necessary_subjects.all()
+        for subject in necessary_subjects:
+            activitie = Activitie(tclass = aclass, tsubject = subject)
+            activitie.save()
+            ambient.activities.add(activitie)
+            ambient.save()
+    activities = ambient.activities.all()
+    for activitie in activities:
+        classrooms_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight")
+        subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight")
+        highest_weight = 0
+        chosen_room = None
+        for room in classrooms_rooms:
+            if subjects_rooms.filter(classroom__name = room.classroom.name).exists():
+                subject_room = subjects_rooms.get(classroom__name = room.classroom.name)
+                weight = room.classroom_weight + subject_room.classroom_weight
+            else:
+                weight = room.classroom_weight
+            if weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students:
+                    highest_weight = weight
+                    chosen_room = room.classroom  
+        for room in subjects_rooms:
+            weight = room.classroom_weight
+            if weight >= highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students:
+                    highest_weight = weight
+                    chosen_room = room.classroom
+        if(highest_weight > 0 and chosen_room != None):
+            activitie.tclassroom = chosen_room
+            activitie.classroom_weight = highest_weight
+            activitie.save()
+            chosen_room.num_uses += 1
+            chosen_room.save()
+
+    for i in range(10):
+        average_occupation = 0
+        for room in rooms:
+            average_occupation += room.num_uses   
+        average_occupation = average_occupation/len(rooms)   
+
+        activities = ambient.activities.all()
+
+        for activitie in activities:
+            rooms = ambient.classrooms.all()
+            if activitie.tclassroom.num_uses > average_occupation:
+                classrooms_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight")
+                subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight")
+                second_classrooms_rooms = classrooms_rooms.exclude(classroom=activitie.tclassroom)
+                second_subjects_rooms = subjects_rooms.exclude(classroom=activitie.tclassroom)
+                highest_weight = 0
+                chosen_room = None
+                for room in second_classrooms_rooms:
+                    if second_subjects_rooms.filter(classroom__name = room.classroom.name).exists():
+                        subject_room = second_subjects_rooms.get(classroom__name = room.classroom.name)
+                        weight = room.classroom_weight + subject_room.classroom_weight
+                    else:
+                        weight = room.classroom_weight
+                    if weight > highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students:
+                            highest_weight = weight
+                            chosen_room = room.classroom
+                for room in second_subjects_rooms:
+                    weight = room.classroom_weight
+                    if weight >= highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students:
+                            highest_weight = weight
+                            chosen_room = room.classroom
+                if(highest_weight > 0 and chosen_room != None):
+                    classroom_save = activitie.tclassroom
+                    classroom_save.num_uses -= 1
+                    activitie.tclassroom = chosen_room
+                    activitie.classroom_weight = highest_weight
+                    chosen_room.num_uses += 1
+                    chosen_room.save()
+                    classroom_save.save()
+                    activitie.save()
+                elif activitie.classroom_weight < 100:
+                    chosen_room = None
+                    similar_rooms = Classroom.objects.filter(classroom_type = activitie.tclassroom.classroom_type)
+                    for room in similar_rooms:
+                        if activitie.tclassroom.num_uses - room.num_uses >= 2 and room.classroom_capacity >= activitie.tclass.number_of_students:
+                            chosen_room = room
+                    if chosen_room:
+                        classroom_save = activitie.tclassroom
+                        classroom_save.num_uses -= 1
+                        activitie.tclassroom = chosen_room
+                        activitie.classroom_weight = highest_weight
+                        chosen_room.num_uses += 1
+                        chosen_room.save()
+                        classroom_save.save()
+                        activitie.save()
+    return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
+
+def run_alocation(request, ambientid, userid):
+    pass
