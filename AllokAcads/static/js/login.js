@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('password');
     const identifierError = document.getElementById('identifierError');
     const passwordError = document.getElementById('passwordError');
+    const togglePassword = document.querySelector('.toggle-password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
 
     function showError(element, message) {
         element.textContent = message;
@@ -24,6 +27,78 @@ document.addEventListener('DOMContentLoaded', function() {
         clearError(passwordError);
         passwordInput.classList.remove('error');
     });
+
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.style.display = 'block';
+                eyeOffIcon.style.display = 'none';
+            } else {
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'block';
+            }
+            
+            passwordInput.focus();
+        });
+    }
+
+    function validateForm() {
+        let isValid = true;
+
+        if (!identifierInput.value.trim()) {
+            identifierError.textContent = 'O identificador é obrigatório';
+            identifierInput.classList.add('error');
+            isValid = false;
+        } else {
+            identifierError.textContent = '';
+            identifierInput.classList.remove('error');
+        }
+
+        if (!passwordInput.value) {
+            passwordError.textContent = 'A senha é obrigatória';
+            passwordInput.classList.add('error');
+            isValid = false;
+        } else {
+            passwordError.textContent = '';
+            passwordInput.classList.remove('error');
+        }
+
+        return isValid;
+    }
+
+    identifierInput.addEventListener('input', function() {
+        identifierError.textContent = '';
+        identifierInput.classList.remove('error');
+    });
+
+    passwordInput.addEventListener('input', function() {
+        passwordError.textContent = '';
+        passwordInput.classList.remove('error');
+    });
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault(); 
+            }
+        });
+    }
+
+    if (window.location.href.includes('/login') && document.referrer.includes('/login')) {
+
+        const errorElement = document.createElement('div');
+        errorElement.className = 'form-error';
+        errorElement.textContent = 'Identificador ou senha incorretos. Tente novamente.';
+        
+        const formContainer = document.querySelector('.form-container');
+        if (formContainer && loginForm) {
+            formContainer.insertBefore(errorElement, loginForm);
+        }
+    }
 
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
