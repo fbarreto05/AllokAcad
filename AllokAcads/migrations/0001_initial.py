@@ -139,8 +139,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('registration', models.CharField(max_length=40, null=True)),
-                ('time_in_campus', django.contrib.postgres.fields.ArrayField(base_field=models.IntegerField(), null=True, size=None)),
-                ('time_in_institution', django.contrib.postgres.fields.ArrayField(base_field=models.IntegerField(), null=True, size=None)),
+                ('time_in_campus', models.IntegerField(null=True)),
+                ('time_in_institution', models.IntegerField(null=True)),
                 ('career_level', models.CharField(max_length=40, null=True)),
                 ('is_professor', models.BooleanField(default=False)),
                 ('max_actv_in_cicle', models.IntegerField(null=True)),

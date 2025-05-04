@@ -35,6 +35,65 @@ Membros -> Ver lista de membros do ambiente, poder promover ou tornar professor
 {% endblock %}
 
 {% block content %}
+    <br>
+    {% if picture %}
+        <img src="{{ picture.url }}">
+    {% endif %}
+    <br>
+    <p>{{ ambient.description }}</p>
+    <br>
+    <p>Bem vindo ao ambiente {{ ambient.name }}, {{ user.name }}!</p>
+
+    {% if member.is_professor %}
+        <p>Preencha seu formulário abaixo: </p>
+        <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label for="available_schedules">Horários Disponíveis</label>
+            <br>
+                {% for schedule in schedules %}
+                    {% if forloop.counter0|divisibleby:columns %}
+                        <br>
+                    {% endif %}
+                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+                {% endfor %}
+            <br><br>
+            <label for="prefered_classrooms">Salas Preferidas</label>
+            <br>
+                {% for classroom in classrooms %}
+                    <br>
+                    <input type="checkbox" name="prefered_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
+                    <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+                {% endfor %}
+            <br><br>
+            <label for="prefered_classes">Classes Preferidas</label>
+                {% for aclass in classes %}
+                    <br>
+                    <input type="checkbox" name="prefered_classes" value="{{ aclass.id }}">{{ aclass.name }}
+                    <input type="range" min="0" max="100" value="100" id="class_weight_{{ aclass.id }}" name="class_weight_{{ aclass.id }}"><br>
+                {% endfor %}
+            <br><br>
+                <label for="prefered_subjects">Matérias Preferidas</label>
+                <br>
+                {% for subject in subjects %}
+                    <br>
+                    <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
+                    <br>
+                {% endfor %}
+            <br><br>
+            <button type="submit" id="submit" name="submit">Enviar</button>
+        </form>    
+    {% endif %}
+    {% if member.admin_type.can_run_atribuition %}
+        {% for activity in activities %}
+            <p>{{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name  }}</p>
+        {% endfor %}
+        <a href="{% url 'run_atribuition' ambient.ambientid user.userid %}">Rodar atribuição</a>
+    {% endif %}
+    <br>
+    {% if member.admin_type.can_run_alocation %}
+        <a href="">Rodar alocação</a>
+    {% endif %}
+{% endblock content %}
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

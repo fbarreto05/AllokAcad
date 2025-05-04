@@ -5,8 +5,12 @@
     {% for member in members %}
         </br>
         <a href="">{{ member.user.name }}</a>
-        <a href="">Promover</a>
-        <a href="">Tornar Professor</a>
+        <a href="{% url 'change_position' member.user.userid ambient.ambientid user.userid%}">Alterar Cargo</a>
+        {% if member.is_professor == False %}
+            <a href="{% url 'professor_true' ambient.ambientid member.user.userid %}">Tornar Professor</a>
+        {% else %}
+            <a href="{% url 'professor_false' ambient.ambientid member.user.userid %}">Remover Professor</a>
+        {% endif %}
     {% endfor %}
 {% endblock content %}
 

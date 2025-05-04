@@ -1,0 +1,11 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    {% for name, solicitation in solicitations %}
+        </br>
+        <a href="">{{ name }}</a>
+        <a href="">{{ solicitation }}</a>
+        <a href="{% url 'accept_solicitation' solicitation ambient.ambientid user.userid %}">Aceitar</a>
+        <a href="{% url 'refuse_solicitation' solicitation ambient.ambientid user.userid %}">Recusar</a>
+    {% endfor %}
+{% endblock content %}
