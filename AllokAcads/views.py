@@ -107,9 +107,20 @@ def create_ambient_validate(request, userid):
     return redirect(f'/AllokAcad/home/{userid}')
 
 def ambient(request, ambientid, userid):
-    ambient = Ambient.objects.filter(ambientid = ambientid)
-    user = User.objects.filter(userid = userid)
-    return render(request, "AllokAcads/ambient.html", {'ambient' : ambient[0], 'user' : user[0]})
+    ambient = Ambient.objects.filter(ambientid=ambientid).first()
+    user = User.objects.filter(userid=userid).first()
+    
+    if not ambient or not user:
+        return redirect('home', userid=userid)
+    
+    username = user.name
+    
+    return render(request, "AllokAcads/ambient.html", {
+        'ambient': ambient,
+        'user': user,
+        'userid': userid,
+        'username': username
+    })
 
 def ambient_config(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
