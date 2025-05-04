@@ -131,17 +131,37 @@ def create_ambient_validate(request, userid):
     return redirect(f'/AllokAcad/home/{userid}')
 
 def ambient(request, ambientid, userid):
-    ambient = Ambient.objects.filter(ambientid = ambientid)
-    picture = ambient[0].picture
-    user = User.objects.filter(userid = userid)
-    member = ambient[0].members.filter(user=user[0])
-    schedules = ambient[0].available_schedules.all()
-    classrooms = ambient[0].classrooms.all()
-    classes = ambient[0].classes.all()
-    subjects = ambient[0].subjects.all()
-    columns = ambient[0].periods_in_a_day
-    activities = ambient[0].activities.all()
-    return render(request, "AllokAcads/ambient.html", {'ambient' : ambient[0], 'user' : user[0], 'member' : member[0], 'classrooms' : classrooms, 'classes' : classes, 'subjects' : subjects, 'schedules' : schedules, 'columns' : columns, 'picture' : picture, 'activities' : activities})
+  
+    ambient = Ambient.objects.filter(ambientid=ambientid).first()
+    user = User.objects.filter(userid=userid).first()
+    
+    if not ambient or not user:
+        return redirect('home', userid=userid)
+    
+    member = ambient.members.filter(user=user).first()
+    schedules = ambient.available_schedules.all()
+    classrooms = ambient.classrooms.all()
+    classes = ambient.classes.all()
+    subjects = ambient.subjects.all()
+    columns = ambient.periods_in_a_day
+    activities = ambient.activities.all()
+    picture = ambient.picture
+    username = user.name
+    
+    return render(request, "AllokAcads/ambient.html", {
+        'ambient': ambient,
+        'user': user,
+        'userid': userid,
+        'username': username,
+        'member': member,
+        'schedules': schedules,
+        'classrooms': classrooms,
+        'classes': classes,
+        'subjects': subjects,
+        'columns': columns,
+        'picture': picture,
+        'activities': activities
+    })
 
 def ambient_config(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
