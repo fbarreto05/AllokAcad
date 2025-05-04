@@ -1,4 +1,4 @@
-/* Tablets e dispositivos médios */
+/* === LOGIN E CADASTRO === */
 @media (max-width: 1024px) {
     .logo {
         width: 250px;
@@ -13,13 +13,11 @@
     }
 }
 
-/* Dispositivos móveis */
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
     }
     
-    /* Remove completamente a sidebar em dispositivos móveis */
     .sidebar {
         display: none;
     }
@@ -48,7 +46,6 @@
     }
 }
 
-/* Dispositivos muito pequenos */
 @media (max-width: 480px) {
     .login-form {
         padding: 30px 15px;
@@ -77,4 +74,208 @@
         align-items: flex-start;
     }
 }
- 
+
+/* === SIDEBAR COMPARTILHADA - TODAS PÁGINAS === */
+@media (max-width: 991px) {
+    .sidebar {
+        width: 240px;
+    }
+    
+    .main-content {
+        margin-left: 240px;
+    }
+    
+    .username {
+        font-size: 1.1rem;
+        max-width: 140px;
+    }
+}
+
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: flex;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1001;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        display: flex !important;
+        width: 260px;
+        z-index: 1000;
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 5rem 1.5rem 1.5rem 1.5rem;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: center; 
+        gap: 1rem;
+        text-align: center;
+        padding-top: 60px;
+    }
+    
+    .nav-link, 
+    .logout {
+        padding: 12px 2rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .nav-link svg,
+    .logout svg {
+        margin-right: 12px;
+        min-width: 20px; 
+    }
+    
+    .nav-link.active {
+        position: relative;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .nav-link.active:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: white;
+    }
+}
+
+/* === SIDEBAR DENTRO DO AMBIENTE === */
+@media (max-width: 768px) {
+    .ambient-menu-toggle {
+        display: flex;
+        position: fixed;
+        top: 1rem;
+        right: 1rem; 
+        z-index: 998;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #4361ee;
+        color: white;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border: none;
+    }
+    
+    .ambient-menu-toggle svg {
+        display: none;
+    }
+    
+    .ambient-menu-toggle:before {
+        content: "";
+        display: block;
+        width: 18px;
+        height: 18px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+    
+    .ambient-page .header {
+        padding-top: 60px;
+        padding-right: 10px;
+    }
+}
+
+/* === ITEMIZAÇÃO ESPECÍFICA PARA HOME === */
+@media (max-width: 576px) {
+    .home-page .ambients-grid {
+        grid-template-columns: 1fr; 
+    }
+    
+    .home-page .ambient-card {
+        max-width: 100%;
+    }
+    
+    .home-page .no-ambients {
+        padding: 2rem 1rem;
+    }
+    
+    .home-page .action-buttons {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .home-page .create-button,
+    .home-page .join-button {
+        width: 100%;
+        max-width: 300px;
+        margin: 0.5rem 0;
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .logo {
+        width: 70px; 
+    }
+    
+    .user-info {
+        margin-bottom: 2rem;
+    }
+}
+
+/* === CRIAÇÃO DE AMBIENTE - MANTER APENAS ESTILOS DOS BOTÕES === */
+@media (max-width: 768px) {
+    .create-ambient-page .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .create-ambient-page .form-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 10px;
+    }
+    
+    .create-ambient-page .cancel-button,
+    .create-ambient-page .create-button {
+        width: 100%;
+        max-width: 300px;
+        height: 42px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0 15px;
+        font-size: 1rem;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+    
+    .create-ambient-page .cancel-button {
+        background-color: #f3f4f6;
+        color: #1f2937;
+        border: 1px solid #d1d5db;
+    }
+    
+    .create-ambient-page .create-button {
+        background-color: #4361ee;
+        color: white;
+        border: 1px solid #3754d1;
+    }
+}
