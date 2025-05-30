@@ -21,14 +21,29 @@
             </svg>
             Criar Ambiente
         </a>
-        <a href="#" class="join-button home-join-button">
+        <a href="#" class="join-button home-join-button" id="join-ambient-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                 <polyline points="10 17 15 12 10 7"></polyline>
                 <line x1="15" y1="12" x2="3" y2="12"></line>
             </svg>
-            Ingressar
+            Ingressar em Ambiente
         </a>
+    </div>
+</div>
+
+<div id="join-ambient-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Ingressar em Ambiente</h2>
+        <form action="{% url 'enter_ambient' userid %}" method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="ambient_identificator">Identificador do Ambiente</label>
+                <input type="text" id="ambient_identificator" name="ambient_identificator" placeholder="Digite o código do ambiente" required>
+            </div>
+            <button type="submit" class="submit-button">Entrar</button>
+        </form>
     </div>
 </div>
 
@@ -60,28 +75,10 @@
         <a href="{% url 'create_ambient' userid %}" class="create-first-ambient">Criar meu primeiro ambiente</a>
     </div>
     {% endfor %}
+
 </div>
-{% endblock %}
+{% endblock content %}
 
 {% block extra_js %}
 <script src="{% static 'js/home.js' %}"></script>
-{% endblock %}
-
-<!--A partir daqui é alteração nova do Fernando-->
-
-{% block content %}
-
-    {% for ambient in ambients.all %}
-        <a href="{% url 'ambient' ambient.ambientid userid%}">{{ ambient.name }}</a>
-    {% endfor %}
-
-    <a href="{% url 'create_ambient' userid %}">Criar Ambiente</a>
-
-    <p>Entrar em grupo </p>
-    <form action="{% url 'enter_ambient' userid %}" method="post">
-        {% csrf_token %}
-        <label for="ambient_identificator">Identificador</label>
-        <input type="text" id="ambient_identificator" name="ambient_identificator"><br>
-        <button id="submit" name="submit">Entrar</button>
-    </form>
-{% endblock content %}
+{% endblock extra_js %}
