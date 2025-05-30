@@ -328,3 +328,88 @@
     overflow-x: auto;
     scrollbar-width: thin;
 }
+
+.admin-actions-card {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 25px;
+}
+
+.admin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.admin-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    transition: all 0.2s ease;
+}
+
+.admin-action:hover {
+    border-color: #d0d0d0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-action-details {
+    flex: 1;
+}
+
+.admin-action-details h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #333;
+}
+
+.admin-action-details p {
+    color: #6c757d;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.primary-button {
+    background-color: #4361ee;
+    color: white;
+    border: none;
+}
+
+.primary-button:hover {
+    background-color: #3651d5;
+    color: white;
+}
+
+.activities-list {
+    margin-top: 12px;
+    border-left: 3px solid #d1d9ff;
+    padding-left: 12px;
+}
+
+.activities-list h5 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #555;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #666;
+    padding: 4px 0;
+}
+
+.activity-item svg {
+    color: #4361ee;
+    flex-shrink: 0;
+}

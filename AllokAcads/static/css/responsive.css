@@ -279,3 +279,319 @@
         border: 1px solid #3754d1;
     }
 }
+
+/* === CONFIGURAÇÃO DO AMBIENTE === */
+@media (max-width: 991px) {
+    .config-container {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .ambient-config-page .header {
+        margin-top: 60px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .ambient-config-page .action-buttons {
+        align-self: flex-start;
+    }
+    
+    .config-container {
+        margin-bottom: 30px;
+    }
+    
+    .config-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .config-section h2 {
+        text-align: left;
+    }
+    
+    .file-input-placeholder {
+        height: 45px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        margin: 0;
+    }
+    
+    .form-group.half {
+        margin: 0 0 1.5rem 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .config-container {
+        padding: 1.25rem;
+        border-radius: 8px;
+    }
+    
+    .ambient-config-page .header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .config-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .cancel-button,
+    .save-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ambient-config-page .header h1 {
+        font-size: 1.4rem;
+    }
+    
+    .form-group label {
+        font-size: 0.95rem;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="date"],
+    .form-group textarea {
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+}
+
+/* === RECURSOS DO AMBIENTE === */
+@media (max-width: 768px) {
+    .ambient-resources-page .header {
+        margin-top: 60px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .ambient-resources-page .action-buttons {
+        align-self: flex-start;
+    }
+    
+    .resources-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .ambient-resources-page .header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .resource-card {
+        padding: 20px;
+    }
+    
+    .resource-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .resource-card h3 {
+        font-size: 1.1rem;
+    }
+}
+
+/* === PERFIL DO AMBIENTE === */
+@media (max-width: 991px) {
+    .profile-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .profile-image {
+        margin-right: 0;
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .ambient-profile-page .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .ambient-profile-page .action-buttons {
+        width: 100%;
+    }
+    
+    .ambient-profile-page .back-button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .ambient-profile-page .ambient-nav {
+        padding: 0.25rem;
+        justify-content: center;
+    }
+    
+    .ambient-profile-page .ambient-nav-item {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .profile-image img,
+    .placeholder-image {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .profile-info h2 {
+        font-size: 1.5rem;
+    }
+    
+    .btn-edit {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* === EDIÇÃO DE PERFIL DO AMBIENTE === */
+@media (max-width: 991px) {
+    .ambient-profile-edit-page .form-group.half {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    .ambient-profile-edit-page .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .ambient-profile-edit-page .action-buttons {
+        width: 100%;
+    }
+    
+    .ambient-profile-edit-page .back-button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .ambient-profile-edit-page .ambient-nav {
+        padding: 0.25rem;
+        justify-content: center;
+    }
+    
+    .ambient-profile-edit-page .ambient-nav-item {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .edit-card {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-cancel, 
+    .btn-save {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .formation-card {
+        padding: 1rem;
+    }
+    
+    .formation-details {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === MEMBROS DO AMBIENTE === */
+@media screen and (max-width: 768px) {
+    .ambient-members-page .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .ambient-members-page .ambient-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .ambient-members-page .ambient-nav-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    .members-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .member-card {
+        padding: 1.25rem;
+    }
+    
+    .action-btn {
+        padding: 0.5rem;
+        justify-content: center;
+    }
+}
+
+/* === SOLICITAÇÕES DO AMBIENTE === */
+@media screen and (max-width: 768px) {
+    .ambient-solicitations-page .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .ambient-solicitations-page .ambient-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .ambient-solicitations-page .ambient-nav-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    .solicitation-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.25rem;
+        padding: 1.25rem;
+    }
+    
+    .solicitation-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .accept-btn, .refuse-btn {
+        padding: 0.5rem 1rem;
+    }
+}
