@@ -126,8 +126,24 @@
 }
 
 .logout {
+    display: flex;
+    align-items: center;
+    padding: 12px 2rem;  
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+    font-weight: 500;
+    margin: 2px 0;
+    text-decoration: none;
     margin-top: auto;
-    padding-top: 12px;
+}
+
+.logout svg {
+    margin-right: 12px;
+}
+
+.logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 .menu-toggle {
