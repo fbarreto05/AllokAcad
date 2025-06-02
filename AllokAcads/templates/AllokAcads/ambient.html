@@ -12,7 +12,6 @@
 {% endblock %}
 
 {% block content %}
-
     {% if member.is_professor %}
         <p>Preencha seu formulário abaixo: </p>
         <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
@@ -54,17 +53,11 @@
             <button type="submit" id="submit" name="submit">Enviar</button>
         </form>    
     {% endif %}
-    {% if member.admin_type.can_run_atribuition %}
-        {% for activity in activities %}
-            <p>{{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name  }} / {{ activity.tprofessor.name }}</p>
-        {% endfor %}
-        <a href="{% url 'run_atribuition' ambient.ambientid user.userid %}">Rodar atribuição</a>
-    {% endif %}
     <br>
     {% if member.admin_type.can_run_alocation %}
         <a href="">Rodar alocação</a>
     {% endif %}
-{% endblock content %}
+
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

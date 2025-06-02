@@ -1137,11 +1137,9 @@ def run_atribuition(request, ambientid, userid):
                                                 swapAct = smallest_weight
                 fixed = 0
         if(highest_weight > 0 and chosen_professor != None):
-            print("entrou em", chosen_professor)
             activitie.tprofessor = chosen_professor
             activitie.professor_weight = highest_weight
             activitie.save()
-            print(activitie.tprofessor)
             if swap:
                 swapAct.tprofessor = None
                 swapAct.professor_weight = 0
@@ -1149,9 +1147,7 @@ def run_atribuition(request, ambientid, userid):
             else:
                 chosen_professor.num_uses += 1
                 chosen_professor.save()
-            print(activitie.tprofessor)
     
-    print("aqui ó")
     for activitie in activities: 
         if activitie.tprofessor: print(activitie.tclass.name, activitie.tsubject.name, activitie.tclassroom.name, activitie.tprofessor.user.name)
 
