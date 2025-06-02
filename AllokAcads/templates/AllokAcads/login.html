@@ -1,10 +1,80 @@
-<form action="{% url 'login_validate' %}" method="post">
-    {% csrf_token %}
-    <label for="id">Identificador</label>
-    <input type="text" id="id" name="id"><br>
-    <label for="password">Senha</label>
-    <input type="password" id="password" name="password"><br>
-    <button id="submit" name="submit">Entrar</button>
-</form>
-
-<a href="{% url 'register' %}">Cadastro</a> 
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AllokAcad | Entrar </title>
+        {% load static %}
+        <link rel="icon" href="/static/images/icon-allokacad.png" type="image/png">
+        <link rel="stylesheet" href="{% static 'css/reset.css' %}">
+        <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    </head>
+    <body>
+        <div class="container">
+            <div class="sidebar">
+                <div class="sidebar-bg"></div>
+                <div class="sidebar-overlay"></div>
+                <div class="logo-container">
+                    <img src="{% static 'images/allokacad-logo-white.png' %}" alt="AllokAcad" class="logo">
+                    <p>Sistema de Atribuição de Aulas para Professores</p>
+                </div>
+            </div>
+            <div class="login-form">
+                <div class="form-container">
+                    <img src="{% static 'images/allokacad-logo-blue.png' %}" alt="AllokAcad" class="form-logo">
+                    <h2>Bem-vindo(a) de volta</h2>
+                    <p class="subtitle">Entre com suas credenciais para continuar</p>
+                    
+                    <form id="loginForm" action="{% url 'login_validate' %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="identifier">Identificador</label>
+                            <input type="text" id="identifier" placeholder="Seu identificador">
+                            <span class="error-message" id="identifierError"></span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <div class="password-input-container">
+                                <input type="password" id="password" name="password" placeholder="••••••••">
+                                <button type="button" class="toggle-password" aria-label="Mostrar/ocultar senha">
+                                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg class="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <span class="error-message" id="passwordError"></span>
+                        </div>
+                        
+                        <div class="form-options">
+                            <div class="remember-me">
+                                <input type="checkbox" id="remember">
+                                <label for="remember">Lembrar de mim</label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="login-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                <polyline points="10 17 15 12 10 7"></polyline>
+                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <p class="register-link">
+                        Não tem uma conta? <a href="{% url 'register' %}">Cadastre-se</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <script src="{% static 'js/login.js' %}"></script>
+    </body>
+</html>
