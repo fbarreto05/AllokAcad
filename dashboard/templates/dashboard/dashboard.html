@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="">
+    <script src=''></script> 
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <div class="indicators-container">
+                <div class="indicator">Interval: {{professor_interval_median}}</div>
+                <div class="indicator">Trips: {{professor_trip_median}}</div>
+                <div class="indicator">Classes: {{professor_classes_median}}</div>
+                <div class="indicator">Quality: {{timetabling_quality}}</div>
+            </div>
+        </header>
+        <div class="metrics">
+            <div class="dashboard-graphic">
+                <div class="graphic">1</div>
+                <div class="graphic">2</div>
+                <div class="graphic">3</div>
+                <div class="graphic">4</div>
+            </div>
+            <div class="ranking">5</div>
+        </div>
+       
+    </div>
+</body>
+</html>

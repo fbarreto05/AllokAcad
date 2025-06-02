@@ -14,7 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
@@ -65,4 +65,5 @@ urlpatterns = [
     path('ambient/change_position_validate/<str:memberid>/<str:ambientid>/<str:userid>', views.change_position_validate, name='change_position_validate'),
     path('ambient/run_atribuition/<str:ambientid>/<str:userid>', views.run_atribuition, name='run_atribuition'),
     path('ambient/run_alocation/<str:ambientid>/<str:userid>', views.run_alocation, name='run_alocation'),
+    path('dashboard/', include('dashboard.urls'))
     ]

@@ -1,0 +1,43 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+
+body{
+    background-color: antiquewhite;
+}
+
+.dashboard-container{
+    width: 100%;
+}
+
+.indicators-container {
+    width: 100%;
+    display: flex;
+    gap: 10%;
+}
+.indicator {
+    height: 200px;
+    height: 200px;
+
+}
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+.dashboard-graphic { 
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 600px;
+    height: 600px;
+}
+
+.dashboard-graphic .graphic {
+    background-color: gray;
+    border: 1x black;
+    display: flex;
+}
+
+.ranking {
+    background-color: gray;
+}
