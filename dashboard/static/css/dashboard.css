@@ -37,8 +37,7 @@ body{
     border: 1x black;
     display: flex;
 }
+
 .ranking {
-    background-color: blue;
-    display: grid;
-    width: 100%;
+    background-color: gray;
 }
