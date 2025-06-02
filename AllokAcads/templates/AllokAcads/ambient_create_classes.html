@@ -25,7 +25,7 @@
         <label for="favorite_professors">Professores Favoritos</label>
         <br>
         {% for professor in professors %}
-            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.name }}
+            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
             <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
         {% endfor %}
         <br>
@@ -33,6 +33,7 @@
         <br>
         {% for subject in subjects %}
             <input type="checkbox" name="necessary_subjects" value="{{ subject.id }}">{{ subject.name }}
+            <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}"><br>
             <br>
         {% endfor %}
         <br>

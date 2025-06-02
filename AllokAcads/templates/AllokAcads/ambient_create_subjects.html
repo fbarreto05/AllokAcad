@@ -17,7 +17,7 @@
         <label for="favorite_professors">Professores Favoritos</label>
         <br>
         {% for professor in professors %}
-            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.name }}
+            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
             <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
             <br>
         {% endfor %}

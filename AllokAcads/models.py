@@ -23,36 +23,35 @@ class Member(models.Model):
     formations = models.ManyToManyField('Member_Formation')
     time_in_campus = models.IntegerField(null=True)
     time_in_institution = models.IntegerField(null=True)
-    career_level = models.CharField(max_length=40, null=True)
     admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=True)
     is_professor = models.BooleanField(default=False, null=False)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
     prefered_classes = models.ManyToManyField('Class_Preference')
     prefered_classrooms = models.ManyToManyField('Classroom_Preference')
     prefered_subjects = models.ManyToManyField('Subject_Preference')
-    num_uses = models.IntegerField(null=True)
+    num_uses = models.IntegerField(default=0, null=True)
 
 class Class(models.Model):
     name = models.CharField(max_length=40)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
     ideal_classrooms = models.ManyToManyField('Classroom_Preference')
-    necessary_subjects = models.ManyToManyField('Subject')
+    necessary_subjects = models.ManyToManyField('Subject_Preference')
     favorite_professors = models.ManyToManyField('Professor_Preference')
     number_of_students = models.IntegerField()
-    num_uses = models.IntegerField(null=True)
+    num_uses = models.IntegerField(default=0, null=True)
 
 class Classroom(models.Model):
     name = models.CharField(max_length=40)
     classroom_type = models.ForeignKey('ClassroomTP', on_delete=models.CASCADE)
     classroom_capacity = models.IntegerField()
-    num_uses = models.IntegerField(null=True)
+    num_uses = models.IntegerField(default=0, null=True)
 
 class Subject(models.Model):
     name = models.CharField(max_length=40)
     ideal_classrooms = models.ManyToManyField('Classroom_Preference')
     favorite_professors = models.ManyToManyField('Professor_Preference')
     relevant_formations = models.ManyToManyField('Formation_Preference')
-    num_uses = models.IntegerField(null=True)
+    num_uses = models.IntegerField(default=0, null=True)
 
 def ambient_image_path(instance, filename):
     return f'ambients/{instance.ambientid}/picture/{filename}'
@@ -100,14 +99,16 @@ class ClassroomTP(models.Model):
 
 class Formation(models.Model):
     name = models.CharField(max_length=40)
-    num_uses = models.IntegerField(null=True)
+    num_uses = models.IntegerField(default=0, null=True)
 
 class Activitie(models.Model):
     tclass = models.ForeignKey('Class', on_delete=models.CASCADE, null=True)
     tclassroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, null=True)
     tprofessor = models.ForeignKey('Member', on_delete=models.CASCADE, null=True)
     tsubject = models.ForeignKey('Subject', on_delete=models.CASCADE, null=True)
-    classroom_weight = models.IntegerField(null=True)
+    classroom_weight = models.FloatField(null=True)
+    professor_weight = models.FloatField(null=True)
+    activities_qtd = models.IntegerField(null=True)
 
 class Timetable(models.Model):
     lines_number = models.IntegerField(null=True)
@@ -137,6 +138,7 @@ class Member_Formation(models.Model):
     formation = models.ForeignKey('Formation', on_delete=models.CASCADE)
     professional_experience_time = models.IntegerField()
     didactic_experience_time = models.IntegerField()
+    formation_degree = models.TextField()
 
 class Schedule_Preference(models.Model):
     line = models.IntegerField()
@@ -144,21 +146,22 @@ class Schedule_Preference(models.Model):
 
 class Class_Preference(models.Model):
     tclass = models.ForeignKey("Class", on_delete=models.CASCADE)
-    class_weight = models.FloatField()
+    class_weight = models.FloatField(default=0)
 
 class Classroom_Preference(models.Model):
     classroom = models.ForeignKey("Classroom", on_delete=models.CASCADE)
-    classroom_weight = models.FloatField()
+    classroom_weight = models.FloatField(default=0)
 
 class Subject_Preference(models.Model):
     subject = models.ForeignKey("Subject", on_delete=models.CASCADE)
-    subject_weight = models.FloatField()
-    periods = models.IntegerField()
+    subject_weight = models.FloatField(default=0)
+    occupation = models.IntegerField(null=True)
+    periods = models.IntegerField(null=True)
 
 class Professor_Preference(models.Model):
     professor = models.ForeignKey("Member", on_delete=models.CASCADE)
-    professor_weight = models.FloatField()
+    professor_weight = models.FloatField(default=0)
 
 class Formation_Preference(models.Model):
     formation = models.ForeignKey("Formation", on_delete=models.CASCADE)
-    formation_weight = models.FloatField()
+    formation_weight = models.FloatField(default=0)
