@@ -132,22 +132,55 @@ def create_ambient_validate(request, userid):
     return redirect(f'/AllokAcad/home/{userid}')
 
 def ambient(request, ambientid, userid):
-    ambient = Ambient.objects.filter(ambientid = ambientid)
-    picture = ambient[0].picture
-    user = User.objects.filter(userid = userid)
-    member = ambient[0].members.filter(user=user[0])
-    schedules = ambient[0].available_schedules.all()
-    classrooms = ambient[0].classrooms.all()
-    classes = ambient[0].classes.all()
-    subjects = ambient[0].subjects.all()
-    columns = ambient[0].periods_in_a_day
-    activities = ambient[0].activities.all()
-    return render(request, "AllokAcads/ambient.html", {'ambient' : ambient[0], 'user' : user[0], 'member' : member[0], 'classrooms' : classrooms, 'classes' : classes, 'subjects' : subjects, 'schedules' : schedules, 'columns' : columns, 'picture' : picture, 'activities' : activities})
+  
+    ambient = Ambient.objects.filter(ambientid=ambientid).first()
+    user = User.objects.filter(userid=userid).first()
+    
+    if not ambient or not user:
+        return redirect('home', userid=userid)
+    
+    member = ambient.members.filter(user=user).first()
+    schedules = ambient.available_schedules.all()
+    classrooms = ambient.classrooms.all()
+    classes = ambient.classes.all()
+    subjects = ambient.subjects.all()
+    columns = ambient.periods_in_a_day
+    activities = ambient.activities.all()
+    picture = ambient.picture
+    username = user.name
+    
+    return render(request, "AllokAcads/ambient.html", {
+        'ambient': ambient,
+        'user': user,
+        'userid': userid,
+        'username': username,
+        'member': member,
+        'schedules': schedules,
+        'classrooms': classrooms,
+        'classes': classes,
+        'subjects': subjects,
+        'columns': columns,
+        'picture': picture,
+        'activities': activities
+    })
 
 def ambient_config(request, ambientid, userid):
-    ambient = Ambient.objects.filter(ambientid = ambientid)
-    user = User.objects.filter(userid = userid)
-    return render(request, "AllokAcads/ambient_config.html", {'ambient' : ambient[0], 'user' : user[0]})
+    ambient = Ambient.objects.filter(ambientid=ambientid)
+    user = User.objects.filter(userid=userid)
+    
+    if ambient.exists() and user.exists():
+        member = Member.objects.filter(ambient=ambient[0], user=user[0]).first()
+        
+        context = {
+            'ambient': ambient[0],
+            'user': user[0],
+            'userid': userid, 
+            'member': member
+        }
+        
+        return render(request, "AllokAcads/ambient_config.html", context)
+    else:
+        return redirect('login')
 
 def ambient_config_validate(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
@@ -210,16 +243,47 @@ def ambient_config_validate(request, ambientid, userid):
     return redirect(f'/AllokAcad/ambient/config/{ambient[0].ambientid}/{user[0].userid}')
 
 def ambient_profile(request, ambientid, userid):
-    user = User.objects.get(userid = userid)
-    ambient = Ambient.objects.get(ambientid = ambientid)
-    picture = user.picture
-    return render(request, "AllokAcads/ambient_profile.html", {'user' : user, 'ambient' : ambient, 'picture' : picture})
+    user = User.objects.filter(userid = userid)
+    ambient = Ambient.objects.filter(ambientid = ambientid)
+    
+    if ambient.exists() and user.exists():
+        ambient = ambient[0]
+        user = user[0]
+        username = user.name
+        picture = user.picture
+        
+        context = {
+            'ambient': ambient,
+            'user': user,
+            'userid': userid, 
+            'username': username,  
+            'picture': picture
+        }
+        
+        return render(request, "AllokAcads/ambient_profile.html", context)
+    else:
+        return redirect('login')
 
 def ambient_members(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
     user = User.objects.filter(userid = userid)
-    members = ambient[0].members.all()
-    return render(request, "AllokAcads/ambient_members.html", {'ambient' : ambient[0], 'user' : user[0], 'members' : members})
+    
+    if ambient.exists() and user.exists():
+        ambient = ambient[0]
+        user = user[0]
+        username = user.name
+        members = ambient.members.all()
+        context = {
+            'ambient': ambient,
+            'user': user,
+            'userid': userid, 
+            'username': username,  
+            'members': members
+        }
+        
+        return render(request, "AllokAcads/ambient_members.html", context)
+    else:
+        return redirect('login')
 
 def ambient_form_validate(request, ambientid, userid):
     user = User.objects.filter(userid = userid)
@@ -252,15 +316,36 @@ def ambient_form_validate(request, ambientid, userid):
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
 
 def ambient_solicitations(request, ambientid, userid):
-    ambient = Ambient.objects.get(ambientid = ambientid)
+    ambient = Ambient.objects.filter(ambientid = ambientid)
     user = User.objects.filter(userid = userid)
-    solicitations = ambient.enter_solicitations
-    names = []
-    for solicitation in solicitations:
-        name = User.objects.get(userid = solicitation).name
-        names.append(name)
-    solicitations = zip(names, solicitations)
-    return render(request, "AllokAcads/ambient_solicitations.html", {'solicitations' : solicitations, 'ambient' : ambient, 'user' : user[0]})
+    
+    if ambient.exists() and user.exists():
+        ambient = ambient[0]
+        user = user[0]
+        
+        username = user.name
+        
+        solicitations = ambient.enter_solicitations
+        names = []
+        if solicitations:
+            for solicitation in solicitations:
+                name = User.objects.get(userid = solicitation).name
+                names.append(name)
+            solicitations_data = zip(names, solicitations)
+        else:
+            solicitations_data = []
+            
+        context = {
+            'ambient': ambient,
+            'user': user,
+            'userid': userid,  
+            'username': username, 
+            'solicitations': solicitations_data
+        }
+        
+        return render(request, "AllokAcads/ambient_solicitations.html", context)
+    else:
+        return redirect('login')
 
 def accept_solicitation(request, memberid, ambientid, userid):
     ambient = Ambient.objects.get(ambientid = ambientid)
@@ -277,12 +362,29 @@ def accept_solicitation(request, memberid, ambientid, userid):
 def refuse_solicitation(request, memberid, ambientid, userid):
     ambient = Ambient.objects.get(ambientid = ambientid)
     ambient.enter_solicitations.remove(memberid)
-    return redirect(f'/AllokAcad/ambient/solicitations{ambientid}/{userid}')
+    ambient.save() 
+    return redirect(f'/AllokAcad/ambient/solicitations/{ambientid}/{userid}')
 
 def ambient_resources(request, ambientid, userid):
-    ambient = Ambient.objects.filter(ambientid = ambientid)
-    user = User.objects.filter(userid = userid)
-    return render(request, "AllokAcads/ambient_resources.html", {'ambient' : ambient[0], 'user' : user[0]})
+    ambient = Ambient.objects.filter(ambientid=ambientid)
+    user = User.objects.filter(userid=userid)
+    
+    if ambient.exists() and user.exists():
+        ambient = ambient[0]
+        user = user[0]
+        
+        username = user.name
+        
+        context = {
+            'ambient': ambient,
+            'user': user,
+            'userid': userid, 
+            'username': username
+        }
+        
+        return render(request, "AllokAcads/ambient_resources.html", context)
+    else:
+        return redirect('login')
 
 def ambient_subjects(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
@@ -493,8 +595,24 @@ def ambient_create_admtypes_validate(request, ambientid, userid):
 def ambient_profile_edit(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
     user = User.objects.filter(userid = userid)
-    formations = ambient[0].formations.all()
-    return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user[0], 'formations' : formations})
+    
+    if ambient.exists() and user.exists():
+        ambient = ambient[0]
+        user = user[0]
+        username = user.name
+        formations = ambient.formations.all()
+        
+        context = {
+            'ambient': ambient,
+            'user': user,
+            'userid': userid,
+            'username': username,
+            'formations': formations
+        }
+        
+        return render(request, "AllokAcads/ambient_profile_edit.html", context)
+    else:
+        return redirect('login')
 
 def ambient_profile_edit_validate(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)

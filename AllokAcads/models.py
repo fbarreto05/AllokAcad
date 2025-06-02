@@ -9,7 +9,7 @@ def user_image_path(instance, filename):
 class User(models.Model):
     userid = models.CharField(max_length=9, blank=True, null=True)
     name = models.CharField(max_length=80, null=False)
-    email = models.EmailField(max_length=20, null=False)
+    email = models.EmailField(max_length=254, null=False)
     birthdate = models.DateField(null=False)
     password = models.CharField(max_length=20, null=False)
     description = models.TextField(max_length=500, null=True)

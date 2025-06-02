@@ -1,14 +1,68 @@
-<form action="{% url 'register_validate' %}" method="post">
-    {% csrf_token %}
-    <label for="name">Nome</label>
-    <input type="text" id="name" name="name"><br>
-    <label for="email">E-Mail</label>
-    <input type="email" id="email" name="email"><br>
-    <label for="password">Senha</label>
-    <input type="password" id="password" name="password"><br>
-    <label for="birthdate">Data de Nascimento</label>
-    <input type="date" id="birthdate" name="birthdate"><br>
-    <button id="submit" name="submit">Cadastrar</button>
-</form>
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AllokAcad | Criar conta </title>
+        {% load static %}
+        <link rel="icon" href="/static/images/icon-allokacad.png" type="image/png">
+        <link rel="stylesheet" href="{% static 'css/reset.css' %}">
+        <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+        <link rel="stylesheet" href="{% static 'css/register.css' %}">
+    </head>
+    <body>
 
-<a href="{% url 'login' %}">Login</a>
+        <div class="container">
+            <div class="sidebar">
+                <div class="sidebar-bg"></div>
+                <div class="sidebar-overlay"></div>
+                <div class="logo-container">
+                    <img src="{% static 'images/allokacad-logo-white.png' %}" alt="AllokAcad" class="logo">
+                    <p>Sistema de Atribuição de Aulas para Professores</p>
+                </div>
+            </div>
+            <div class="login-form">
+                <div class="form-container">
+                    <img src="{% static 'images/allokacad-logo-blue.png' %}" alt="AllokAcad" class="form-logo">
+                    <h2>Crie sua conta</h2>
+                    <p class="subtitle">Preencha seus dados para começar</p>
+                    
+                    <form action="{% url 'register_validate' %}" method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="name">Nome completo</label>
+                            <input type="text" id="name" name="name" placeholder="Seu nome completo">
+                            <span class="error-message" id="nameError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">E-mail</label>
+                            <input type="email" id="email" name="email" placeholder="Seu e-mail">
+                            <span class="error-message" id="emailError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <input type="password" id="password" name="password" placeholder="••••••••">
+                            <span class="error-message" id="passwordError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="birthdate">Data de nascimento</label>
+                            <input type="date" id="birthdate" name="birthdate">
+                            <span class="error-message" id="birthdateError"></span>
+                        </div>
+
+                        <button type="submit" class="register-button" id="submit" name="submit">Criar conta</button>
+                    </form>
+                    
+                    <p class="login-link">
+                        Já tem uma conta? <a href="{% url 'login' %}">Faça login</a>
+                    </p>
+
+                </div>
+            </div>
+        </div>
+        <script src="{% static 'js/register.js' %}"></script>
+    </body>
+</html>
