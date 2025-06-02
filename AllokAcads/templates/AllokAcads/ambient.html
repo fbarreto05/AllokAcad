@@ -39,6 +39,7 @@
                     <br>
                     <input type="checkbox" name="prefered_classes" value="{{ aclass.id }}">{{ aclass.name }}
                     <input type="range" min="0" max="100" value="100" id="class_weight_{{ aclass.id }}" name="class_weight_{{ aclass.id }}"><br>
+                    
                 {% endfor %}
             <br><br>
                 <label for="prefered_subjects">Matérias Preferidas</label>
@@ -46,12 +47,24 @@
                 {% for subject in subjects %}
                     <br>
                     <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
+                    <input type="range" min="0" max="100" value="100" id="subject_weight_{{ subject.id }}" name="subject_weight_{{ subject.id }}"><br>
                     <br>
                 {% endfor %}
             <br><br>
             <button type="submit" id="submit" name="submit">Enviar</button>
         </form>    
     {% endif %}
+    {% if member.admin_type.can_run_atribuition %}
+        {% for activity in activities %}
+            <p>{{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name  }} / {{ activity.tprofessor.name }}</p>
+        {% endfor %}
+        <a href="{% url 'run_atribuition' ambient.ambientid user.userid %}">Rodar atribuição</a>
+    {% endif %}
+    <br>
+    {% if member.admin_type.can_run_alocation %}
+        <a href="">Rodar alocação</a>
+    {% endif %}
+{% endblock content %}
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
