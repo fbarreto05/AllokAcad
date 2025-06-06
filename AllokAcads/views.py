@@ -1772,29 +1772,104 @@ def run_atribuition(request, ambientid, userid):
 def run_alocation(request, ambientid, userid):
     ambient = Ambient.objects.get(ambientid = ambientid)
     timetable = Timetable(lines_number = ambient.periods_in_a_day, column_number = ambient.days_in_a_cicle)
+    ambient.published_timetable = timetable
+    ambient.save()
     for schedule in ambient.available_schedules.all():
         alocation = Alocation(line = schedule.column, column = schedule.line)
         timetable.table.add(alocation)
     activities = ambient.activities.all()
-    highest_weight = 0
-    chosen_sch = 0
-    for activitie in activities:
-        weight = 0
-        for schedule_c in activitie.tclass.prefered_schedules:
-            for schedule_p in activitie.tprofessor.prefered_schedules:
+    swap = True
+    while(swap):
+        swap = False
+        for activitie in activities:
+            highest_weight = 0
+            chosen_sch = None
+            for schedule_c in activitie.tclass.prefered_schedules:
                 line = schedule_c.line
                 column = schedule_c.column
                 weight = 0
-                for i in range(activitie.activities.qtd):
+                for i in range(activitie.activities_qtd):
                     if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                        if not timetable.table.all().get(line = column+i, column = line+i).activitie:
-                            ambient_sch = activitie.tclass.prefered_schedules.all.filter(line=line, column=column+i)
+                        if not timetable.table.all().get(line = column+i, column = line).activitie:
+                            ambient_sch = activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
                             weight += 1
-                            if activitie.tprofessor.prefered_schedules.all.filter(ambient_sch):
+                            if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
                                 weight += 1
+                        else:
+                            p_weight = 0
+                            p_ambient_sch = 0
+                            for i in range(activitie.activities_qtd):
+                                if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
+                                    if not timetable.table.all().get(line = column+i, column = line).activitie:
+                                        p_ambient_sch = activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
+                                        p_weight += 1
+                                        if activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                            p_weight += 1
+
+                            t_weight = 0
+                            t_ambient_sch = 0
+                            t_activitie = timetable.table.all().get(line = column+i, column = line).activitie
+                            for i in range(t_activitie.activities_qtd):
+                                if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
+                                    t_ambient_sch = t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
+                                    t_weight += 1
+                                    if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
+                                        t_weight += 1
+                            
+                            if p_weight > t_weight:
+                                swap = True
+                                weight = p_weight
+                                chosen_sch = schedule_c
+                                break
+                            else:
+                                weight = 0
+                                break
+                    else:
+                        weight = 0
+                        break
+
                 if weight > highest_weight:
                     chosen_sch = schedule_c
                     highest_weight = weight
+
+            if highest_weight and chosen_sch:
+                for i in range(activitie.activities_qtd.qtd):
+                    t_alocation = timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                    t_alocation.activitie = activitie
+                    t_alocation.save()
+
+    for activitie in activities:
+        not_alocated_activities = []
+        if not timetable.table.all().filter(activitie = activitie):
+            not_alocated_activities.append(activitie)
+
+        for not_alocated_activitie in not_alocated_activities:
+            highest_weight = 0
+            chosen_sch = None
+            if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:
+                for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
+                    line = schedule_c.line
+                    column = schedule_c.column
+                    weight = 0        
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
+                            if not timetable.table.all().get(line = column+i, column = line).activitie:
+                                weight += 1
+                            else:
+                                #criterio de desempate
+                                weight = 0
+                                break
+                        else:
+                            weight = 0
+                            break
+                if highest_weight and chosen_sch:
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        t_alocation = timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                        t_alocation.activitie = activitie
+                        t_alocation.save()
+                else:
+                    pass
+                    #ambient.published_timetable.not_atribuited
                     
 
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
