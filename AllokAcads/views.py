@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os, datetime, time
-from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie
+from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation
 from shutil import copyfile
 from django.db.models import Sum
 
@@ -292,6 +292,11 @@ def ambient_form_validate(request, ambientid, userid):
     prefered_classes = request.POST.getlist('prefered_classes')
     prefered_classrooms = request.POST.getlist('prefered_classrooms')
     prefered_subjects = request.POST.getlist('prefered_subjects')
+    schedule_ids = request.POST.getlist("available_schedules")
+    if schedule_ids:
+        for schedule_id in schedule_ids:
+            schedule = Schedule_Preference.objects.get(id = schedule_id)
+            member.prefered_schedules.add(schedule)
     for available_schedule in available_schedules:
         schedule = Schedule_Preference.objects.get(id = available_schedule)
         member.prefered_schedules.add(schedule)
@@ -1441,23 +1446,24 @@ def run_atribuition(request, ambientid, userid):
             if chosen_professor:
                 num_uses = chosen_professor.num_uses
                 activities_with_subject = ambient.activities.all().filter(tsubject = subject)
+                activities_with_subject = sorted(activities_with_subject, key=lambda subject_activitie: sum(1 for schedule in subject_activitie.tclass.prefered_schedules if chosen_professor.prefered_schedules.filter(id=schedule.id)), reverse=True)
                 for subject_activitie in activities_with_subject:
                     subject_preference = 1
                     class_preference = 1
                     if not(subject_activitie.tprofessor):
                         if chosen_professor.num_uses + subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                            if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                            if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                             if subject_preference != 0 and class_preference != 0:
                                 tactv = ambient.activities.get(id = subject_activitie.id)
                                 tactv.tprofessor = chosen_professor
                                 tactv.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                 tactv.save()
-                                chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
                                 chosen_professor.save()
-                    elif chosen_professor.num_uses + activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                    elif chosen_professor.num_uses + subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
                         formations_1 = chosen_professor.formations.all()
                         formations_2 = subject_activitie.tprofessor.formations.all()
                         degree_1_count = 0
@@ -1518,10 +1524,10 @@ def run_atribuition(request, ambientid, userid):
                                 chosen_professor.save()
                         elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
                             if degree_1_count > degree_2_count:
-                                if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                    subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                    class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                    subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                    class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                 if subject_preference != 0 and class_preference != 0:
                                     subject_activitie.tprofessor = chosen_professor
                                     subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1532,10 +1538,10 @@ def run_atribuition(request, ambientid, userid):
                                     chosen_professor.save()
                             elif degree_1_count == degree_2_count:
                                 if professional_experience_1_count > professional_experience_2_count:
-                                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                        subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                        class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                    if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                        subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                    if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                        class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                     if subject_preference != 0 and class_preference != 0:
                                         subject_activitie.tprofessor = chosen_professor
                                         subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1546,10 +1552,10 @@ def run_atribuition(request, ambientid, userid):
                                         chosen_professor.save()
                                 elif professional_experience_1_count == professional_experience_2_count:
                                     if didatic_experience_1_count > didatic_experience_2_count:
-                                        if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                            subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                        if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                            class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                         if subject_preference != 0 and class_preference != 0:
                                             subject_activitie.tprofessor = chosen_professor
                                             subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1560,10 +1566,10 @@ def run_atribuition(request, ambientid, userid):
                                             chosen_professor.save()
                                     elif didatic_experience_1_count == didatic_experience_2_count:
                                         if chosen_professor.time_in_campus > subject_activitie.tprofessor.time_in_campus:
-                                            if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                                subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                            if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                                class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                            if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                             if subject_preference != 0 and class_preference != 0:
                                                 subject_activitie.tprofessor = chosen_professor
                                                 subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1574,10 +1580,10 @@ def run_atribuition(request, ambientid, userid):
                                                 chosen_professor.save()
                                         elif chosen_professor.time_in_campus == subject_activitie.tprofessor.time_in_campus:
                                             if chosen_professor.time_in_institution > subject_activitie.tprofessor.time_in_institution:
-                                                if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                                    subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                                if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                                    class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                    subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                    class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                                 if subject_preference != 0 and class_preference != 0:
                                                     subject_activitie.tprofessor = chosen_professor
                                                     subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1588,10 +1594,10 @@ def run_atribuition(request, ambientid, userid):
                                                     chosen_professor.save()
                                             elif chosen_professor.time_in_institution == subject_activitie.tprofessor.time_in_institution:
                                                 if datetime.date.today() - chosen_professor.user.birthdate > datetime.date.today() - subject_activitie.tprofessor.user.birthdate:
-                                                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                                        subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                                        class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                    if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                        subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                    if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                        class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                                     if subject_preference != 0 and class_preference != 0:
                                                         subject_activitie.tprofessor = chosen_professor
                                                         subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1602,10 +1608,10 @@ def run_atribuition(request, ambientid, userid):
                                                         chosen_professor.save()
                                                 elif datetime.date.today() - chosen_professor.user.birthdate == datetime.date.today() - subject_activitie.tprofessor.user.birthdate:
                                                     if formation_1_count > formation_2_count:
-                                                        if activitie.tclass.favorite_professors.all().filter(professor = professor):
-                                                            subject_preference = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
-                                                        if activitie.tsubject.favorite_professors.all().filter(professor = professor):
-                                                            class_preference = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
                                                         if subject_preference != 0 and class_preference != 0:
                                                             subject_activitie.tprofessor = chosen_professor
                                                             subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
@@ -1741,7 +1747,7 @@ def run_atribuition(request, ambientid, userid):
                     for ahead_user in ahead_users:
                         activities_ahead_users = ambient.activities.filter(tprofessor = ahead_user).order_by("professor_weight")
                         for activitie_ahead_user in activities_ahead_users:
-                            if user.num_uses < average_use and ahead_user.num_uses > average_use and user.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                            if user.num_uses < average_use and ahead_user.num_uses > average_use and user.num_uses + activitie_ahead_user.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).periods <= ambient.max_actv_in_cicle:
                                 current_preference_class = 100
                                 current_preference_subject = 100
                                 if activitie_ahead_user.tsubject.favorite_professors.filter(professor = activitie_ahead_user.tprofessor):
@@ -1750,18 +1756,45 @@ def run_atribuition(request, ambientid, userid):
                                     current_preference_class = activitie_ahead_user.tclass.favorite_professors.get(professor = activitie_ahead_user.tprofessor).professor_weight
                                 if current_preference_subject < 100 and current_preference_class < 100:
                                     if activitie_ahead_user.tsubject.favorite_professors.all().filter(professor = user):
-                                        subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = user)
+                                        subject_preference = activitie_ahead_user.tsubject.favorite_professors.all().get(professor = user)
                                     if activitie_ahead_user.tclass.favorite_professors.all().filter(professor = user):
-                                        class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = user)
+                                        class_preference = activitie_ahead_user.tclass.favorite_professors.all().get(professor = user)
                                     if subject_preference != 0 and class_preference != 0:
                                         activitie_ahead_user.tprofessor = user
                                         activitie.professor_weight = 0
                                         activitie_ahead_user.save()
-                                        user.num_uses += activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).period
-                                        ahead_user.num_uses -= activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods
+                                        user.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).period
+                                        ahead_user.num_uses -= activitie.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).periods
         #aqui, trata de atribuir materias restantes aos usuarios que tem falta delas
 
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
 
 def run_alocation(request, ambientid, userid):
-    pass
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    timetable = Timetable(lines_number = ambient.periods_in_a_day, column_number = ambient.days_in_a_cicle)
+    for schedule in ambient.available_schedules.all():
+        alocation = Alocation(line = schedule.column, column = schedule.line)
+        timetable.table.add(alocation)
+    activities = ambient.activities.all()
+    highest_weight = 0
+    chosen_sch = 0
+    for activitie in activities:
+        weight = 0
+        for schedule_c in activitie.tclass.prefered_schedules:
+            for schedule_p in activitie.tprofessor.prefered_schedules:
+                line = schedule_c.line
+                column = schedule_c.column
+                weight = 0
+                for i in range(activitie.activities.qtd):
+                    if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
+                        if not timetable.table.all().get(line = column+i, column = line+i).activitie:
+                            ambient_sch = activitie.tclass.prefered_schedules.all.filter(line=line, column=column+i)
+                            weight += 1
+                            if activitie.tprofessor.prefered_schedules.all.filter(ambient_sch):
+                                weight += 1
+                if weight > highest_weight:
+                    chosen_sch = schedule_c
+                    highest_weight = weight
+                    
+
+    return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')

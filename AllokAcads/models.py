@@ -122,7 +122,7 @@ class Timetable(models.Model):
 class Alocation(models.Model):
     line = models.IntegerField()
     column = models.IntegerField()
-    Activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
+    activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE, null=True)
 
 class Unregistered_Activitie(models.Model):
     activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
