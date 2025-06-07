@@ -126,7 +126,7 @@ class Alocation(models.Model):
 
 class Unregistered_Activitie(models.Model):
     activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
-    message = models.TextField(max_length=400)
+    message = models.TextField(max_length=400, null=True)
 
 class Invitation(models.Model):
     ambient = models.ForeignKey('Ambient', on_delete=models.CASCADE, related_name='invitation_ambient')
