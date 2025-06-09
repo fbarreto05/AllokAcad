@@ -139,6 +139,13 @@ def ambient(request, ambientid, userid):
     if not ambient or not user:
         return redirect('home', userid=userid)
     
+    
+    ordered_table = []
+    for column in range(ambient.published_timetable.columns_number):
+        for line in range(ambient.published_timetable.lines_number):
+            if ambient.published_timetable.table.filter(column = column, line = line):
+                ordered_table.append(ambient.published_timetable.table.get(column = column, line = line))
+
     member = ambient.members.filter(user=user).first()
     schedules = ambient.available_schedules.all()
     classrooms = ambient.classrooms.all()
@@ -148,6 +155,7 @@ def ambient(request, ambientid, userid):
     activities = ambient.activities.all()
     picture = ambient.picture
     username = user.name
+    not_alocated = ambient.published_timetable.not_alocated.all()
     
     return render(request, "AllokAcads/ambient.html", {
         'ambient': ambient,
@@ -161,7 +169,9 @@ def ambient(request, ambientid, userid):
         'subjects': subjects,
         'columns': columns,
         'picture': picture,
-        'activities': activities
+        'activities': activities,
+        'table': ordered_table,
+        'not_alocated': not_alocated
     })
 
 def ambient_config(request, ambientid, userid):
@@ -643,7 +653,7 @@ def ambient_profile_edit_validate(request, ambientid, userid):
     if time_in_institution:
         member.time_in_institution = time_in_institution
     member.save()
-    return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user[0]})
+    return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user[0], 'userid': userid})
 
 def profile(request, userid):
     user = User.objects.filter(userid = userid)
@@ -1095,8 +1105,8 @@ def run_atribuition(request, ambientid, userid):
                 if smallest_weight.professor_weight < weight:
                     fixed = 1
                 elif smallest_weight.professor_weight == weight:
-                    preference1 = professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
-                    preference2 = smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
+                    preference1 = (professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
+                    preference2 = (smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
                     if preference1 > preference2:
                         fixed = 1
             if fixed == 0 and (professor.professor.num_uses + activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100):
@@ -1337,7 +1347,6 @@ def run_atribuition(request, ambientid, userid):
         relevant_professors = ambient.members.all().filter(is_professor = True, prefered_subjects__subject = subject)
         highest_weight = 0
         chosen_professor = None
-        available_professors = 1
         subject_preference = 1
         selected = 1
 
@@ -1446,7 +1455,7 @@ def run_atribuition(request, ambientid, userid):
             if chosen_professor:
                 num_uses = chosen_professor.num_uses
                 activities_with_subject = ambient.activities.all().filter(tsubject = subject)
-                activities_with_subject = sorted(activities_with_subject, key=lambda subject_activitie: sum(1 for schedule in subject_activitie.tclass.prefered_schedules if chosen_professor.prefered_schedules.filter(id=schedule.id)), reverse=True)
+                activities_with_subject = sorted(activities_with_subject, key=lambda subject_activitie: sum(1 for schedule in subject_activitie.tclass.prefered_schedules.all() if chosen_professor.prefered_schedules.filter(id=schedule.id)), reverse=True)
                 for subject_activitie in activities_with_subject:
                     subject_preference = 1
                     class_preference = 1
@@ -1620,8 +1629,8 @@ def run_atribuition(request, ambientid, userid):
                                                             subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
                                                             subject_activitie.tprofessor.num_uses.save()
                                                             chosen_professor.save()
-                    if num_uses == chosen_professor.num_uses:
-                        available_professors.remove(chosen_professor)
+                if num_uses == chosen_professor.num_uses:
+                    selected = 0
             else: selected = 0
             
     #até aqui as aulas já devem estar distribuidas de acordo com a preferencia dos professores
@@ -1731,6 +1740,8 @@ def run_atribuition(request, ambientid, userid):
             if user.num_uses < average_use:
                 if not_atribuited_activities:
                     for not_atribuited_activitie in not_atribuited_activities:
+                        subject_preference = 1
+                        class_preference = 1
                         if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = user):
                             subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = user).professor_weight
                         if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = user):
@@ -1767,15 +1778,42 @@ def run_atribuition(request, ambientid, userid):
                                         ahead_user.num_uses -= activitie.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).periods
         #aqui, trata de atribuir materias restantes aos usuarios que tem falta delas
 
+        not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+        candidates = ambient.members.all().filter(is_professor = True).order_by('-num_uses')
+        for not_atribuited_activitie in not_atribuited_activities:
+            highest_weight = 0
+            chosen_professor = None
+            for candidate in candidates:
+                subject_preference = 1
+                class_preference = 1
+                if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
+                    subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
+                    class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
+                if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                    if subject_preference != 0 and class_preference != 0 and subject_preference + class_preference > highest_weight:
+                        highest_weight = subject_preference + class_preference
+                        chosen_professor = candidate
+            if chosen_professor and highest_weight:
+                not_atribuited_activitie.tprofessor = chosen_professor
+                not_atribuited_activitie.professor_weight = 0
+                chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
+                not_atribuited_activitie.save()
+                chosen_professor.save()
+        #atribui randomicamente (deve gerar erro, e tbm gerar erro se houverem atividades em branco)
+
+
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
 
 def run_alocation(request, ambientid, userid):
     ambient = Ambient.objects.get(ambientid = ambientid)
-    timetable = Timetable(lines_number = ambient.periods_in_a_day, column_number = ambient.days_in_a_cicle)
+    timetable = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
+    timetable.save()
     ambient.published_timetable = timetable
     ambient.save()
     for schedule in ambient.available_schedules.all():
         alocation = Alocation(line = schedule.column, column = schedule.line)
+        alocation.save()
         ambient.published_timetable.table.add(alocation)
         ambient.save()
     activities = ambient.activities.all()
@@ -1785,34 +1823,48 @@ def run_alocation(request, ambientid, userid):
         for activitie in activities:
             highest_weight = 0
             chosen_sch = None
-            for schedule_c in activitie.tclass.prefered_schedules:
+            for schedule_c in activitie.tclass.prefered_schedules.all():
                 line = schedule_c.line
                 column = schedule_c.column
                 weight = 0
+                count_conflit = 0
+                conflit = None
+                p_weight = 0
                 for i in range(activitie.activities_qtd):
                     if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                        if not ambient.published_timetable.table.all().get(line = column+i, column = line).activitie:
-                            ambient_sch = activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
+
+                        for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
+                            for actv in alocation.activitie.all():
+                                if((actv.tprofessor == activitie.tprofessor or actv.tclass == activitie.tclass or actv.tclassroom == activitie.tclassroom) and actv != conflit):
+                                    count_conflit += 1
+                                    conflit = actv
+                                    if count_conflit > 1:
+                                        conflit = None
+                                        break
+
+                        if(conflit == None):
+                            ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+i)
                             weight += 1
                             if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
                                 weight += 1
-                        else:
+
+                        elif (count_conflit < 2):
                             p_weight = 0
                             p_ambient_sch = 0
-                            for i in range(activitie.activities_qtd):
-                                if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                                    if not ambient.published_timetable.table.all().get(line = column+i, column = line).activitie:
-                                        p_ambient_sch = activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
+                            for j in range(activitie.activities_qtd):
+                                if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                    if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
+                                        p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
                                         p_weight += 1
                                         if activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
                                             p_weight += 1
 
                             t_weight = 0
                             t_ambient_sch = 0
-                            t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
-                            for i in range(t_activitie.activities_qtd):
-                                if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                                    t_ambient_sch = t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
+                            t_activitie = conflit
+                            for j in range(t_activitie.activities_qtd):
+                                if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                    t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
                                     t_weight += 1
                                     if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
                                         t_weight += 1
@@ -1821,84 +1873,119 @@ def run_alocation(request, ambientid, userid):
                                 swap = True
                                 weight = p_weight
                                 chosen_sch = schedule_c
-                                break
+                                change = True
                             else:
                                 weight = 0
                                 break
+                        else:
+                            weight = 0
+                            break
                     else:
                         weight = 0
                         break
+                    
 
                 if weight > highest_weight:
                     chosen_sch = schedule_c
                     highest_weight = weight
-
+                    if weight > p_weight:
+                        change = False
+                
             if highest_weight and chosen_sch:
-                for i in range(activitie.activities_qtd.qtd):
+                for i in range(activitie.activities_qtd):
+                    print(highest_weight, chosen_sch, chosen_sch.column+i, chosen_sch.line)
                     t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                    t_alocation.activitie = activitie
-                    t_alocation.save()
-
+                    print(t_alocation)
+                    print(t_alocation.activitie.all())
+                    t_alocation.activitie.add(activitie)
+                    if change:
+                        t_alocation.activitie.remove(t_activitie)
+            
     for activitie in activities:
         not_alocated_activities = []
         if not ambient.published_timetable.table.all().filter(activitie = activitie):
             not_alocated_activities.append(activitie)
 
-        
+    swap = True    
     while(swap):
-            swap = False
-            for not_alocated_activitie in not_alocated_activities:
-                highest_weight = 0
-                chosen_sch = None
-                if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:
-                    for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
-                        line = schedule_c.line
-                        column = schedule_c.column
-                        weight = 0        
-                        for i in range(not_alocated_activitie.activities_qtd):
-                            if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
-                                if not ambient.published_timetable.table.all().get(line = column+i, column = line).activitie:
-                                    weight += 1
+        swap = False
+        change = False
+        for not_alocated_activitie in not_alocated_activities:
+            highest_weight = 0
+            chosen_sch = None
+            if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:   
+                for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
+                    line = schedule_c.line
+                    column = schedule_c.column
+                    weight = 0        
+                    count_conflit = 0
+                    conflit = None
+                    p_weight = 0
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
+                            
+                            for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
+                                for actv in alocation.activitie.all():
+                                    if((actv.tprofessor == not_alocated_activitie.tprofessor or actv.tclass == not_alocated_activitie.tclass or actv.tclassroom == not_alocated_activitie.tclassroom) and actv != conflit):
+                                        count_conflit += 1
+                                        conflit = actv
+                                        if count_conflit > 1:
+                                            conflit = None
+                                            break
+
+                            if (conflit == None):
+                                weight += 1
+                            elif(count_conflit < 2):
+                                p_weight = 0
+                                p_ambient_sch = 0
+                                for j in range(not_alocated_activitie.activities_qtd):
+                                    if not_alocated_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                        if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
+                                            p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                            p_weight += 1
+                                            if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                                p_weight += 1
+
+                                t_weight = 0
+                                t_ambient_sch = 0
+                                t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
+                                for j in range(t_activitie.activities_qtd):
+                                    if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                        t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                        t_weight += 1
+                                        if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
+                                            t_weight += 1
+
+                                if p_weight > t_weight:
+                                    swap = True
+                                    weight = p_weight
+                                    chosen_sch = schedule_c
+                                    change = True
                                 else:
-                                    #criterio de desempate
                                     weight = 0
                                     break
                             else:
                                 weight = 0
                                 break
-                else:
-                    p_weight = 0
-                    p_ambient_sch = 0
-                    for i in range(not_alocated_activitie.activities_qtd):
-                        if not_alocated_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                            if not ambient.published_timetable.table.all().get(line = column+i, column = line).activitie:
-                                p_ambient_sch = activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
-                                p_weight += 1
-                                if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
-                                    p_weight += 1
+                        else:
+                            weight = 0
+                            break
+                        
 
-                    t_weight = 0
-                    t_ambient_sch = 0
-                    t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
-                    for i in range(t_activitie.activities_qtd):
-                        if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-                            t_ambient_sch = t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i)
-                            t_weight += 1
-                            if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
-                                t_weight += 1
-
-                    if p_weight > t_weight:
-                        swap = True
-                        weight = p_weight
-                        chosen_sch = schedule_c
-                        break
-                    else:
-                        weight = 0
-                        break
-                
-                if highest_weight and chosen_sch:
-                        for i in range(not_alocated_activitie.activities_qtd):
+                    if weight > highest_weight:
+                            chosen_sch = schedule_c
+                            highest_weight = weight
                             t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                            t_alocation.activitie = activitie
-                            t_alocation.save()
+                            if weight > p_weight:
+                                change = False
+            
+                if highest_weight and chosen_sch:
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                        t_alocation.activitie.add(not_alocated_activitie)
+                        if change:
+                            t_alocation.activitie.remove(t_activitie)
+                else:
+                    ambient.published_timetable.not_alocated.add(activitie)
+
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')

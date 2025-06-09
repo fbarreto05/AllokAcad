@@ -55,11 +55,23 @@
             <button type="submit" id="submit" name="submit">Enviar</button>
         </form>    
     {% endif %}
-    <br>
-    {% if member.admin_type.can_run_alocation %}
-        <a href="">Rodar alocação</a>
-    {% endif %}
 
+    {% if table %}
+        <p>Tabela: </p>
+        {% for alocation in table %}
+            {% if forloop.counter0|divisibleby:columns %}
+                <br>
+                Dia {{ alocation.column|add:"1" }}:
+            {% endif %}
+            {% for activitie in alocation.activitie.all %}
+                <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass }}, {{ activitie.tsubject }}, {{ activitie.tprofessor }}, {{ activitie.tclassroom }}: {{alocation.line}}, {{alocation.column}}/</p>
+            {% endfor %}
+        {% endfor %}
+        <p>Não Alocado: </p>
+        {% for alocation in not_alocated %}
+            <p>/ {{ alocation.activitie.tclass }}, {{ alocation.activitie.tsubject }}, {{ alocation.activitie.professor }}, {{ alocation.activitie.tclassroom }} /</p>
+        {% endfor %}
+    {% endif %}
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
