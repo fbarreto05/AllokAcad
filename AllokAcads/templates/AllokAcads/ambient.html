@@ -12,16 +12,17 @@
 {% endblock %}
 
 {% block content %}
-
     {% if member.is_professor %}
         <p>Preencha seu formulário abaixo: </p>
         <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <label for="available_schedules">Horários Disponíveis</label>
             <br>
+            <p>Periodos</p>
                 {% for schedule in schedules %}
                     {% if forloop.counter0|divisibleby:columns %}
                         <br>
+                        Dia {{ schedule.line|add:"1" }}
                     {% endif %}
                     <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
                 {% endfor %}
@@ -54,17 +55,23 @@
             <button type="submit" id="submit" name="submit">Enviar</button>
         </form>    
     {% endif %}
-    {% if member.admin_type.can_run_atribuition %}
-        {% for activity in activities %}
-            <p>{{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name  }} / {{ activity.tprofessor.name }}</p>
+
+    {% if table %}
+        <p>Tabela: </p>
+        {% for alocation in table %}
+            {% if forloop.counter0|divisibleby:columns %}
+                <br>
+                Dia {{ alocation.column|add:"1" }}:
+            {% endif %}
+            {% for activitie in alocation.activitie.all %}
+                <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass }}, {{ activitie.tsubject }}, {{ activitie.tprofessor }}, {{ activitie.tclassroom }}: {{alocation.line}}, {{alocation.column}}/</p>
+            {% endfor %}
         {% endfor %}
-        <a href="{% url 'run_atribuition' ambient.ambientid user.userid %}">Rodar atribuição</a>
+        <p>Não Alocado: </p>
+        {% for alocation in not_alocated %}
+            <p>/ {{ alocation.activitie.tclass }}, {{ alocation.activitie.tsubject }}, {{ alocation.activitie.professor }}, {{ alocation.activitie.tclassroom }} /</p>
+        {% endfor %}
     {% endif %}
-    <br>
-    {% if member.admin_type.can_run_alocation %}
-        <a href="">Rodar alocação</a>
-    {% endif %}
-{% endblock content %}
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -230,7 +237,7 @@
                                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
                                         </svg>
-                                        {{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name }}
+                                        {{ activity.tclass.name }} / {{ activity.tsubject.name }} / {{ activity.tclassroom.name }} / {{ activity.tprofessor.user.name }}
                                     </div>
                                     {% endfor %}
                                 </div>

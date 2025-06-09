@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os, datetime, time
-from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie
+from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
 
@@ -139,6 +139,13 @@ def ambient(request, ambientid, userid):
     if not ambient or not user:
         return redirect('home', userid=userid)
     
+    
+    ordered_table = []
+    for column in range(ambient.published_timetable.columns_number):
+        for line in range(ambient.published_timetable.lines_number):
+            if ambient.published_timetable.table.filter(column = column, line = line):
+                ordered_table.append(ambient.published_timetable.table.get(column = column, line = line))
+
     member = ambient.members.filter(user=user).first()
     schedules = ambient.available_schedules.all()
     classrooms = ambient.classrooms.all()
@@ -148,6 +155,7 @@ def ambient(request, ambientid, userid):
     activities = ambient.activities.all()
     picture = ambient.picture
     username = user.name
+    not_alocated = ambient.published_timetable.not_alocated.all()
     
     return render(request, "AllokAcads/ambient.html", {
         'ambient': ambient,
@@ -161,7 +169,9 @@ def ambient(request, ambientid, userid):
         'subjects': subjects,
         'columns': columns,
         'picture': picture,
-        'activities': activities
+        'activities': activities,
+        'table': ordered_table,
+        'not_alocated': not_alocated
     })
 
 def ambient_config(request, ambientid, userid):
@@ -292,6 +302,11 @@ def ambient_form_validate(request, ambientid, userid):
     prefered_classes = request.POST.getlist('prefered_classes')
     prefered_classrooms = request.POST.getlist('prefered_classrooms')
     prefered_subjects = request.POST.getlist('prefered_subjects')
+    schedule_ids = request.POST.getlist("available_schedules")
+    if schedule_ids:
+        for schedule_id in schedule_ids:
+            schedule = Schedule_Preference.objects.get(id = schedule_id)
+            member.prefered_schedules.add(schedule)
     for available_schedule in available_schedules:
         schedule = Schedule_Preference.objects.get(id = available_schedule)
         member.prefered_schedules.add(schedule)
@@ -638,7 +653,7 @@ def ambient_profile_edit_validate(request, ambientid, userid):
     if time_in_institution:
         member.time_in_institution = time_in_institution
     member.save()
-    return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user[0]})
+    return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user[0], 'userid': userid})
 
 def profile(request, userid):
     user = User.objects.filter(userid = userid)
@@ -707,6 +722,7 @@ def change_position_validate(request, memberid, ambientid, userid):
 
 def run_atribuition(request, ambientid, userid):   
     ambient = Ambient.objects.get(ambientid = ambientid)
+    ambient.activities.all().delete()
     ambient.activities.clear()
     ambient.save()
     user = User.objects.get(userid = userid)
@@ -717,6 +733,9 @@ def run_atribuition(request, ambientid, userid):
         room.save()
     rooms = ambient.classrooms.all()
     professors = ambient.members.all().filter(is_professor = True)
+    for professor in professors:
+        professor.num_uses = 0
+        professor.save()
     for aclass in classes:
         necessary_subjects = aclass.necessary_subjects.all()
         for subject in necessary_subjects:
@@ -804,10 +823,11 @@ def run_atribuition(request, ambientid, userid):
                         classroom_save.save()
                         activitie.save()
 
+    #inicio da atribuição de professores
     activities = ambient.activities.all()
     for activitie in activities:
         relevant_formations = activitie.tsubject.relevant_formations.all().order_by("-formation_weight")
-        if activitie.tclass.favorite_professors or activitie.tsubject.subject.favorite_professors:
+        if activitie.tclass.favorite_professors or activitie.tsubject.favorite_professors:
             classrooms_professors = activitie.tclass.favorite_professors.all().order_by("-professor_weight")
             subjects_professors = activitie.tsubject.favorite_professors.all().order_by("-professor_weight")
         highest_weight = 0
@@ -815,9 +835,10 @@ def run_atribuition(request, ambientid, userid):
         fixed = 0
         swap = 0
         swapAct = None
+        subject_professor = 1
         for professor in classrooms_professors:
-            if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
-                subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid)
+            if subjects_professors.filter(professor = professor.professor).exists():
+                subject_professor = subjects_professors.get(professor = professor.professor)
                 weight = professor.professor_weight + subject_professor.professor_weight
             else:
                 weight = professor.professor_weight
@@ -831,310 +852,478 @@ def run_atribuition(request, ambientid, userid):
                     preference2 = smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
                     if preference1 > preference2:
                         fixed = 1
-            if fixed == 0:
+            if fixed == 0 and ((professor.professor.num_uses + activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100 or subject_professor == 100)):
                 if (weight > highest_weight):
-                    highest_weight = weight
-                    chosen_professor = professor.professor
-                    swap = 0
-                    swapAct = None
-                elif (weight == highest_weight):
-                    formations_1 = professor.formations.all()
-                    formations_2 = chosen_professor.formations.all()
-                    for formation in relevant_formations:
-                        for a_formation in formations_1:
-                            if a_formation.formation == formation:
-                                formation_1_count += formation.formation_weight
-                                professional_experience_1_count = formation.professional_experience_time
-                                didatic_experience_1_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_1_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_1_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_1_count = 100
-                        for a_formation in formations_2:
-                            if a_formation.formation == formation:
-                                formation_2_count += formation.formation_weight
-                                professional_experience_2_count = formation.professional_experience_time
-                                didatic_experience_2_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_2_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_2_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_2_count = 100
-                    if degree_1_count > degree_2_count:
+                    if subjects_professors.filter(professor = professor.professor):
+                        subject_professor = subjects_professors.get(professor = professor.professor).professor_weight
+                    if(professor.professor_weight != 0 and subject_professor != 0):
                         highest_weight = weight
                         chosen_professor = professor.professor
                         swap = 0
                         swapAct = None
-                    elif degree_1_count == degree_2_count:
-                        if professional_experience_1_count > professional_experience_2_count:
-                            highest_weight = weight
-                            chosen_professor = professor.professor
-                            swap = 0
-                            swapAct = None
-                        elif didatic_experience_1_count == didatic_experience_2_count:
-                            if didatic_experience_1_count > didatic_experience_2_count:
-                                highest_weight = weight
-                                chosen_professor = professor.professor
-                                swap = 0
-                                swapAct = None
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if professor.time_in_campus > chosen_professor.time_in_campus:
-                                    highest_weight = weight
-                                    chosen_professor = professor.professor
-                                    swap = 0
-                                    swapAct = None
-                                elif professor.time_in_campus == chosen_professor.time_in_campus:
-                                    if professor.time_in_institution > chosen_professor.time_in_institution:
-                                        highest_weight = weight
-                                        chosen_professor = professor.professor
-                                        swap = 0
-                                        swapAct = None
-                                    elif professor.time_in_institution == chosen_professor.time_in_institution:
-                                        if datetime.date.today() - professor.birthdate > datetime.today() - chosen_professor.birthdate:
-                                            highest_weight = weight
-                                            chosen_professor = professor.professor
-                                            swap = 0
-                                            swapAct = None
-                                        elif datetime.date.today() - professor.birthdate == datetime.today() - chosen_professor.birthdate:
-                                            if formation_1_count >= formation_2_count:
-                                                highest_weight = weight
-                                                chosen_professor = professor.professor
-                                                swap = 0
-                                                swapAct = None
-            elif fixed == 1:
-                if (weight > highest_weight and professor.professor.prefered_subjects.get(subject = activitie.tsubject.subject)) or (weight > highest_weight and (weight >= 100 and weight < 200)):
-                    highest_weight = weight
-                    chosen_professor = professor.professor
-                    swap = 1
-                    swapAct = smallest_weight
-                elif (weight == highest_weight and weight > 0) and (professor.professor.prefered_subjects.get(subject = activitie.tsubject.subject) or (weight >= 100 and weight < 200)):
+                elif (weight == highest_weight):
                     formations_1 = professor.formations.all()
                     formations_2 = chosen_professor.formations.all()
+                    degree_1_count = 0
+                    degree_2_count = 0
+                    professional_experience_1_count = 0
+                    professional_experience_2_count = 0
+                    didatic_experience_1_count = 0
+                    didatic_experience_2_count = 0
+                    formation_1_count = 0
+                    formation_2_count = 0
+                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
+                        tclassrooms_professor1 = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                        tsubjects_professor1 = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                        tclassrooms_professor2 = activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                        tsubjects_professor2 = activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                     for formation in relevant_formations:
                         for a_formation in formations_1:
                             if a_formation.formation == formation:
-                                formation_1_count += formation.formation_weight
                                 professional_experience_1_count = formation.professional_experience_time
                                 didatic_experience_1_count = formation.didatic_experience_time
                                 if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_1_count = 25
+                                    degree_2_count += 25
                                 elif a_formation.formation_degree == 'Mestre':
-                                    degree_1_count = 50
+                                    degree_2_count += 50
                                 elif a_formation.formation_degree == 'Doutor':
-                                    degree_1_count = 100
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
                         for a_formation in formations_2:
                             if a_formation.formation == formation:
-                                formation_2_count += formation.formation_weight
                                 professional_experience_2_count = formation.professional_experience_time
                                 didatic_experience_2_count = formation.didatic_experience_time
                                 if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_2_count = 25
+                                    degree_2_count += 25
                                 elif a_formation.formation_degree == 'Mestre':
-                                    degree_2_count = 50
+                                    degree_2_count += 50
                                 elif a_formation.formation_degree == 'Doutor':
-                                    degree_2_count = 100
-                    if degree_1_count > degree_2_count:
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                    if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2 or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100))):
+                        highest_weight = weight
+                        if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                            subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                        if(professor.professor_weight != 0 and subject_professor != 0):
+                            chosen_professor = professor.professor
+                            swap = 0
+                            swapAct = None
+                    elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2 or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100))):
+                        if degree_1_count > degree_2_count:
+                            highest_weight = weight
+                            if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                            if(professor.professor_weight != 0 and subject_professor != 0):
+                                chosen_professor = professor.professor
+                                swap = 0
+                                swapAct = None
+                        elif degree_1_count == degree_2_count:
+                            if professional_experience_1_count > professional_experience_2_count:
+                                highest_weight = weight
+                                if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                    subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                if(professor.professor_weight != 0 and subject_professor != 0):
+                                    chosen_professor = professor.professor
+                                    swap = 0
+                                    swapAct = None
+                            elif professional_experience_1_count == professional_experience_2_count:
+                                if didatic_experience_1_count > didatic_experience_2_count:
+                                    highest_weight = weight
+                                    if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                        subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                    if(professor.professor_weight != 0 and subject_professor != 0):
+                                        chosen_professor = professor.professor
+                                        swap = 0
+                                        swapAct = None
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if professor.time_in_campus > chosen_professor.time_in_campus:
+                                        highest_weight = weight
+                                        if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                            subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                        if(professor.professor_weight != 0 and subject_professor != 0):
+                                            chosen_professor = professor.professor
+                                            swap = 0
+                                            swapAct = None
+                                    elif professor.time_in_campus == chosen_professor.time_in_campus:
+                                        if professor.time_in_institution > chosen_professor.time_in_institution:
+                                            highest_weight = weight
+                                            if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                            if(professor.professor_weight != 0 and subject_professor != 0):
+                                                chosen_professor = professor.professor
+                                                swap = 0
+                                                swapAct = None
+                                        elif professor.time_in_institution == chosen_professor.time_in_institution:
+                                            if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
+                                                highest_weight = weight
+                                                if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                    subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                                if(professor.professor_weight != 0 and subject_professor != 0):
+                                                    chosen_professor = professor.professor
+                                                    swap = 0
+                                                    swapAct = None
+                                            elif datetime.date.today() - professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
+                                                if formation_1_count >= formation_2_count:
+                                                    highest_weight = weight
+                                                    if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                        subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                                    if(professor.professor_weight != 0 and subject_professor != 0):
+                                                        chosen_professor = professor.professor
+                                                        swap = 0
+                                                        swapAct = None
+            elif fixed == 1:
+                if (weight > highest_weight or (professor.professor_weight == 100 or subject_professor == 100)):
+                    if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                        subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid)
+                    if(professor.professor_weight != 0 and subject_professor != 0):
                         highest_weight = weight
                         chosen_professor = professor.professor
                         swap = 1
                         swapAct = smallest_weight
-                    elif degree_1_count == degree_2_count:
-                        if professional_experience_1_count > professional_experience_2_count:
-                            highest_weight = weight
+                elif (weight == highest_weight and weight > 0) or (professor.professor_weight == 100 or subject_professor == 100):
+                    formations_1 = professor.formations.all()
+                    formations_2 = chosen_professor.formations.all()
+                    degree_1_count = 0
+                    degree_2_count = 0
+                    professional_experience_1_count = 0
+                    professional_experience_2_count = 0
+                    didatic_experience_1_count = 0
+                    didatic_experience_2_count = 0
+                    formation_1_count = 0
+                    formation_2_count = 0
+                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
+                        tclassrooms_professor1 = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                        tsubjects_professor1 = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                        tclassrooms_professor2 = activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                        tsubjects_professor2 = activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    for formation in relevant_formations:
+                        for a_formation in formations_1:
+                            if a_formation.formation == formation:
+                                professional_experience_1_count = formation.professional_experience_time
+                                didatic_experience_1_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                        for a_formation in formations_2:
+                            if a_formation.formation == formation:
+                                professional_experience_2_count = formation.professional_experience_time
+                                didatic_experience_2_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                    if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        highest_weight = weight
+                        if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                            subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                        if(professor.professor_weight != 0 and subject_professor != 0):
                             chosen_professor = professor.professor
                             swap = 1
                             swapAct = smallest_weight
-                        elif didatic_experience_1_count == didatic_experience_2_count:
-                            if didatic_experience_1_count > didatic_experience_2_count:
+                    elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if degree_1_count > degree_2_count:
+                            if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                            if(professor.professor_weight != 0 and subject_professor != 0):
                                 highest_weight = weight
                                 chosen_professor = professor.professor
                                 swap = 1
                                 swapAct = smallest_weight
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if professor.time_in_campus > chosen_professor.time_in_campus:
+                        elif degree_1_count == degree_2_count:
+                            if professional_experience_1_count > professional_experience_2_count:
+                                if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                    subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                if(professor.professor_weight != 0 and subject_professor != 0):
                                     highest_weight = weight
                                     chosen_professor = professor.professor
                                     swap = 1
                                     swapAct = smallest_weight
-                                elif professor.time_in_campus == chosen_professor.time_in_campus:
-                                    if professor.time_in_institution > chosen_professor.time_in_institution:
+                            elif professional_experience_1_count == professional_experience_2_count:
+                                if didatic_experience_1_count > didatic_experience_2_count:
+                                    if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                        subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                    if(professor.professor_weight != 0 and subject_professor != 0):
                                         highest_weight = weight
                                         chosen_professor = professor.professor
                                         swap = 1
                                         swapAct = smallest_weight
-                                    elif professor.time_in_institution == chosen_professor.time_in_institution:
-                                        if datetime.date.today() - professor.birthdate > datetime.today() - chosen_professor.birthdate:
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if professor.time_in_campus > chosen_professor.time_in_campus:
+                                        if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                            subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                        if(professor.professor_weight != 0 and subject_professor != 0):
                                             highest_weight = weight
                                             chosen_professor = professor.professor
                                             swap = 1
                                             swapAct = smallest_weight
-                                        elif datetime.date.today() - professor.birthdate == datetime.today() - chosen_professor.birthdate:
-                                            if formation_1_count >= formation_2_count:
+                                    elif professor.time_in_campus == chosen_professor.time_in_campus:
+                                        if professor.time_in_institution > chosen_professor.time_in_institution:
+                                            if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                            if(professor.professor_weight != 0 and subject_professor != 0):
                                                 highest_weight = weight
                                                 chosen_professor = professor.professor
                                                 swap = 1
                                                 swapAct = smallest_weight
+                                        elif professor.time_in_institution == chosen_professor.time_in_institution:
+                                            if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
+                                                if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                    subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                                if(professor.professor_weight != 0 and subject_professor != 0):
+                                                    highest_weight = weight
+                                                    chosen_professor = professor.professor
+                                                    swap = 1
+                                                    swapAct = smallest_weight
+                                            elif datetime.date.today() - professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
+                                                if formation_1_count >= formation_2_count:
+                                                    if subjects_professors.filter(professor__user__userid = professor.professor.user.userid).exists():
+                                                        subject_professor = subjects_professors.get(professor__user__userid = professor.professor.user.userid).professor_weight
+                                                    if(professor.professor_weight != 0 and subject_professor != 0):
+                                                        highest_weight = weight
+                                                        chosen_professor = professor.professor
+                                                        swap = 1
+                                                        swapAct = smallest_weight
                 fixed = 0
         for professor in subjects_professors:
             weight = professor.professor_weight
-            if professor.professor.num_uses > ambient.max_actv_in_cicle:
+            if professor.professor.num_uses >= ambient.max_actv_in_cicle:
                 current_activities = Activitie.objects.filter(tprofessor = professor.professor).order_by("-professor_weight")
                 smallest_weight = current_activities[0]
                 if smallest_weight.professor_weight < weight:
                     fixed = 1
                 elif smallest_weight.professor_weight == weight:
-                    preference1 = professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
-                    preference2 = smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
+                    preference1 = (professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
+                    preference2 = (smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
                     if preference1 > preference2:
                         fixed = 1
-            if fixed == 0:
+            if fixed == 0 and (professor.professor.num_uses + activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100):
                 if (weight > highest_weight):
-                    highest_weight = weight
-                    chosen_professor = professor.professor
-                    swap = 0
-                    swapAct = None
-                elif (weight == highest_weight):
-                    formations_1 = professor.formations.all()
-                    formations_2 = chosen_professor.formations.all()
-                    for formation in relevant_formations:
-                        for a_formation in formations_1:
-                            if a_formation.formation == formation:
-                                formation_1_count += formation.formation_weight
-                                professional_experience_1_count = formation.professional_experience_time
-                                didatic_experience_1_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_1_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_1_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_1_count = 100
-                        for a_formation in formations_2:
-                            if a_formation.formation == formation:
-                                formation_2_count += formation.formation_weight
-                                professional_experience_2_count = formation.professional_experience_time
-                                didatic_experience_2_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_2_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_2_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_2_count = 100
-                    if degree_1_count > degree_2_count:
+                    if(professor.professor_weight != 0):
                         highest_weight = weight
                         chosen_professor = professor.professor
                         swap = 0
                         swapAct = None
-                    elif degree_1_count == degree_2_count:
-                        if professional_experience_1_count > professional_experience_2_count:
+                elif (weight == highest_weight):
+                    formations_1 = professor.formations.all()
+                    formations_2 = chosen_professor.formations.all()
+                    degree_1_count = 0
+                    degree_2_count = 0
+                    professional_experience_1_count = 0
+                    professional_experience_2_count = 0
+                    didatic_experience_1_count = 0
+                    didatic_experience_2_count = 0
+                    formation_1_count = 0
+                    formation_2_count = 0
+                    tclassrooms_professor1 = 0
+                    tsubjects_professor1 = 0
+                    tclassrooms_professor2 = 0
+                    tsubjects_professor2 = 0
+                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
+                        tclassrooms_professor1 = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                        tsubjects_professor1 = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                        tclassrooms_professor2 = activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                        tsubjects_professor2 = activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    for formation in relevant_formations:
+                        for a_formation in formations_1:
+                            if a_formation.formation == formation:
+                                professional_experience_1_count = formation.professional_experience_time
+                                didatic_experience_1_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                        for a_formation in formations_2:
+                            if a_formation.formation == formation:
+                                professional_experience_2_count = formation.professional_experience_time
+                                didatic_experience_2_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                    if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if(professor.professor_weight != 0):
                             highest_weight = weight
                             chosen_professor = professor.professor
                             swap = 0
                             swapAct = None
-                        elif didatic_experience_1_count == didatic_experience_2_count:
-                            if didatic_experience_1_count > didatic_experience_2_count:
+                    elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if degree_1_count > degree_2_count:
+                            if(professor.professor_weight != 0):
                                 highest_weight = weight
                                 chosen_professor = professor.professor
                                 swap = 0
                                 swapAct = None
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if professor.time_in_campus > chosen_professor.time_in_campus:
+                        elif degree_1_count == degree_2_count:
+                            if professional_experience_1_count > professional_experience_2_count:
+                                if(professor.professor_weight != 0):
                                     highest_weight = weight
                                     chosen_professor = professor.professor
                                     swap = 0
                                     swapAct = None
-                                elif professor.time_in_campus == chosen_professor.time_in_campus:
-                                    if professor.time_in_institution > chosen_professor.time_in_institution:
+                            elif professional_experience_1_count == professional_experience_2_count:
+                                if didatic_experience_1_count > didatic_experience_2_count:
+                                    if(professor.professor_weight != 0):
                                         highest_weight = weight
                                         chosen_professor = professor.professor
                                         swap = 0
                                         swapAct = None
-                                    elif professor.time_in_institution == chosen_professor.time_in_institution:
-                                        if datetime.date.today() - professor.birthdate > datetime.today() - chosen_professor.birthdate:
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if professor.time_in_campus > chosen_professor.time_in_campus:
+                                        if(professor.professor_weight != 0):
                                             highest_weight = weight
                                             chosen_professor = professor.professor
                                             swap = 0
                                             swapAct = None
-                                        elif datetime.date.today() - professor.birthdate == datetime.today() - chosen_professor.birthdate:
-                                            if formation_1_count >= formation_2_count:
+                                    elif professor.time_in_campus == chosen_professor.time_in_campus:
+                                        if professor.time_in_institution > chosen_professor.time_in_institution:
+                                            if(professor.professor_weight != 0):
                                                 highest_weight = weight
                                                 chosen_professor = professor.professor
                                                 swap = 0
                                                 swapAct = None
+                                        elif professor.time_in_institution == chosen_professor.time_in_institution:
+                                            if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
+                                                if(professor.professor_weight != 0):
+                                                    highest_weight = weight
+                                                    chosen_professor = professor.professor
+                                                    swap = 0
+                                                    swapAct = None
+                                            elif datetime.date.today() - professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
+                                                if formation_1_count >= formation_2_count:
+                                                    if(professor.professor_weight != 0):
+                                                        highest_weight = weight
+                                                        chosen_professor = professor.professor
+                                                        swap = 0
+                                                        swapAct = None
             elif fixed == 1:
-                if (weight == highest_weight and weight > 0) and (professor.professor.prefered_subjects.get(subject = activitie.tsubject.subject) or (weight >= 100 and weight < 200)):
-                    highest_weight = weight
-                    chosen_professor = professor.professor
-                    swap = 1
-                elif (weight == highest_weight and weight > 0) and (professor.professor.prefered_subjects.get(subject = activitie.tsubject.subject) or (weight >= 100 and weight < 200)):
-                    formations_1 = professor.professor.formations.all()
-                    formations_2 = chosen_professor.formations.all()
-                    for formation in relevant_formations:
-                        for a_formation in formations_1:
-                            if a_formation.formation == formation:
-                                formation_1_count += formation.formation_weight
-                                professional_experience_1_count = formation.professional_experience_time
-                                didatic_experience_1_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_1_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_1_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_1_count = 100
-                        for a_formation in formations_2:
-                            if a_formation.formation == formation:
-                                formation_2_count += formation.formation_weight
-                                professional_experience_2_count = formation.professional_experience_time
-                                didatic_experience_2_count = formation.didatic_experience_time
-                                if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_2_count = 25
-                                elif a_formation.formation_degree == 'Mestre':
-                                    degree_2_count = 50
-                                elif a_formation.formation_degree == 'Doutor':
-                                    degree_2_count = 100
-                    if degree_1_count > degree_2_count:
+                if (weight == highest_weight and weight > 0) or (professor.professor_weight == 100):
+                    if(professor.professor_weight != 0):
                         highest_weight = weight
                         chosen_professor = professor.professor
                         swap = 1
-                        swapAct = smallest_weight
-                    elif degree_1_count == degree_2_count:
-                        if professional_experience_1_count > professional_experience_2_count:
+                elif (weight == highest_weight and weight > 0) or (professor.professor_weight == 100):
+                    formations_1 = professor.professor.formations.all()
+                    formations_2 = chosen_professor.formations.all()
+                    degree_1_count = 0
+                    degree_2_count = 0
+                    professional_experience_1_count = 0
+                    professional_experience_2_count = 0
+                    didatic_experience_1_count = 0
+                    didatic_experience_2_count = 0
+                    formation_1_count = 0
+                    formation_2_count = 0
+                    tclassrooms_professor1 = 0
+                    tsubjects_professor1 = 0
+                    tclassrooms_professor2 = 0
+                    tsubjects_professor2 = 0
+                    if activitie.tclass.favorite_professors.all().filter(professor = professor):
+                        tclassrooms_professor1 = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                        tsubjects_professor1 = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                    if activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                        tclassrooms_professor2 = activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    if activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                        tsubjects_professor2 = activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                    for formation in relevant_formations:
+                        for a_formation in formations_1:
+                            if a_formation.formation == formation:
+                                professional_experience_1_count = formation.professional_experience_time
+                                didatic_experience_1_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                        for a_formation in formations_2:
+                            if a_formation.formation == formation:
+                                professional_experience_2_count = formation.professional_experience_time
+                                didatic_experience_2_count = formation.didatic_experience_time
+                                if a_formation.formation_degree == 'Tecnólogo':
+                                    degree_2_count += 25
+                                elif a_formation.formation_degree == 'Mestre':
+                                    degree_2_count += 50
+                                elif a_formation.formation_degree == 'Doutor':
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                    if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if(professor.professor_weight != 0):
                             highest_weight = weight
                             chosen_professor = professor.professor
                             swap = 1
                             swapAct = smallest_weight
-                        elif didatic_experience_1_count == didatic_experience_2_count:
-                            if didatic_experience_1_count > didatic_experience_2_count:
+                    elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if degree_1_count > degree_2_count:
+                            if(professor.professor_weight != 0):
                                 highest_weight = weight
                                 chosen_professor = professor.professor
                                 swap = 1
                                 swapAct = smallest_weight
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if professor.professor.time_in_campus > chosen_professor.time_in_campus:
+                        elif degree_1_count == degree_2_count:
+                            if professional_experience_1_count > professional_experience_2_count:
+                                if(professor.professor_weight != 0):
                                     highest_weight = weight
                                     chosen_professor = professor.professor
                                     swap = 1
                                     swapAct = smallest_weight
-                                elif professor.professor.time_in_campus == chosen_professor.time_in_campus:
-                                    if professor.professor.time_in_institution > chosen_professor.time_in_institution:
+                            elif professional_experience_1_count == professional_experience_2_count:
+                                if didatic_experience_1_count > didatic_experience_2_count:
+                                    if(professor.professor_weight != 0):
                                         highest_weight = weight
                                         chosen_professor = professor.professor
                                         swap = 1
                                         swapAct = smallest_weight
-                                    elif professor.professor.time_in_institution == chosen_professor.time_in_institution:
-                                        if datetime.date.today() - professor.birthdate > datetime.today() - chosen_professor.birthdate:
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if professor.professor.time_in_campus > chosen_professor.time_in_campus:
+                                        if(professor.professor_weight != 0):
                                             highest_weight = weight
                                             chosen_professor = professor.professor
                                             swap = 1
                                             swapAct = smallest_weight
-                                        elif datetime.date.today() - professor.professor.birthdate == datetime.today() - chosen_professor.birthdate:
-                                            if formation_1_count >= formation_2_count:
+                                    elif professor.professor.time_in_campus == chosen_professor.time_in_campus:
+                                        if professor.professor.time_in_institution > chosen_professor.time_in_institution:
+                                            if(professor.professor_weight != 0):
                                                 highest_weight = weight
                                                 chosen_professor = professor.professor
                                                 swap = 1
                                                 swapAct = smallest_weight
+                                        elif professor.professor.time_in_institution == chosen_professor.time_in_institution:
+                                            if datetime.date.today() - professor.professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
+                                                if(professor.professor_weight != 0):
+                                                    highest_weight = weight
+                                                    chosen_professor = professor.professor
+                                                    swap = 1
+                                                    swapAct = smallest_weight
+                                            elif datetime.date.today() - professor.professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
+                                                if formation_1_count >= formation_2_count:
+                                                    if(professor.professor_weight != 0):
+                                                        highest_weight = weight
+                                                        chosen_professor = professor.professor
+                                                        swap = 1
+                                                        swapAct = smallest_weight
                 fixed = 0
         if(highest_weight > 0 and chosen_professor != None):
             activitie.tprofessor = chosen_professor
@@ -1145,226 +1334,658 @@ def run_atribuition(request, ambientid, userid):
                 swapAct.professor_weight = 0
                 swapAct.save()
             else:
-                chosen_professor.num_uses += 1
-            chosen_professor.save()
-
+                chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
+                chosen_professor.save()
+    
+    
     #até aqui é quase garantido que todas as preferencias de materia e turma foram atendidas
+    
     
     subjects = ambient.subjects.all()
     for subject in subjects:
         relevant_formations = subject.relevant_formations.all().order_by("-formation_weight")
         relevant_professors = ambient.members.all().filter(is_professor = True, prefered_subjects__subject = subject)
         highest_weight = 0
-        chosen_professor = 0
-        available_professors = 1
-        while(ambient.activities.all().filter(tsubject = subject, tprofessor = None) and available_professors == 1):
-            available_professors = 0
+        chosen_professor = None
+        subject_preference = 1
+        selected = 1
+
+        while(ambient.activities.all().filter(tsubject = subject, tprofessor = None) and relevant_professors and selected != 0):
             for professor in relevant_professors:
                 professor_subject = professor.prefered_subjects.get(subject = subject)
                 if professor.num_uses < ambient.max_actv_in_cicle and professor_subject.subject_weight > highest_weight:
-                    chosen_professor = professor
-                    highest_weight = professor_subject.subject_weight
+                    if(subject.favorite_professors.all().filter(professor = professor)):
+                       subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                    if subject_preference != 0:
+                        chosen_professor = professor
+                        highest_weight = professor_subject.subject_weight
                 elif professor.num_uses < ambient.max_actv_in_cicle and professor_subject.subject_weight == highest_weight:
                     formations_1 = professor.formations.all()
                     formations_2 = chosen_professor.formations.all()
+                    degree_1_count = 0
+                    degree_2_count = 0
+                    professional_experience_1_count = 0
+                    professional_experience_2_count = 0
+                    didatic_experience_1_count = 0
+                    didatic_experience_2_count = 0
+                    formation_1_count = 0
+                    formation_2_count = 0
+                    tclassrooms_professor1 = 0
+                    tsubjects_professor1 = 0
+                    tclassrooms_professor2 = 0
+                    tsubjects_professor2 = 0
+                    subject_1 = 0
+                    subject_2 = 0
+                    if subject.favorite_professors.all().filter(professor = professor):
+                        subject_1 = subject.favorite_professors.all().get(professor = professor).professor_weight
+                    if subject.favorite_professors.all().filter(professor = chosen_professor):
+                        subject_2 = subject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                     for formation in relevant_formations:
                         for a_formation in formations_1:
                             if a_formation.formation == formation:
-                                formation_1_count += formation.formation_weight
                                 professional_experience_1_count = formation.professional_experience_time
                                 didatic_experience_1_count = formation.didatic_experience_time
                                 if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_1_count = 25
+                                    degree_2_count += 25
                                 elif a_formation.formation_degree == 'Mestre':
-                                    degree_1_count = 50
+                                    degree_2_count += 50
                                 elif a_formation.formation_degree == 'Doutor':
-                                    degree_1_count = 100
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
                         for a_formation in formations_2:
                             if a_formation.formation == formation:
-                                formation_2_count += formation.formation_weight
                                 professional_experience_2_count = formation.professional_experience_time
                                 didatic_experience_2_count = formation.didatic_experience_time
                                 if a_formation.formation_degree == 'Tecnólogo':
-                                    degree_2_count = 25
+                                    degree_2_count += 25
                                 elif a_formation.formation_degree == 'Mestre':
-                                    degree_2_count = 50
+                                    degree_2_count += 50
                                 elif a_formation.formation_degree == 'Doutor':
-                                    degree_2_count = 100
-                    if degree_1_count > degree_2_count:
-                        highest_weight = weight
-                        chosen_professor = professor
-                    elif degree_1_count == degree_2_count:
-                        if professional_experience_1_count > professional_experience_2_count:
+                                    degree_2_count += 100
+                                formation_1_count *= formation.formation_weight
+                    if (subject_1 > subject_2) or ((subject_2 < 100) and (subject_1 == 100)):
+                        if(subject.favorite_professors.all().filter(professor = professor)):
+                            subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                        if subject_preference != 0:
                             highest_weight = weight
                             chosen_professor = professor
-                        elif didatic_experience_1_count == didatic_experience_2_count:
-                            if didatic_experience_1_count > didatic_experience_2_count:
+                    elif (subject_1 == subject_2) or ((subject_2 < 100) and (subject_1 == 100)):
+                        if degree_1_count > degree_2_count:
+                            if(subject.favorite_professors.all().filter(professor = professor)):
+                                subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                            if subject_preference != 0:
                                 highest_weight = weight
                                 chosen_professor = professor
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if professor.time_in_campus > chosen_professor.time_in_campus:
+                        elif degree_1_count == degree_2_count:
+                            if professional_experience_1_count > professional_experience_2_count:
+                                if(subject.favorite_professors.all().filter(professor = professor)):
+                                    subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                                if subject_preference != 0:
                                     highest_weight = weight
                                     chosen_professor = professor
-                                elif professor.time_in_campus == chosen_professor.time_in_campus:
-                                    if professor.time_in_institution > chosen_professor.time_in_institution:
+                            elif professional_experience_1_count == professional_experience_2_count:
+                                if didatic_experience_1_count > didatic_experience_2_count:
+                                    if(subject.favorite_professors.all().filter(professor = professor)):
+                                        subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                                    if subject_preference != 0:
                                         highest_weight = weight
                                         chosen_professor = professor
-                                    elif professor.time_in_institution == chosen_professor.time_in_institution:
-                                        if datetime.date.today() - professor.birthdate > datetime.today() - chosen_professor.birthdate:
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if professor.time_in_campus > chosen_professor.time_in_campus:
+                                        if(subject.favorite_professors.all().filter(professor = professor)):
+                                            subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                                        if subject_preference != 0:
                                             highest_weight = weight
                                             chosen_professor = professor
-                                        elif datetime.date.today() - professor.birthdate == datetime.today() - chosen_professor.birthdate:
-                                            if formation_1_count > formation_2_count:
+                                    elif professor.time_in_campus == chosen_professor.time_in_campus:
+                                        if professor.time_in_institution > chosen_professor.time_in_institution:
+                                            if(subject.favorite_professors.all().filter(professor = professor)):
+                                                subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                                            if subject_preference != 0:
                                                 highest_weight = weight
                                                 chosen_professor = professor
+                                        elif professor.time_in_institution == chosen_professor.time_in_institution:
+                                            if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
+                                                if(subject.favorite_professors.all().filter(professor = professor)):
+                                                    subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
+                                                if subject_preference != 0:
+                                                    highest_weight = weight
+                                                    chosen_professor = professor
+
+            if chosen_professor:
+                num_uses = chosen_professor.num_uses
                 activities_with_subject = ambient.activities.all().filter(tsubject = subject)
+                activities_with_subject = sorted(activities_with_subject, key=lambda subject_activitie: sum(1 for schedule in subject_activitie.tclass.prefered_schedules.all() if chosen_professor.prefered_schedules.filter(id=schedule.id)), reverse=True)
                 for subject_activitie in activities_with_subject:
+                    subject_preference = 1
+                    class_preference = 1
                     if not(subject_activitie.tprofessor):
-                        if professor.num_uses < ambient.max_actv_in_cicle:
-                            subject_activitie.tprofessor = professor
-                            subject_activitie.professor_weight = professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
-                            subject_activitie.save()
-                    elif professor.num_uses < ambient.max_actv_in_cicle:
-                        formations_1 = professor.formations.all()
+                        if chosen_professor.num_uses + subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_preference != 0 and class_preference != 0:
+                                tactv = ambient.activities.get(id = subject_activitie.id)
+                                tactv.tprofessor = chosen_professor
+                                tactv.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
+                                tactv.save()
+                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                chosen_professor.save()
+                    elif chosen_professor.num_uses + subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                        formations_1 = chosen_professor.formations.all()
                         formations_2 = subject_activitie.tprofessor.formations.all()
+                        degree_1_count = 0
+                        degree_2_count = 0
+                        professional_experience_1_count = 0
+                        professional_experience_2_count = 0
+                        didatic_experience_1_count = 0
+                        didatic_experience_2_count = 0
+                        formation_1_count = 0
+                        formation_2_count = 0
+                        tclassrooms_professor1 = 0
+                        tsubjects_professor1 = 0
+                        tclassrooms_professor2 = 0
+                        tsubjects_professor2 = 0
+                        if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                            tclassrooms_professor1 = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                            tsubjects_professor1 = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                        if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                            tclassrooms_professor2 = subject_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                            tsubjects_professor2 = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                         for formation in relevant_formations:
                             for a_formation in formations_1:
                                 if a_formation.formation == formation:
-                                    formation_1_count += formation.formation_weight
                                     professional_experience_1_count = formation.professional_experience_time
                                     didatic_experience_1_count = formation.didatic_experience_time
                                     if a_formation.formation_degree == 'Tecnólogo':
-                                        degree_1_count = 25
+                                        degree_1_count += 25
                                     elif a_formation.formation_degree == 'Mestre':
-                                        degree_1_count = 50
+                                        degree_1_count += 50
                                     elif a_formation.formation_degree == 'Doutor':
-                                        degree_1_count = 100
+                                        degree_1_count += 100
+                                    formation_1_count *= formation.formation_weight
                             for a_formation in formations_2:
                                 if a_formation.formation == formation:
-                                    formation_2_count += formation.formation_weight
                                     professional_experience_2_count = formation.professional_experience_time
                                     didatic_experience_2_count = formation.didatic_experience_time
                                     if a_formation.formation_degree == 'Tecnólogo':
-                                        degree_2_count = 25
+                                        degree_2_count += 25
                                     elif a_formation.formation_degree == 'Mestre':
-                                        degree_2_count = 50
+                                        degree_2_count += 50
                                     elif a_formation.formation_degree == 'Doutor':
-                                        degree_2_count = 100
-                        if degree_1_count > degree_2_count:
-                            subject_activitie.tprofessor = professor
-                            subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
-                            subject_activitie.save()
-                        elif degree_1_count == degree_2_count:
-                            if professional_experience_1_count > professional_experience_2_count:
-                                subject_activitie.tprofessor = professor
-                                subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                        degree_2_count += 100
+                                    formation_1_count *= formation.formation_weight
+                        if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                            if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                            if subject_preference != 0 and class_preference != 0:
+                                subject_activitie.tprofessor = chosen_professor
+                                subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                 subject_activitie.save()
-                            elif didatic_experience_1_count == didatic_experience_2_count:
-                                if didatic_experience_1_count > didatic_experience_2_count:
-                                    subject_activitie.tprofessor = professor
-                                    subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                subject_activitie.tprofessor.num_uses.save()
+                                chosen_professor.save()
+                        elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                            if degree_1_count > degree_2_count:
+                                if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                    subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                    class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                if subject_preference != 0 and class_preference != 0:
+                                    subject_activitie.tprofessor = chosen_professor
+                                    subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                     subject_activitie.save()
-                                elif didatic_experience_1_count == didatic_experience_2_count:
-                                    if professor.time_in_campus > subject_activitie.tprofessor.time_in_campus:
-                                        subject_activitie.tprofessor = professor
-                                        subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                    chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                    subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                    subject_activitie.tprofessor.num_uses.save()
+                                    chosen_professor.save()
+                            elif degree_1_count == degree_2_count:
+                                if professional_experience_1_count > professional_experience_2_count:
+                                    if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                        subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                    if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                        class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                    if subject_preference != 0 and class_preference != 0:
+                                        subject_activitie.tprofessor = chosen_professor
+                                        subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                         subject_activitie.save()
-                                    elif professor.time_in_campus == subject_activitie.tprofessor.time_in_campus:
-                                        if professor.time_in_institution > subject_activitie.tprofessor.time_in_institution:
-                                            subject_activitie.tprofessor = professor
-                                            subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                        chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                        subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                        subject_activitie.tprofessor.num_uses.save()
+                                        chosen_professor.save()
+                                elif professional_experience_1_count == professional_experience_2_count:
+                                    if didatic_experience_1_count > didatic_experience_2_count:
+                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                        if subject_preference != 0 and class_preference != 0:
+                                            subject_activitie.tprofessor = chosen_professor
+                                            subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                             subject_activitie.save()
-                                        elif professor.time_in_institution == subject_activitie.tprofessor.time_in_institution:
-                                            if datetime.date.today() - professor.birthdate > datetime.today() - subject_activitie.tprofessor.birthdate:
-                                                subject_activitie.tprofessor = professor
-                                                subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                            chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                            subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                            subject_activitie.tprofessor.num_uses.save()
+                                            chosen_professor.save()
+                                    elif didatic_experience_1_count == didatic_experience_2_count:
+                                        if chosen_professor.time_in_campus > subject_activitie.tprofessor.time_in_campus:
+                                            if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                            if subject_preference != 0 and class_preference != 0:
+                                                subject_activitie.tprofessor = chosen_professor
+                                                subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                                 subject_activitie.save()
-                                            elif datetime.date.today() - professor.birthdate == datetime.today() - subject_activitie.tprofessor.birthdate:
-                                                if formation_1_count > formation_2_count:
-                                                    subject_activitie.tprofessor = professor
-                                                    subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
+                                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                subject_activitie.tprofessor.num_uses.save()
+                                                chosen_professor.save()
+                                        elif chosen_professor.time_in_campus == subject_activitie.tprofessor.time_in_campus:
+                                            if chosen_professor.time_in_institution > subject_activitie.tprofessor.time_in_institution:
+                                                if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                    subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                    class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                if subject_preference != 0 and class_preference != 0:
+                                                    subject_activitie.tprofessor = chosen_professor
+                                                    subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
                                                     subject_activitie.save()
-                                                elif professor.subject_weight > subject_activitie.professor_weight:
-                                                    subject_activitie.tprofessor = professor
-                                                    subject_activitie.professor_weight = professor.prefered_subjects.subject_weight
-                                                    subject_activitie.save()
-                if professor.num_uses < ambient.max_actv_in_cicle:
-                    available_professors = 1
+                                                    chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                    subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                    subject_activitie.tprofessor.num_uses.save()
+                                                    chosen_professor.save()
+                                            elif chosen_professor.time_in_institution == subject_activitie.tprofessor.time_in_institution:
+                                                if datetime.date.today() - chosen_professor.user.birthdate > datetime.date.today() - subject_activitie.tprofessor.user.birthdate:
+                                                    if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                        subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                    if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                        class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                    if subject_preference != 0 and class_preference != 0:
+                                                        subject_activitie.tprofessor = chosen_professor
+                                                        subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
+                                                        subject_activitie.save()
+                                                        chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                        subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                        subject_activitie.tprofessor.num_uses.save()
+                                                        chosen_professor.save()
+                                                elif datetime.date.today() - chosen_professor.user.birthdate == datetime.date.today() - subject_activitie.tprofessor.user.birthdate:
+                                                    if formation_1_count > formation_2_count:
+                                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = professor):
+                                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
+                                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = professor):
+                                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
+                                                        if subject_preference != 0 and class_preference != 0:
+                                                            subject_activitie.tprofessor = chosen_professor
+                                                            subject_activitie.professor_weight = chosen_professor.prefered_subjects.all().get(subject = subject_activitie.tsubject).subject_weight
+                                                            subject_activitie.save()
+                                                            chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                            subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
+                                                            subject_activitie.tprofessor.num_uses.save()
+                                                            chosen_professor.save()
+                if num_uses == chosen_professor.num_uses:
+                    selected = 0
+            else: selected = 0
+            
+    #até aqui as aulas já devem estar distribuidas de acordo com a preferencia dos professores
 
-            #até aqui as aulas já devem estar distribuidas de acordo com a preferencia dos professores
-
-            not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-            for not_atribuited_activitie in not_atribuited_activities:
-                formations = not_atribuited_activitie.tsubject.relevant_formations.all().order_by("-formation_weight")
-                chosen_professor = None
-                highest_didatic_time = 0
-                highest_professional_time = 0 
-                highest_formation = 0 
-                for a_formation in formations:
-                    candidates = ambient.members.filter(is_professor = True, formations__formation = a_formation.formation)
-                    for candidate in candidates:
-                        if candidate.num_uses < ambient.max_actv_in_cicle:
-                            if candidate.formation.formation_degree == 'Tecnólogo':
-                                degree = 25
-                            elif candidate.formation.formation_degree == 'Mestre':
-                                degree = 50
-                            elif candidate.formation.formation.formation_degree == 'Doutor':
-                                degree = 100
-                            if degree > highest_formation:
+    not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+    for not_atribuited_activitie in not_atribuited_activities:
+        formations = not_atribuited_activitie.tsubject.relevant_formations.all().order_by("-formation_weight")
+        chosen_professor = None
+        highest_didatic_time = 0
+        highest_professional_time = 0 
+        highest_formation = 0 
+        highest_weight = 0
+        tclassrooms_professor1 = 0
+        tsubjects_professor1 = 0
+        tclassrooms_professor2 = 0
+        tsubjects_professor2 = 0
+        for a_formation in formations:
+            candidates = ambient.members.filter(is_professor = True, formations__formation = a_formation.formation)
+            for candidate in candidates:
+                if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
+                    subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
+                    class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
+                    tclassrooms_professor1 = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
+                    tsubjects_professor1 = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
+                    tclassrooms_professor2 = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
+                    tsubjects_professor2 = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
+                if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                    if candidate.formation.formation_degree == 'Tecnólogo':
+                        degree = 25
+                    elif candidate.formation.formation_degree == 'Mestre':
+                        degree = 50
+                    elif candidate.formation.formation.formation_degree == 'Doutor':
+                        degree = 100
+                    degree = a_formation.formation_weight * degree
+                    if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if subject_preference != 0 and class_preference != 0:
+                            highest_weight = weight
+                            chosen_professor = professor
+                    elif (tclassrooms_professor1 + tsubjects_professor1 == tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
+                        if degree > highest_formation:
+                            if subject_preference != 0 and class_preference != 0:
                                 highest_formation = degree
                                 chosen_professor = candidate
-                            elif degree == highest_formation:
-                                if candidate.formation.professional_experience_time > highest_professional_time:
+                        elif degree == highest_formation:
+                            if candidate.formation.professional_experience_time > highest_professional_time:
+                                if subject_preference != 0 and class_preference != 0:
                                     highest_professional_time = candidate.formation.professional_experience_time
                                     chosen_professor = candidate
-                                elif candidate.formation.professional_experience_time == highest_professional_time:
-                                    if candidate.formation.didatic_experience_time > highest_didatic_time:
+                            elif candidate.formation.professional_experience_time == highest_professional_time:
+                                if candidate.formation.didatic_experience_time > highest_didatic_time:
+                                    if subject_preference != 0 and class_preference != 0:
                                         highest_didatic_time = candidate.formation.professional_didatic_time
                                         chosen_professor = candidate
-                if chosen_professor:
-                    activitie_ahead_user.tprofessor = chosen_professor
-                    activitie_ahead_user.professor_weight = highest_formation
-                    activitie_ahead_user.save()
+                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                    if candidate.time_in_campus > chosen_professor.tprofessor.time_in_campus:
+                                        if subject_preference != 0 and class_preference != 0:
+                                            highest_didatic_time = candidate.formation.professional_didatic_time
+                                            chosen_professor = candidate
+                                    elif candidate.time_in_campus == chosen_professor.tprofessor.time_in_campus:
+                                        if candidate.time_in_institution > chosen_professor.tprofessor.time_in_institution:
+                                            if subject_preference != 0 and class_preference != 0:
+                                                highest_didatic_time = candidate.formation.professional_didatic_time
+                                                chosen_professor = candidate
+                                        elif candidate.time_in_institution == chosen_professor.tprofessor.time_in_institution:
+                                            if datetime.date.today() - candidate.user.birthdate > datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
+                                                if subject_preference != 0 and class_preference != 0:
+                                                    highest_didatic_time = candidate.formation.professional_didatic_time
+                                                    chosen_professor = candidate
+                                            elif datetime.date.today() - candidate.user.birthdate == datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
+                                                if formation_1_count > formation_2_count:
+                                                    if subject_preference != 0 and class_preference != 0:
+                                                        highest_didatic_time = candidate.formation.professional_didatic_time
+                                                        chosen_professor = candidate
+                            
+        if chosen_professor:
+            activitie_ahead_user.tprofessor = chosen_professor
+            activitie_ahead_user.professor_weight = highest_weight
+            activitie_ahead_user.save()
+            chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods
+            chosen_professor.save()
 
-            #garante que as atividades restantes sejam atribuídas a quem deve ser
+    #garante que as atividades restantes sejam atribuídas a quem deve ser
 
-            users = ambient.members.all().filter(is_professor = True)
-            average_use = 0
-            if users:
-                for user in users:
-                    average_use += user.num_uses
-                average_use = average_use / len(users)
-                not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-                ahead_users = []
-                above_users = []
-                for user in users:
-                    if user.num_uses > average_use:
-                        ahead_users.append(user)
-                    if user.num_uses < average_use:
-                        above_users.append(user)
-                for user in above_users:
-                    if user.num_uses < average_use:
-                        if not_atribuited_activities:
-                            for not_atribuited_activitie in not_atribuited_activities:
-                                if user.num_uses < average_use:
-                                    not_atribuited_activitie.tprofessor = user
-                        elif ahead_users:
-                            ahead_users = sorted(ahead_users, key=lambda ahead_user: ahead_user.num_uses, reverse=True)
-                            for ahead_user in ahead_users:
-                                activities_ahead_users = ambient.activities.filter(tprofessor = ahead_user)
-                                for activitie_ahead_user in activities_ahead_users:
-                                    if user.num_uses < average_use and ahead_user > average_use:
-                                        current_preference_subject = activitie_ahead_user.tsubject.favorite_professor.filter(professor = activitie_ahead_user.tprofessor).professor_weight
-                                        current_preference_class = activitie_ahead_user.tclass.favorite_professor.filter(professor = activitie_ahead_user.tprofessor).professor_weight
-                                        if current_preference_subject + current_preference_class < 100:
-                                            activitie_ahead_user.tprofessor = user
-                                            activitie_ahead_user.save()
-                                            user.num_uses += 1
-                                            ahead_user.num_uses -= 1
+    users = ambient.members.all().filter(is_professor = True)
+    average_use = 0
+    if users:
+        for user in users:
+            average_use += user.num_uses
+        average_use = average_use / len(users)
+        not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+        ahead_users = []
+        above_users = []
+        for user in users:
+            if user.num_uses > average_use:
+                ahead_users.append(user)
+            if user.num_uses < average_use:
+                above_users.append(user)
+        above_users = sorted(above_users, key=lambda x: x.num_uses)
+        ahead_users = sorted(ahead_users, key=lambda x: x.num_uses, reverse=True)
+        for user in above_users:
+            not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+            if user.num_uses < average_use:
+                if not_atribuited_activities:
+                    for not_atribuited_activitie in not_atribuited_activities:
+                        subject_preference = 1
+                        class_preference = 1
+                        if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = user):
+                            subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = user).professor_weight
+                        if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = user):
+                            class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = user).professor_weight
+                        if user.num_uses < average_use and user.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                            if subject_preference != 0 and class_preference != 0:
+                                not_atribuited_activitie.tprofessor = user
+                                not_atribuited_activitie.professor_weight = 0
+                                user.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
+                                not_atribuited_activitie.save()
+                                user.save()
+                elif ahead_users:
+                    ahead_users = sorted(ahead_users, key=lambda ahead_user: ahead_user.num_uses, reverse=True)
+                    for ahead_user in ahead_users:
+                        activities_ahead_users = ambient.activities.filter(tprofessor = ahead_user).order_by("professor_weight")
+                        for activitie_ahead_user in activities_ahead_users:
+                            if user.num_uses < average_use and ahead_user.num_uses > average_use and user.num_uses + activitie_ahead_user.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).periods <= ambient.max_actv_in_cicle:
+                                current_preference_class = 100
+                                current_preference_subject = 100
+                                if activitie_ahead_user.tsubject.favorite_professors.filter(professor = activitie_ahead_user.tprofessor):
+                                    current_preference_subject = activitie_ahead_user.tsubject.favorite_professors.get(professor = activitie_ahead_user.tprofessor).professor_weight
+                                if activitie_ahead_user.tclass.favorite_professors.filter(professor = activitie_ahead_user.tprofessor):
+                                    current_preference_class = activitie_ahead_user.tclass.favorite_professors.get(professor = activitie_ahead_user.tprofessor).professor_weight
+                                if current_preference_subject < 100 and current_preference_class < 100:
+                                    if activitie_ahead_user.tsubject.favorite_professors.all().filter(professor = user):
+                                        subject_preference = activitie_ahead_user.tsubject.favorite_professors.all().get(professor = user)
+                                    if activitie_ahead_user.tclass.favorite_professors.all().filter(professor = user):
+                                        class_preference = activitie_ahead_user.tclass.favorite_professors.all().get(professor = user)
+                                    if subject_preference != 0 and class_preference != 0:
+                                        activitie_ahead_user.tprofessor = user
+                                        activitie.professor_weight = 0
+                                        activitie_ahead_user.save()
+                                        user.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).period
+                                        ahead_user.num_uses -= activitie.tclass.necessary_subjects.get(subject = activitie_ahead_user.tsubject).periods
+        #aqui, trata de atribuir materias restantes aos usuarios que tem falta delas
 
-            #aqui, trata de atribuir materias restantes aos usuarios que tem falta delas
+        not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+        candidates = ambient.members.all().filter(is_professor = True).order_by('-num_uses')
+        for not_atribuited_activitie in not_atribuited_activities:
+            highest_weight = 0
+            chosen_professor = None
+            for candidate in candidates:
+                subject_preference = 1
+                class_preference = 1
+                if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
+                    subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
+                if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
+                    class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
+                if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                    if subject_preference != 0 and class_preference != 0 and subject_preference + class_preference > highest_weight:
+                        highest_weight = subject_preference + class_preference
+                        chosen_professor = candidate
+            if chosen_professor and highest_weight:
+                not_atribuited_activitie.tprofessor = chosen_professor
+                not_atribuited_activitie.professor_weight = 0
+                chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
+                not_atribuited_activitie.save()
+                chosen_professor.save()
+        #atribui randomicamente (deve gerar erro, e tbm gerar erro se houverem atividades em branco)
+
 
     return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
 
 def run_alocation(request, ambientid, userid):
-    pass
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    timetable = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
+    timetable.save()
+    ambient.published_timetable = timetable
+    ambient.save()
+    for schedule in ambient.available_schedules.all():
+        alocation = Alocation(line = schedule.column, column = schedule.line)
+        alocation.save()
+        ambient.published_timetable.table.add(alocation)
+        ambient.save()
+    activities = ambient.activities.all()
+    swap = True
+    while(swap):
+        swap = False
+        for activitie in activities:
+            highest_weight = 0
+            chosen_sch = None
+            for schedule_c in activitie.tclass.prefered_schedules.all():
+                line = schedule_c.line
+                column = schedule_c.column
+                weight = 0
+                count_conflit = 0
+                conflit = None
+                p_weight = 0
+                for i in range(activitie.activities_qtd):
+                    if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
+
+                        for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
+                            for actv in alocation.activitie.all():
+                                if((actv.tprofessor == activitie.tprofessor or actv.tclass == activitie.tclass or actv.tclassroom == activitie.tclassroom) and actv != conflit):
+                                    count_conflit += 1
+                                    conflit = actv
+                                    if count_conflit > 1:
+                                        conflit = None
+                                        break
+
+                        if(conflit == None):
+                            ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+i)
+                            weight += 1
+                            if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
+                                weight += 1
+
+                        elif (count_conflit < 2):
+                            p_weight = 0
+                            p_ambient_sch = 0
+                            for j in range(activitie.activities_qtd):
+                                if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                    if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
+                                        p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                        p_weight += 1
+                                        if activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                            p_weight += 1
+
+                            t_weight = 0
+                            t_ambient_sch = 0
+                            t_activitie = conflit
+                            for j in range(t_activitie.activities_qtd):
+                                if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                    t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                    t_weight += 1
+                                    if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
+                                        t_weight += 1
+                            
+                            if p_weight > t_weight:
+                                swap = True
+                                weight = p_weight
+                                chosen_sch = schedule_c
+                                change = True
+                            else:
+                                weight = 0
+                                break
+                        else:
+                            weight = 0
+                            break
+                    else:
+                        weight = 0
+                        break
+                    
+
+                if weight > highest_weight:
+                    chosen_sch = schedule_c
+                    highest_weight = weight
+                    if weight > p_weight:
+                        change = False
+                
+            if highest_weight and chosen_sch:
+                for i in range(activitie.activities_qtd):
+                    print(highest_weight, chosen_sch, chosen_sch.column+i, chosen_sch.line)
+                    t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                    print(t_alocation)
+                    print(t_alocation.activitie.all())
+                    t_alocation.activitie.add(activitie)
+                    if change:
+                        t_alocation.activitie.remove(t_activitie)
+            
+    for activitie in activities:
+        not_alocated_activities = []
+        if not ambient.published_timetable.table.all().filter(activitie = activitie):
+            not_alocated_activities.append(activitie)
+
+    swap = True    
+    while(swap):
+        swap = False
+        change = False
+        for not_alocated_activitie in not_alocated_activities:
+            highest_weight = 0
+            chosen_sch = None
+            if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:   
+                for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
+                    line = schedule_c.line
+                    column = schedule_c.column
+                    weight = 0        
+                    count_conflit = 0
+                    conflit = None
+                    p_weight = 0
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
+                            
+                            for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
+                                for actv in alocation.activitie.all():
+                                    if((actv.tprofessor == not_alocated_activitie.tprofessor or actv.tclass == not_alocated_activitie.tclass or actv.tclassroom == not_alocated_activitie.tclassroom) and actv != conflit):
+                                        count_conflit += 1
+                                        conflit = actv
+                                        if count_conflit > 1:
+                                            conflit = None
+                                            break
+
+                            if (conflit == None):
+                                weight += 1
+                            elif(count_conflit < 2):
+                                p_weight = 0
+                                p_ambient_sch = 0
+                                for j in range(not_alocated_activitie.activities_qtd):
+                                    if not_alocated_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                        if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
+                                            p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                            p_weight += 1
+                                            if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                                p_weight += 1
+
+                                t_weight = 0
+                                t_ambient_sch = 0
+                                t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
+                                for j in range(t_activitie.activities_qtd):
+                                    if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                        t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                        t_weight += 1
+                                        if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
+                                            t_weight += 1
+
+                                if p_weight > t_weight:
+                                    swap = True
+                                    weight = p_weight
+                                    chosen_sch = schedule_c
+                                    change = True
+                                else:
+                                    weight = 0
+                                    break
+                            else:
+                                weight = 0
+                                break
+                        else:
+                            weight = 0
+                            break
+                        
+
+                    if weight > highest_weight:
+                            chosen_sch = schedule_c
+                            highest_weight = weight
+                            t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                            if weight > p_weight:
+                                change = False
+            
+                if highest_weight and chosen_sch:
+                    for i in range(not_alocated_activitie.activities_qtd):
+                        t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                        t_alocation.activitie.add(not_alocated_activitie)
+                        if change:
+                            t_alocation.activitie.remove(t_activitie)
+                else:
+                    ambient.published_timetable.not_alocated.add(activitie)
+
+    return redirect(f'/AllokAcad/ambient/{ambientid}/{userid}')
