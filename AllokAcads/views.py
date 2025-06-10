@@ -140,10 +140,11 @@ def ambient(request, ambientid, userid):
     
     
     ordered_table = []
-    for column in range(ambient.published_timetable.columns_number):
-        for line in range(ambient.published_timetable.lines_number):
-            if ambient.published_timetable.table.filter(column = column, line = line):
-                ordered_table.append(ambient.published_timetable.table.get(column = column, line = line))
+    if ambient.published_timetable:
+        for column in range(ambient.published_timetable.columns_number):
+            for line in range(ambient.published_timetable.lines_number):
+                if ambient.published_timetable.table.filter(column = column, line = line):
+                    ordered_table.append(ambient.published_timetable.table.get(column = column, line = line))
 
     member = ambient.members.filter(user=user).first()
     schedules = ambient.available_schedules.all()
