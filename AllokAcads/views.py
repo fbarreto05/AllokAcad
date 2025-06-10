@@ -211,7 +211,7 @@ def ambient_config_validate(request, ambientid, userid):
     max_actv_in_a_day = request.POST.get('max_actv_in_a_day')
     min_actv_in_a_cicle = request.POST.get('min_actv_in_a_cicle')
     max_actv_in_a_cicle = request.POST.get('max_actv_in_a_cicle')
-
+#a
     if picture:
         picture_path = ambient_instance.picture.path
         ambient_instance.picture = picture
