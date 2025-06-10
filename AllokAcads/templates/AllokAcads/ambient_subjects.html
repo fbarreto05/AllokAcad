@@ -5,7 +5,7 @@
         {% for subject in subjects %}
             </br>
             <a href="">{{ subject.name }}</a>
-            <a href="">Editar</a>
+            <a href="{% url 'ambient_edit_subjects' subject.id ambient.ambientid user.userid %}">Editar</a>
             <a href="">Excluir</a>
         {% endfor %}
     <br><br>

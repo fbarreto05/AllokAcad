@@ -1,0 +1,13 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <form action="{% url 'ambient_edit_roomtypes_validate' roomid ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <br>
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name"><br>
+        <br>
+        <button type="submit" id="submit" name="submit">Editar</button>
+    </form>
+{% endblock content %}
+

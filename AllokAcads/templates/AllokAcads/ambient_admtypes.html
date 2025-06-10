@@ -5,7 +5,7 @@
     {% for admtype in admtypes %}
         </br>
         <a href="">{{ admtype.name }}</a>
-        <a href="">Editar</a>
+        <a href="{% url 'ambient_edit_admtypes' admtype.id ambient.ambientid user.userid %}">Editar</a>
         <a href="">Excluir</a>
     {% endfor %}
     <br><br>

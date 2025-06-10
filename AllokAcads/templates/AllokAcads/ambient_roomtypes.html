@@ -5,7 +5,7 @@
     {% for roomtype in roomtypes %}
         </br>
         <a href="">{{ roomtype.name }}</a>
-        <a href="">Editar</a>
+        <a href="{% url 'ambient_edit_roomtypes' roomtype.id ambient.ambientid user.userid %}">Editar</a>
         <a href="">Excluir</a>
     {% endfor %}
     <br><br>

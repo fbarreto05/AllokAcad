@@ -1,0 +1,49 @@
+{% include 'AllokAcads/ambient_bar.html' %}
+
+{% block content %}
+    <form action="{% url 'ambient_edit_classes_validate' classid ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <br>
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name"><br>
+        <br>
+        <label for="available_schedules">Horários Disponíveis</label>
+        <p>Periodos</p>
+        {% for schedule in schedules %}
+            {% if forloop.counter0|divisibleby:columns %}
+                <br>
+                Dia {{ schedule.line|add:"1" }}
+            {% endif %}
+            <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+        {% endfor %}
+        <br><br>
+        <label for="ideal_classrooms">Salas Ideais</label>
+        <br>
+        {% for classroom in classrooms %}
+            <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
+            <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+        {% endfor %}
+        <br>
+        <label for="favorite_professors">Professores Favoritos</label>
+        <br>
+        {% for professor in professors %}
+            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
+            <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
+        {% endfor %}
+        <br>
+        <label for="necessary_subjects">Matérias Necessárias</label>
+        <br>
+        {% for subject in subjects %}
+            <input type="checkbox" name="necessary_subjects" value="{{ subject.id }}">{{ subject.name }}
+            <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}"><br>
+            <br>
+        {% endfor %}
+        <br>
+        <label for="number_of_students">Número de Estudantes</label>
+        <input type="number" id="number_of_students" name="number_of_students"><br>
+        <br>
+        <button type="submit" id="submit" name="submit">Criar</button>
+    </form>
+{% endblock content %}
+
+

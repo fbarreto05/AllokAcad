@@ -138,9 +138,10 @@ def ambient(request, ambientid, userid):
     if not ambient or not user:
         return redirect('home', userid=userid)
     
-    
+    not_alocated = []
     ordered_table = []
     if ambient.published_timetable:
+        not_alocated = ambient.published_timetable.not_alocated.all()
         for column in range(ambient.published_timetable.columns_number):
             for line in range(ambient.published_timetable.lines_number):
                 if ambient.published_timetable.table.filter(column = column, line = line):
@@ -155,7 +156,7 @@ def ambient(request, ambientid, userid):
     activities = ambient.activities.all()
     picture = ambient.picture
     username = user.name
-    not_alocated = ambient.published_timetable.not_alocated.all()
+    
     
     return render(request, "AllokAcads/ambient.html", {
         'ambient': ambient,
@@ -362,6 +363,65 @@ def ambient_create_subjects(request, ambientid, userid):
     professors = ambient[0].members.all().filter(is_professor = True)
     formations = ambient[0].formations.all()
     return render(request, "AllokAcads/ambient_create_subjects.html", {'ambient' : ambient[0], 'user' : user[0], 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid})
+
+def ambient_edit_subjects(request, subjectid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    classrooms = ambient.classrooms.all()
+    professors = ambient.members.all().filter(is_professor = True)
+    formations = ambient.formations.all()
+    return render(request, "AllokAcads/ambient_edit_subjects.html", {'ambient': ambient, 'subjectid': subjectid, 'user': user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid})
+def ambient_edit_subjects_validate(request, ambientid, userid):
+    pass
+def ambient_delete_subjects(request, ambientid, userid):
+    pass
+def ambient_edit_classes(request, classid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    schedules = ambient.available_schedules.all()
+    classrooms = ambient.classrooms.all()
+    professors = ambient.members.all().filter(is_professor = True)
+    subjects = ambient.subjects.all()
+    columns = ambient.periods_in_a_day
+    username = user.name
+    return render(request, "AllokAcads/ambient_edit_class.html", {'ambient': ambient, 'classid': classid, 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns})
+def ambient_edit_classes_validate(request, ambientid, userid):
+    pass
+def ambient_delete_classes(request, ambientid, userid):
+    pass
+def ambient_edit_rooms(request, roomid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    return render(request, "AllokAcads/ambient_edit_rooms.html", {'ambient': ambient, 'roomid': roomid, 'user': user})
+def ambient_edit_rooms_validate(request, roomid, ambientid, userid):
+    pass
+def ambient_delete_rooms(request, roomid, ambientid, userid):
+    pass
+def ambient_edit_formations(request, formationid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    roomtypes = ambient.classroom_types.all()
+    return render(request, "AllokAcads/ambient_edit_formations.html", {'ambient': ambient, 'formationid': formationid, 'user': user, 'roomtypes': roomtypes})
+def ambient_edit_formations_validate(request, ambientid, userid):
+    pass
+def ambient_delete_formations(request, ambientid, userid):
+    pass
+def ambient_edit_roomtypes(request, roomid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    return render(request, "AllokAcads/ambient_edit_roomtypes.html", {'ambient': ambient, 'roomid': roomid, 'user': user})
+def ambient_edit_roomtypes_validate(request, ambientid, userid):
+    pass
+def ambient_delete_roomtypes(request, ambientid, userid):
+    pass
+def ambient_edit_admtypes(request, admtypeid, ambientid, userid):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    user = User.objects.get(userid = userid)
+    return render(request, "AllokAcads/ambient_edit_admintypes.html", {'ambient': ambient, 'admtypeid': admtypeid, 'user': user})
+def ambient_edit_admtypes_validate(request, ambientid, userid):
+    pass
+def ambient_delete_admtypes(request, ambientid, userid):
+    pass
 
 def ambient_create_subjects_validate(request, ambientid, userid):
     ambient = Ambient.objects.filter(ambientid = ambientid)
