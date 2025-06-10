@@ -21,8 +21,8 @@ class Member(models.Model):
     user = models.ForeignKey('User', on_delete=models.CASCADE, null=True)
     registration = models.CharField(max_length=40, null=True)
     formations = models.ManyToManyField('Member_Formation')
-    time_in_campus = models.IntegerField(null=True)
-    time_in_institution = models.IntegerField(null=True)
+    time_in_campus = models.IntegerField(default=0, null=True)
+    time_in_institution = models.IntegerField(default=0, null=True)
     admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=True)
     is_professor = models.BooleanField(default=False, null=False)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
@@ -122,11 +122,11 @@ class Timetable(models.Model):
 class Alocation(models.Model):
     line = models.IntegerField()
     column = models.IntegerField()
-    Activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
+    activitie = models.ManyToManyField('Activitie', related_name="activitie")
 
 class Unregistered_Activitie(models.Model):
     activitie = models.ForeignKey('Activitie', on_delete=models.CASCADE)
-    message = models.TextField(max_length=400)
+    message = models.TextField(max_length=400, null=True)
 
 class Invitation(models.Model):
     ambient = models.ForeignKey('Ambient', on_delete=models.CASCADE, related_name='invitation_ambient')

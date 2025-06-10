@@ -8,9 +8,11 @@
         <input type="text" id="name" name="name"><br>
         <br>
         <label for="available_schedules">Horários Disponíveis</label>
+        <p>Periodos</p>
         {% for schedule in schedules %}
             {% if forloop.counter0|divisibleby:columns %}
                 <br>
+                Dia {{ schedule.line|add:"1" }}
             {% endif %}
             <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
         {% endfor %}
