@@ -64,7 +64,6 @@
     {% if member.admin_type.can_run_alocation %}
         <a href="">Rodar alocação</a>
     {% endif %}
-{% endblock content %}
 
 <button id="ambient-menu-toggle" class="ambient-menu-toggle">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -205,8 +204,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Insira este código após o fechamento da div "stats-row" (aproximadamente na linha 245) -->
 
             {% if member.admin_type.can_run_atribuition or member.admin_type.can_run_alocation %}
             <div class="admin-actions-card">
