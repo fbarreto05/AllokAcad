@@ -6,7 +6,7 @@
         </br>
         <a href="">{{ roomtype.name }}</a>
         <a href="{% url 'ambient_edit_roomtypes' roomtype.id ambient.ambientid user.userid %}">Editar</a>
-        <a href="">Excluir</a>
+        <a href="{% url 'ambient_delete_roomtypes' roomtype.id ambient.ambientid user.userid %}">Excluir</a>
     {% endfor %}
     <br><br>
     <a href="{% url 'ambient_create_roomtypes' ambient.ambientid user.userid %}">Criar Tipo de Sala</a>
