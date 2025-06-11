@@ -65,5 +65,8 @@ urlpatterns = [
     path('ambient/change_position_validate/<str:memberid>/<str:ambientid>/<str:userid>', views.change_position_validate, name='change_position_validate'),
     path('ambient/run_atribuition/<str:ambientid>/<str:userid>', views.run_atribuition, name='run_atribuition'),
     path('ambient/run_alocation/<str:ambientid>/<str:userid>', views.run_alocation, name='run_alocation'),
-    path('dashboard/', include('dashboard.urls'))
+    path('dashboard/', include('dashboard.urls')),
+    path('django_plotly_dash/', include('django_plotly_dash.urls')),
     ]
+
+
