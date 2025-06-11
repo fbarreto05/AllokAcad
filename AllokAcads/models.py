@@ -23,7 +23,7 @@ class Member(models.Model):
     formations = models.ManyToManyField('Member_Formation')
     time_in_campus = models.IntegerField(default=0, null=True)
     time_in_institution = models.IntegerField(default=0, null=True)
-    admin_type = models.ForeignKey('AdminTP', on_delete=models.CASCADE, null=True)
+    admin_type = models.ForeignKey('AdminTP', on_delete=models.SET_NULL, null=True)
     is_professor = models.BooleanField(default=False, null=False)
     prefered_schedules = models.ManyToManyField('Schedule_Preference')
     prefered_classes = models.ManyToManyField('Class_Preference')
@@ -42,7 +42,7 @@ class Class(models.Model):
 
 class Classroom(models.Model):
     name = models.CharField(max_length=40)
-    classroom_type = models.ForeignKey('ClassroomTP', on_delete=models.CASCADE)
+    classroom_type = models.ForeignKey('ClassroomTP', null=True, on_delete=models.SET_NULL)
     classroom_capacity = models.IntegerField()
     num_uses = models.IntegerField(default=0, null=True)
 
@@ -102,10 +102,10 @@ class Formation(models.Model):
     num_uses = models.IntegerField(default=0, null=True)
 
 class Activitie(models.Model):
-    tclass = models.ForeignKey('Class', on_delete=models.CASCADE, null=True)
-    tclassroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, null=True)
-    tprofessor = models.ForeignKey('Member', on_delete=models.CASCADE, null=True)
-    tsubject = models.ForeignKey('Subject', on_delete=models.CASCADE, null=True)
+    tclass = models.ForeignKey('Class', on_delete=models.SET_NULL, null=True)
+    tclassroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True)
+    tprofessor = models.ForeignKey('Member', on_delete=models.SET_NULL, null=True)
+    tsubject = models.ForeignKey('Subject', on_delete=models.SET_NULL, null=True)
     classroom_weight = models.FloatField(null=True)
     professor_weight = models.FloatField(null=True)
     activities_qtd = models.IntegerField(null=True)
