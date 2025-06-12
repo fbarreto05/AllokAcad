@@ -10,38 +10,6 @@
 {% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_profile_edit_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <br><br>
-        <label for="register">Matrícula</label>
-        <input type="text" id="register" name="register"><br>
-        <br>
-        <label for="member_formations">Formações</label>
-        <br>
-        {% for formation in formations %}
-            <input type="checkbox" name="member_formations" value="{{ formation.id }}">{{ formation.name }}
-            <label for="didatic_experience_time_">Tempo de Experiência Didática</label>
-            <input type="num" id="didatic_experience_time_{{ formation.id }}" name="didatic_experience_time_{{ formation.id }}"><br>
-            <label for="professional_experience_time_">Tempo de Experiência Profissional</label>
-            <input type="num" id="professional_experience_time_{{ formation.id }}" name="professional_experience_time_{{ formation.id }}">
-            <label for="career_level_{{ formation.id }}">Nível de Formação</label>
-            <select id="career_level_{{ formation.id }}" name="career_level_{{ formation.id }}"><br>
-                <option value="Tecnólogo">Tecnólogo</option>
-                <option value="Mestre">Mestre</option>
-                <option value="Doutor">Doutor</option>
-            </select>
-            <br>            
-            <br>
-        {% endfor %}
-        <br>
-        <label for="time_in_campus">Tempo no Campus</label>
-        <input type="number" id="time_in_campus" name="time_in_campus"><br>
-        <br>
-        <label for="time_in_institution">Tempo na Instituição</label>
-        <input type="number" id="time_in_institution" name="time_in_institution"><br>
-        <br> 
-        <button type="submit" id="submit" name="submit">Criar</button>
-    </form>
 
 <div class="header">
     <h1>Editar Perfil Profissional</h1>
