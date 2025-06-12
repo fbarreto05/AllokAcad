@@ -91,38 +91,44 @@
                         {% endif %}
                     </p>
                 </div>
-                <div class="member-actions">
-                    <a href="{% url 'change_position' member.user.userid ambient.ambientid user.userid %}" class="action-btn change-role">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9"></path>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Alterar Cargo
-                    </a>
-                    {% if member.is_professor == False %}
-                        <a href="{% url 'professor_true' ambient.ambientid member.user.userid %}" class="action-btn make-professor">
+
+                {% if tmember.admin_type %}
+                    {% if tmember.admin_type.can_gerenciate_members %}
+                    <div class="member-actions">
+                        <a href="{% url 'change_position' member.user.userid ambient.ambientid user.userid %}" class="action-btn change-role">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 2v4"></path>
-                                <path d="M12 18v4"></path>
-                                <path d="M4.93 4.93l2.83 2.83"></path>
-                                <path d="M16.24 16.24l2.83 2.83"></path>
-                                <path d="M2 12h4"></path>
-                                <path d="M18 12h4"></path>
-                                <path d="M4.93 19.07l2.83-2.83"></path>
-                                <path d="M16.24 7.76l2.83-2.83"></path>
+                                <path d="M12 20h9"></path>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                             </svg>
-                            Tornar Professor
+                            Alterar Cargo
                         </a>
-                    {% else %}
-                        <a href="{% url 'professor_false' ambient.ambientid member.user.userid %}" class="action-btn remove-professor">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="8" y1="12" x2="16" y2="12"></line>
-                            </svg>
-                            Remover Professor
-                        </a>
+                        {% if member.is_professor == False %}
+                            <a href="{% url 'professor_true' ambient.ambientid member.user.userid %}" class="action-btn make-professor">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v4"></path>
+                                    <path d="M12 18v4"></path>
+                                    <path d="M4.93 4.93l2.83 2.83"></path>
+                                    <path d="M16.24 16.24l2.83 2.83"></path>
+                                    <path d="M2 12h4"></path>
+                                    <path d="M18 12h4"></path>
+                                    <path d="M4.93 19.07l2.83-2.83"></path>
+                                    <path d="M16.24 7.76l2.83-2.83"></path>
+                                </svg>
+                                Tornar Professor
+                            </a>
+                        {% else %}
+                            <a href="{% url 'professor_false' ambient.ambientid member.user.userid %}" class="action-btn remove-professor">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                                </svg>
+                                Remover Professor
+                            </a>
+                        {% endif %}
+                    </div>
                     {% endif %}
-                </div>
+                {% endif %}
+
             </div>
         {% endfor %}
     {% else %}

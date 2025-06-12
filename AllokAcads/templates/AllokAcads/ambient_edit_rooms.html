@@ -1,11 +1,11 @@
 {% include 'AllokAcads/ambient_bar.html' %}
 
 {% block content %}
-    <form action="{% url 'ambient_edit_rooms_validate' roomid ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+    <form action="{% url 'ambient_create_rooms_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <br>
         <label for="name">Nome</label>
-        <input type="text" id="name" name="name"><br>
+        <input type="text" id="name" name="name" value="{{ room.name }}" required><br>
         <br>
         <label for="roomtype">Tipo de Sala</label>
         <select id="roomtype" name="roomtype">
@@ -14,9 +14,10 @@
             {% endfor %}
         </select>
         <label for="capacity">Capacidade</label>
-        <input type="number" id="capacity" name="capacity"><br>
+        <input type="number" id="capacity" name="capacity" value="{{ room.classroom_capacity }}" required><br>
         <br>
-        <button type="submit" id="submit" name="submit">Editar</button>
+        <button type="submit" id="submit" name="submit">Criar</button>
     </form>
 {% endblock content %}
+
 

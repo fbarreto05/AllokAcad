@@ -175,48 +175,59 @@
             
             <br>
             {% if member.is_professor %}
+                {% if schedules or classrooms or classes or subjects %}
                 <p>Preencha seu formulário abaixo: </p>
-                <br>
-                <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <label for="available_schedules">Horários Disponíveis</label>
                     <br>
-                    <p>Periodos</p>
-                        {% for schedule in schedules %}
-                            {% if forloop.counter0|divisibleby:columns %}
+                    <form action="{% url 'ambient_form_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% if schedules %}
+                            <label for="available_schedules">Horários Disponíveis</label>
+                            <br>
+                            <p>Periodos</p>
+                                {% for schedule in schedules %}
+                                    {% if forloop.counter0|divisibleby:columns %}
+                                        <br>
+                                        Dia {{ schedule.line|add:"1" }}
+                                    {% endif %}
+                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+                                {% endfor %}
+                        {% endif %}
+                            <br><br>
+                            {% if classrooms %}
+                            <label for="prefered_classrooms">Salas Preferidas</label>
+                            <br>
+                                {% for classroom in classrooms %}
+                                    <br>
+                                    <input type="checkbox" name="prefered_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
+                                    <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+                                {% endfor %}
+                        {% endif %}
+                        {% if classes %}
+                            <br><br>
+                            <label for="prefered_classes">Classes Preferidas</label>
+                                {% for aclass in classes %}
+                                    <br>
+                                    <input type="checkbox" name="prefered_classes" value="{{ aclass.id }}">{{ aclass.name }}
+                                    <input type="range" min="0" max="100" value="100" id="class_weight_{{ aclass.id }}" name="class_weight_{{ aclass.id }}"><br>
+                                    
+                                {% endfor %}
+                        {% endif %}
+
+                        {% if subjects %}
+                            <br><br>
+                                <label for="prefered_subjects">Matérias Preferidas</label>
                                 <br>
-                                Dia {{ schedule.line|add:"1" }}
-                            {% endif %}
-                            <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
-                        {% endfor %}
-                    <br><br>
-                    <label for="prefered_classrooms">Salas Preferidas</label>
-                    <br>
-                        {% for classroom in classrooms %}
-                            <br>
-                            <input type="checkbox" name="prefered_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-                            <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
-                        {% endfor %}
-                    <br><br>
-                    <label for="prefered_classes">Classes Preferidas</label>
-                        {% for aclass in classes %}
-                            <br>
-                            <input type="checkbox" name="prefered_classes" value="{{ aclass.id }}">{{ aclass.name }}
-                            <input type="range" min="0" max="100" value="100" id="class_weight_{{ aclass.id }}" name="class_weight_{{ aclass.id }}"><br>
-                            
-                        {% endfor %}
-                    <br><br>
-                        <label for="prefered_subjects">Matérias Preferidas</label>
-                        <br>
-                        {% for subject in subjects %}
-                            <br>
-                            <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
-                            <input type="range" min="0" max="100" value="100" id="subject_weight_{{ subject.id }}" name="subject_weight_{{ subject.id }}"><br>
-                            <br>
-                        {% endfor %}
-                    <br><br>
-                    <button type="submit" id="submit" name="submit">Enviar</button>
-                </form>    
+                                {% for subject in subjects %}
+                                    <br>
+                                    <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
+                                    <input type="range" min="0" max="100" value="100" id="subject_weight_{{ subject.id }}" name="subject_weight_{{ subject.id }}"><br>
+                                    <br>
+                                {% endfor %}
+                        {% endif %}
+                        <br><br>
+                        <button type="submit" id="submit" name="submit">Enviar</button>
+                    </form>    
+                {% endif %}
             {% endif %}
 
             

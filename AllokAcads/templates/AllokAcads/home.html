@@ -12,6 +12,9 @@
 
 {% block content %}
 <div class="header">
+    {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
     <h1>Meus Ambientes</h1>
     <div class="action-buttons home-action-buttons">
         <a href="{% url 'create_ambient' userid %}" class="create-button home-create-button">
