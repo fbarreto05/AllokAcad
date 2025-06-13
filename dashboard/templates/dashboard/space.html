@@ -6,21 +6,21 @@
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
     <title>Dashboard de Análise</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/professor_dashboard.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/space_dashboard.css' %}">
 
 </head>
 <body>
     <div class="dashboard-container">
         <header class="dashboard-header">
             <div class="dashboard-name">
-                <h2>Dashboard dos professores</h2>
-                <p>Mostra métricas dos professores no semester selecionado</p>
+                <h2>Dashboard dos espaços</h2>
+                <p>Mostra métricas dos espaços no semester selecionado</p>
             </div>
             <ul class="indicators">
-                <li class="indicator">{{ average_class_interval }}</li>
-                <li class="indicator">{{ average_trips }}</li>
-                <li class="indicator">{{ average_classes }}</li>
-                <li class="indicator">{{ timetable_quality }}</li>
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
             </ul>
             <div class="header-filters-container">
                 <select name="ambient" id="ambient-select">
@@ -44,10 +44,10 @@
         <main>
             <ul class="graphics-container">
                 <li class="graphic">
-                    {% plotly_app name="GraficoAulasPorDia" %}
+                    2
                 </li>
                 <li class="graphic">
-                    2
+                 2
                 </li>
                 <li class="graphic">
                     2
