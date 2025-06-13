@@ -16,7 +16,7 @@
 </div>
 
 <div class="create-ambient-container">
-    <form class="create-ambient-form" action="{% url 'create_ambient_validate' userid %}" method="post" enctype="multipart/form-data">
+    <form class="create-ambient-form" action="{% url 'create_ambient_validate' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
         <div class="form-section">
@@ -52,7 +52,7 @@
         </div>
         
         <div class="form-actions">
-            <a href="{% url 'home' userid %}" class="cancel-button">Cancelar</a>
+            <a href="{% url 'home' %}" class="cancel-button">Cancelar</a>
             <button type="submit" class="create-button">Criar ambiente</button>
         </div>
     </form>

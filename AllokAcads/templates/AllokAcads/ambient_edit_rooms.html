@@ -1,7 +1,7 @@
 {% include 'AllokAcads/ambient_bar.html' %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_rooms_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+    <form action="{% url 'ambient_create_rooms_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <br>
         <label for="name">Nome</label>

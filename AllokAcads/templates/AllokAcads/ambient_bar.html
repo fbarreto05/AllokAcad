@@ -1,10 +1,10 @@
-<a href="{% url 'home' user.userid %}">Sair</a>
-<a href="{% url 'ambient' ambient.ambientid user.userid %}">Início</a>
-<a href="{% url 'ambient_config' ambient.ambientid user.userid %} ">Configurações</a>
-<a href="{% url 'ambient_solicitations' ambient.ambientid user.userid %}">Solicitações</a>
-<a href="{% url 'ambient_resources' ambient.ambientid user.userid %}">Recursos</a>
-<a href="{% url 'ambient_profile' ambient.ambientid user.userid %} ">Perfil</a>
-<a href="{% url 'ambient_members' ambient.ambientid user.userid %}">Membros</a>
+<a href="{% url 'home' %}">Sair</a>
+<a href="{% url 'ambient' ambient.ambientid %}">Início</a>
+<a href="{% url 'ambient_config' ambient.ambientid %} ">Configurações</a>
+<a href="{% url 'ambient_solicitations' ambient.ambientid %}">Solicitações</a>
+<a href="{% url 'ambient_resources' ambient.ambientid %}">Recursos</a>
+<a href="{% url 'ambient_profile' ambient.ambientid %} ">Perfil</a>
+<a href="{% url 'ambient_members' ambient.ambientid %}">Membros</a>
 
 {% block content %}   
 {% endblock content %}

@@ -11,7 +11,6 @@ class User(models.Model):
     name = models.CharField(max_length=80, null=False)
     email = models.EmailField(max_length=254, null=False)
     birthdate = models.DateField(null=False)
-    password = models.CharField(max_length=20, null=False)
     description = models.TextField(max_length=500, null=True)
     picture = models.ImageField(upload_to=user_image_path, null=True)
     invitations = models.ManyToManyField('Invitation', related_name='invitations')

@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const formData = new FormData(registerForm);
-            const response = await fetch('/AllokAcad/register_validate', {
+            const response = await fetch('/register_validate', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.redirected) {
                 window.location.href = response.url;
             } else {
-                window.location.href = '/AllokAcad/register';
+                window.location.href = '/register';
             }
 
         } catch (error) {

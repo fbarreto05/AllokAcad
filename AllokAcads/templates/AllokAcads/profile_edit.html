@@ -1,4 +1,4 @@
-<form action="{% url 'profile_edit_validate' userid %}" method="post" enctype="multipart/form-data">
+<form action="{% url 'profile_edit_validate' %}" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <label for="picture">Foto</label>
     <input type="file" id="picture" name="picture"><br>
