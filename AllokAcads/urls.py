@@ -62,7 +62,7 @@ urlpatterns = [
     path('ambient/resources/formations/<str:ambientid>', views.ambient_formations, name='ambient_formations'),
     path('ambient/resources/formations/create/<str:ambientid>', views.ambient_create_formations, name='ambient_create_formations'),
     path('ambient/resources/formations/create/validate/<str:ambientid>', views.ambient_create_formations_validate, name='ambient_create_formations_validate'),
-    path('ambient/resources/formations/edit/<int:formationid>/<str:ambientid>>', views.ambient_edit_formations, name='ambient_edit_formations'),
+    path('ambient/resources/formations/edit/<int:formationid>/<str:ambientid>', views.ambient_edit_formations, name='ambient_edit_formations'),
     path('ambient/resources/formations/edit/validate/<int:formationid>/<str:ambientid>', views.ambient_edit_formations_validate, name='ambient_edit_formations_validate'),
     path('ambient/resources/formations/delete/<int:formationid>/<str:ambientid>', views.ambient_delete_formations, name='ambient_delete_formations'),
 
@@ -82,10 +82,10 @@ urlpatterns = [
 
     path('ambient/profile/<str:ambientid>', views.ambient_profile, name='ambient_profile'),
     path('ambient/profile/edit/<str:ambientid>', views.ambient_profile_edit, name='ambient_profile_edit'),
-    path('ambient/profile/edit/validate', views.ambient_profile_edit_validate, name='ambient_profile_edit_validate'),
+    path('ambient/profile/edit/validate/<str:ambientid>', views.ambient_profile_edit_validate, name='ambient_profile_edit_validate'),
     path('ambient/members/<str:ambientid>', views.ambient_members, name='ambient_members'),
-    path('ambient/professor_true/<str:ambientid>', views.professor_true, name='professor_true'),
-    path('ambient/professor_false/<str:ambientid>', views.professor_false, name='professor_false'),
+    path('ambient/professor_true/<str:memberid>/<str:ambientid>', views.professor_true, name='professor_true'),
+    path('ambient/professor_false/<str:memberid>/<str:ambientid>', views.professor_false, name='professor_false'),
     path('ambient/change_position/<str:memberid>/<str:ambientid>', views.change_position, name='change_position'),
     path('ambient/change_position_validate/<str:memberid>/<str:ambientid>', views.change_position_validate, name='change_position_validate'),
     path('ambient/run_atribuition/<str:ambientid>', views.run_atribuition, name='run_atribuition'),
