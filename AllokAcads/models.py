@@ -11,7 +11,6 @@ class User(models.Model):
     name = models.CharField(max_length=80, null=False)
     email = models.EmailField(max_length=254, null=False)
     birthdate = models.DateField(null=False)
-    password = models.CharField(max_length=20, null=False)
     description = models.TextField(max_length=500, null=True)
     picture = models.ImageField(upload_to=user_image_path, null=True)
     invitations = models.ManyToManyField('Invitation', related_name='invitations')
@@ -82,8 +81,8 @@ class Ambient(models.Model):
     classroom_types = models.ManyToManyField('ClassroomTP')
     subjects = models.ManyToManyField('Subject')
     activities = models.ManyToManyField('Activitie')
-    published_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='published_timetable', null=True)
-    edit_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='edit_timetable', null=True)
+    published_timetable = models.ForeignKey('Timetable', on_delete=models.SET_NULL, related_name='published_timetable', null=True)
+    edit_timetable = models.ForeignKey('Timetable', on_delete=models.SET_NULL, related_name='edit_timetable', null=True)
 
 class AdminTP(models.Model):
     name = models.CharField(max_length=40, null=False)

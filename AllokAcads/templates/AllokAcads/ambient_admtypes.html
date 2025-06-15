@@ -5,9 +5,9 @@
     {% for admtype in admtypes %}
         </br>
         <a href="">{{ admtype.name }}</a>
-        <a href="{% url 'ambient_edit_admtypes' admtype.id ambient.ambientid user.userid %}">Editar</a>
-        <a href="{% url 'ambient_delete_admtypes' admtype.id ambient.ambientid user.userid %}">Excluir</a>
+        <a href="{% url 'ambient_edit_admtypes' admtype.id ambient.ambientid %}">Editar</a>
+        <a href="{% url 'ambient_delete_admtypes' admtype.id ambient.ambientid %}">Excluir</a>
     {% endfor %}
     <br><br>
-    <a href="{% url 'ambient_create_admtypes' ambient.ambientid user.userid %}">Criar Tipo de Administrador</a>
+    <a href="{% url 'ambient_create_admtypes' ambient.ambientid %}">Criar Tipo de Administrador</a>
 {% endblock content %}

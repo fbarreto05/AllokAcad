@@ -13,7 +13,7 @@
 <div class="header">
     <h1>Configurações do Ambiente</h1>
     <div class="action-buttons">
-        <a href="{% url 'ambient' ambient.ambientid user.userid %}" class="cancel-button">
+        <a href="{% url 'ambient' ambient.ambientid %}" class="cancel-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 12H5"></path>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -24,7 +24,7 @@
 </div>
 
 <div class="config-container">
-    <form action="{% url 'ambient_config_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data" class="config-form">
+    <form action="{% url 'ambient_config_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data" class="config-form">
         {% csrf_token %}
         
         <div class="config-section">
@@ -130,7 +130,8 @@
         </div>
         
         <div class="form-actions">
-            <a href="{% url 'ambient' ambient.ambientid user.userid %}" class="cancel-button">Cancelar</a>
+            <a href="{% url 'ambient_delete' ambient.ambientid %}">Deletar Ambiente</a>
+            <a href="{% url 'ambient' ambient.ambientid %}" class="cancel-button">Cancelar</a>
             <button type="submit" id="submit" name="submit" class="save-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>

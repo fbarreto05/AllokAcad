@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (hasError) return;
 
         try {
-            const response = await fetch('/AllokAcad/login_validate', { 
+            const response = await fetch('/login_validate', { 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.redirected) {
                 window.location.href = response.url;
             } else {
-                window.location.href = '/AllokAcad/login';
+                window.location.href = '/login';
             }
 
         } catch (error) {
