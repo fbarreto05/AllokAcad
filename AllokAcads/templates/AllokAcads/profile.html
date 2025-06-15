@@ -11,5 +11,7 @@
         <p>{{ user.description }}</p>
     {% endif %}
     
-    <a href="{% url 'profile_edit' user.userid %}">Editar</a>
+    <a href="{% url 'profile_edit' %}">Editar</a>
 {% endblock content %}
+
+<a href="{% url 'profile_delete' %}">Deletar Perfil</a>

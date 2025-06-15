@@ -5,9 +5,9 @@
     {% for class in classes %}
         </br>
         <a href="">{{ class.name }}</a>
-        <a href="{% url 'ambient_edit_classes' class.id ambient.ambientid user.userid %}">Editar</a>
-        <a href="{% url 'ambient_delete_classes' class.id ambient.ambientid user.userid %}">Excluir</a>
+        <a href="{% url 'ambient_edit_classes' class.id ambient.ambientid %}">Editar</a>
+        <a href="{% url 'ambient_delete_classes' class.id ambient.ambientid %}">Excluir</a>
     {% endfor %}
     <br><br>
-    <a href="{% url 'ambient_create_classes' ambient.ambientid user.userid %}">Criar Turma</a>
+    <a href="{% url 'ambient_create_classes' ambient.ambientid %}">Criar Turma</a>
 {% endblock content %}

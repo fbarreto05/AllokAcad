@@ -1,34 +1,46 @@
 {% include 'AllokAcads/ambient_bar.html' %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_subjects_validate' ambient.ambientid user.userid %}" method="post" enctype="multipart/form-data">
+    <form action="{% url 'ambient_create_subjects_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <br>
         <label for="name">Nome</label>
-        <input type="text" id="name" name="name"><br>
+        <input type="text" id="name" name="name" required><br>
         <br>
         <label for="ideal_classrooms">Salas Ideais</label>
-        <br>
-        {% for classroom in classrooms %}
-            <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-            <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
-        {% endfor %}
+        {% if classrooms %}
+            <br>
+            {% for classroom in classrooms %}
+                <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
+                <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+            {% endfor %}
+        {% else %}
+            <p>Cadastre salas para poder utilizá-las</p>
+        {% endif %}
         <br>
         <label for="favorite_professors">Professores Favoritos</label>
-        <br>
-        {% for professor in professors %}
-            <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
-            <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
+        {% if professors %}
             <br>
-        {% endfor %}
+            {% for professor in professors %}
+                <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
+                <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
+                <br>
+            {% endfor %}
+        {% else %}
+            <p> Convide professores para poder utilizá-los </p>
+        {% endif %}
         <br>
         <label for="relevant_formations">Formações Relevantes</label>
-        <br>
-        {% for formation in formations %}
-            <input type="checkbox" name="relevant_formations" value="{{ formation.id }}">{{ formation.name }}
-            <input type="range" min="0" max="100" value="100" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}"><br>
+        {% if formations %}
             <br>
-        {% endfor %}
+            {% for formation in formations %}
+                <input type="checkbox" name="relevant_formations" value="{{ formation.id }}">{{ formation.name }}
+                <input type="range" min="0" max="100" value="100" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}"><br>
+                <br>
+            {% endfor %}
+        {% else %}
+            <p>Cadastre formações para poder utilizá-las</p>
+            {% endif %}
         <button type="submit" id="submit" name="submit">Criar</button>
     </form>
 {% endblock content %}

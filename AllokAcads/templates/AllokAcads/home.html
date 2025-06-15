@@ -12,9 +12,12 @@
 
 {% block content %}
 <div class="header">
+    {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
     <h1>Meus Ambientes</h1>
     <div class="action-buttons home-action-buttons">
-        <a href="{% url 'create_ambient' userid %}" class="create-button home-create-button">
+        <a href="{% url 'create_ambient' %}" class="create-button home-create-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -36,7 +39,7 @@
     <div class="modal-content">
         <span class="close-modal">&times;</span>
         <h2>Ingressar em Ambiente</h2>
-        <form action="{% url 'enter_ambient' userid %}" method="post">
+        <form action="{% url 'enter_ambient' %}" method="post">
             {% csrf_token %}
             <div class="form-group">
                 <label for="ambient_identificator">Identificador do Ambiente</label>
@@ -49,7 +52,7 @@
 
 <div class="ambients-grid">
     {% for ambient in ambients.all %}
-    <a href="{% url 'ambient' ambient.ambientid userid%}" class="ambient-card">
+    <a href="{% url 'ambient' ambient.ambientid %}" class="ambient-card">
         <div class="ambient-image">
             {% if ambient.picture %}
                 <img src="{{ ambient.picture.url }}" alt="{{ ambient.name }}">
@@ -72,7 +75,7 @@
             <line x1="8" y1="12" x2="16" y2="12"></line>
         </svg>
         <p>Você ainda não possui ambientes</p>
-        <a href="{% url 'create_ambient' userid %}" class="create-first-ambient">Criar meu primeiro ambiente</a>
+        <a href="{% url 'create_ambient' %}" class="create-first-ambient">Criar meu primeiro ambiente</a>
     </div>
     {% endfor %}
 

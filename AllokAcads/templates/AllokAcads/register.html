@@ -11,7 +11,6 @@
         <link rel="stylesheet" href="{% static 'css/register.css' %}">
     </head>
     <body>
-
         <div class="container">
             <div class="sidebar">
                 <div class="sidebar-bg"></div>
@@ -19,6 +18,14 @@
                 <div class="logo-container">
                     <img src="{% static 'images/allokacad-logo-white.png' %}" alt="AllokAcad" class="logo">
                     <p>Sistema de Atribuição de Aulas para Professores</p>
+                    {% if messages %}
+                        <ul class="messages">
+                            {% for message in messages %}
+                            <li class="alert {{ message.tags }}">{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                        <p>opa</p>
+                    {% endif %}
                 </div>
             </div>
             <div class="login-form">
