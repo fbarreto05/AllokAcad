@@ -327,32 +327,14 @@ def ambient_form_validate(request, ambientid):
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].is_professor:   
             available_schedules = request.POST.getlist('available_schedules')
-            prefered_classes = request.POST.getlist('prefered_classes')
-            prefered_classrooms = request.POST.getlist('prefered_classrooms')
             prefered_subjects = request.POST.getlist('prefered_subjects')
-            schedule_ids = request.POST.getlist("available_schedules")
-            if schedule_ids:
-                for schedule_id in schedule_ids:
-                    schedule = Schedule_Preference.objects.get(id = schedule_id)
+            if available_schedules:
+                for available_schedule in available_schedules:
+                    schedule = Schedule_Preference.objects.get(id = available_schedule)
                     member[0].prefered_schedules.add(schedule)
-            for available_schedule in available_schedules:
-                schedule = Schedule_Preference.objects.get(id = available_schedule)
-                member[0].prefered_schedules.add(schedule)
-            for prefered_class in prefered_classes:
-                tclass = Class.objects.get(id = prefered_class)
-                class_weight = request.POST.get(f"class_weight_{prefered_class}")
-                class_preference = Class_Preference(tclass=tclass, class_weight=class_weight)
-                class_preference.save()
-                member[0].prefered_classes.add(class_preference)
-            for prefered_classroom in prefered_classrooms:
-                classroom = Classroom.objects.get(id = prefered_classroom)
-                classroom_weight = request.POST.get(f"classroom_weight_{prefered_classroom}")
-                classroom_preference = Classroom_Preference(classroom=classroom, classroom_weight=classroom_weight)
-                classroom_preference.save()
-                member[0].prefered_classrooms.add(classroom_preference)
             for prefered_subject in prefered_subjects:
                 subject = Subject.objects.get(id = prefered_subject)
-                subject_weight = request.POST.get(f"subject_weight_{prefered_subject}")
+                subject_weight = int(request.POST.get(f"option_{prefered_subject}"))
                 subject_preference = Subject_Preference(subject=subject, subject_weight=subject_weight)
                 subject_preference.save()
                 member[0].prefered_subjects.add(subject_preference)
@@ -1049,8 +1031,11 @@ def ambient_create_classes_validate(request, ambientid):
             subject_ids = request.POST.getlist("necessary_subjects")
             if subject_ids:
                 for subject_id in subject_ids:
+                    periods = request.POST.get(f"periods_{subject_id}")
                     subject = Subject.objects.get(id = subject_id)
-                    tclass.necessary_subjects.add(subject)
+                    subject_preference = Subject_Preference(subject=subject, periods=periods)
+                    subject_preference.save()
+                    tclass.necessary_subjects.add(subject_preference)
             ambient_instance.classes.add(tclass)
             return redirect(f'/ambient/resources/classes/{ambient[0].ambientid}')
         else:
@@ -1266,34 +1251,30 @@ def enter_ambient(request):
     else:
         return redirect('login')
     
-def professor_true(request, ambientid):
+def professor_true(request, memberid, ambientid):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         tmember = ambient.members.filter(user = user)
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
-            member = ambient.members.all().get(user=user)
-            if member.admin_type:
-                if member.admin_type.can_gerenciate_members:
-                    member.is_professor = True
-                    member.save()
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
+            member = ambient.members.all().get(id=memberid)
+            member.is_professor = True
+            member.save()
             return redirect(f'/ambient/members/{ambientid}')
         else:
             return redirect('home')
     else:
         return redirect('login')
     
-def professor_false(request, ambientid):
+def professor_false(request, memberid, ambientid):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         tmember = ambient.members.filter(user = user)
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
-            member = ambient.members.all().get(user=user)
-            if member.admin_type:
-                if member.admin_type.can_gerenciate_members:
-                    member.is_professor = False
-                    member.save()
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
+            member = ambient.members.all().get(id=memberid)
+            member.is_professor = False
+            member.save()
             return redirect(f'/ambient/members/{ambientid}')
         else:
             return redirect('home')
@@ -1306,8 +1287,8 @@ def change_position(request, memberid, ambientid):
         userid = user.userid
         ambient = Ambient.objects.get(ambientid = ambientid)
         tmember = ambient.members.filter(user = user)
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
-            member = ambient.members.get(user=user)
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
+            member = ambient.members.get(id=memberid)
             admtypes = ambient.admin_types.all()
             return render(request, "AllokAcads/change_position.html", {'ambient' : ambient, 'member' : member, 'user' : user, 'admtypes' : admtypes, 'userid': userid})
         else:
@@ -1315,18 +1296,34 @@ def change_position(request, memberid, ambientid):
     else:
         return redirect('login')
     
+def remove_member(request, memberid, ambientid):
+    if request.user.is_authenticated:
+        print(ambientid)
+        user = User.objects.get(userid = request.user.username)
+        ambient = Ambient.objects.get(ambientid = ambientid)
+        tmember = ambient.members.filter(user = user)
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
+            member = ambient.members.get(id=memberid)
+            member.user.ambients.remove(ambient.id)
+            ambient.members.remove(memberid)
+            if not ambient.members.exists():
+                ambient.delete()
+                return redirect('home')
+            return redirect(f'/ambient/members/{ambientid}')
+        else:
+            return redirect('home')
+    return redirect('home')
+    
 def change_position_validate(request, memberid, ambientid):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         tmember = ambient.members.filter(user = user)
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
-            member = ambient.members.get(user=user)
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
+            member = ambient.members.get(id=memberid)
             admtype = AdminTP.objects.get(id=request.POST.get('admtype'))
-            if member.admin_type:
-                if member.admin_type.can_gerenciate_members:
-                    member.admin_type = admtype
-                    member.save()
+            member.admin_type = admtype
+            member.save()
             return redirect(f'/ambient/members/{ambientid}')
         else:
             return redirect('home')
@@ -1464,8 +1461,8 @@ def run_atribuition(request, ambientid):
                         if smallest_weight.professor_weight < weight:
                             fixed = 1
                         elif smallest_weight.professor_weight == weight:
-                            preference1 = professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
-                            preference2 = smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0 + smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0
+                            preference1 = professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0
+                            preference2 = smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0
                             if preference1 > preference2:
                                 fixed = 1
                     if fixed == 0 and ((professor.professor.num_uses + activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100 or subject_professor == 100)):
@@ -1721,8 +1718,8 @@ def run_atribuition(request, ambientid):
                         if smallest_weight.professor_weight < weight:
                             fixed = 1
                         elif smallest_weight.professor_weight == weight:
-                            preference1 = (professor.professor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (professor.professor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
-                            preference2 = (smallest_weight.tprofessor.prefered_classrooms.all().aggregate(total=Sum('classroom_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0) + (smallest_weight.tprofessor.prefered_classes.all().aggregate(total=Sum('class_weight'))['total'] or 0.0)
+                            preference1 = (professor.professor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0)
+                            preference2 = (smallest_weight.tprofessor.prefered_subjects.all().aggregate(total=Sum('subject_weight'))['total'] or 0.0)
                             if preference1 > preference2:
                                 fixed = 1
                     if fixed == 0 and (professor.professor.num_uses + activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100):
@@ -2618,8 +2615,28 @@ def run_alocation(request, ambientid):
     
 def exit(request):
     if request.user.is_authenticated:
+        logoutauth(request)
+        return redirect('login')
+    else:
+        return redirect('login')
+    
+def ambient_delete(request, ambientid):
+    if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
-        userid = user.userid
+        ambient = Ambient.objects.get(ambientid = ambientid)
+        member = Member.objects.filter(user = user)
+        if ambient.members.filter(user = user) and member[0].admin_type.can_configure_ambient:  
+            ambient.delete()
+            return redirect('home')
+        else:
+            return redirect('home')
+    else:
+        return redirect('login')
+    
+def profile_delete(request):
+    if request.user.is_authenticated:
+        user = User.objects.get(userid = request.user.username)
+        user.delete()
         logoutauth(request)
         return redirect('login')
     else:

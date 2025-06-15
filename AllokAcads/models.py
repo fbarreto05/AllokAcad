@@ -81,8 +81,8 @@ class Ambient(models.Model):
     classroom_types = models.ManyToManyField('ClassroomTP')
     subjects = models.ManyToManyField('Subject')
     activities = models.ManyToManyField('Activitie')
-    published_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='published_timetable', null=True)
-    edit_timetable = models.ForeignKey('Timetable', on_delete=models.CASCADE, related_name='edit_timetable', null=True)
+    published_timetable = models.ForeignKey('Timetable', on_delete=models.SET_NULL, related_name='published_timetable', null=True)
+    edit_timetable = models.ForeignKey('Timetable', on_delete=models.SET_NULL, related_name='edit_timetable', null=True)
 
 class AdminTP(models.Model):
     name = models.CharField(max_length=40, null=False)
