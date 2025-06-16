@@ -18,7 +18,7 @@ class User(models.Model):
 
 class Member(models.Model):
     user = models.ForeignKey('User', on_delete=models.CASCADE, null=True)
-    registration = models.CharField(max_length=40, null=True)
+    registration = models.CharField(max_length=40, null=True, default="")
     formations = models.ManyToManyField('Member_Formation')
     time_in_campus = models.IntegerField(default=0, null=True)
     time_in_institution = models.IntegerField(default=0, null=True)

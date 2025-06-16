@@ -4,9 +4,9 @@
     <input type="file" id="picture" name="picture"><br>
     <br>
     <label for="name">Nome</label>
-    <input type="text" id="name" name="name"><br>
+    <input type="text" id="name" name="name" value="{{ user.name }}"><br>
     <label for="description">Descrição</label>
-    <input type="text" id="description" name="description"><br>
+    <input type="text" id="description" name="description" value="{{ user.description }}"><br>
     <br>
     <button type="submit" id="submit" name="submit">Editar Perfil</button>
 </form>
