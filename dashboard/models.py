@@ -1,23 +1,34 @@
 from django.db import models
-from AllokAcads.models import Activitie
+
+class Semester(models.Model):
+    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete=models.CASCADE, related_name="semesters")
+    name = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    class Meta:
+        unique_together = ('ambient', 'name')
 
 class ProfessorStatisticsDay(models.Model):
-    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE, null = True)
-    professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE, null = True)
-    date = models.DateField(db_index=True)
+    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
+    professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
+    timetable = models.ForeignKey('AllokAcads.Timetable', on_delete = models.CASCADE)
     
-    semester = models.CharField(max_length = 10)
+    day = models.IntegerField()
+    semester = models.CharField(max_length = 100)
     
-    hours_on_campus = models.FloatField(default=0.0)
-    classes_hours = models.FloatField(default=0.0)
-    trips_to_campus = models.IntegerField(default=0) 
-    number_of_classes = models.IntegerField(default=0)
-    classes_interval = models.FloatField(default=0.0)
+    periods_on_campus = models.IntegerField(default=0)
+    periods_interval = models.IntegerField(default=0) 
+    number_of_periods = models.IntegerField(default=0)
+    
     day_efficiency = models.FloatField(default=0.0)
+    trips_to_campus = models.IntegerField(default=0)
     
     create_at = models.DateField(auto_now_add=True)
+    
     class Meta:
-        unique_together = ('professor', 'ambient', 'date')       
+        unique_together = ('professor', 'day', 'timetable')
+        
 
     
 

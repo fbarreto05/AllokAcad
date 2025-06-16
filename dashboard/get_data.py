@@ -1,73 +1,56 @@
 from .models import ProfessorStatisticsDay
 from AllokAcads.models import Ambient
+from collections import defaultdict
 
-
-class Data():
-    @staticmethod
-    def calculate_hours_on_campus(last_class, first_class,):
-        if last_class < first_class: 
-            return 0
-        else: 
-            return last_class - first_class
-    
-    @staticmethod   
-    def calculate_classes_hours(number_of_classes):
-        return number_of_classes
-    
-    @staticmethod
-    def calculate_classes_interval(hours_on_campus, classes_hours):
-        if hours_on_campus < classes_hours:
-            return 0
-        else: 
-            return hours_on_campus - classes_hours
-    
-    def generateStatistics(self, ambient_id):
+def calculate_semester_statistics(ambient_id):   
+    try: 
         ambient = Ambient.objects.get(ambientid = ambient_id)
-        professors = ambient.members.filter(is_professor = True)
-        allocations = ambient.published_timetable.table.filter(Activitie__tprofessor__in = professors).select_related('Activitie__tprofessor')
+    except ambient.DoesNotExist:
+        print("Error: Timetable doesn't exist")
+        return
+    
+    allocations = ambient.table.prefetch_related('activitie__tprofessor')
+    professor_schedule = defaultdict(lambda: defaultdict(list))
+    
+    for allocation in allocations:
+        day = allocation.line
+        period = allocation.column
         
-        professor_classe_day = {}
-        
-        for allocation in allocations:
-            professor = allocation.Activitie.tprofessor
-            day = allocation.line
-            column = allocation.column
+        for activity in allocation.activitie.all():
+            if activity.professor: 
+                professor = activity.tprofessor
+                professor_schedule[professor][day].append(period)
             
-            professor_classe_day[professor][day].append(column)
-
-            if professor not in professor_classe_day:
-                professor_classe_day[professor] = {}
+    for professor, schedule in professor_schedule.items():
+        for day, periods in schedule.items():
+            number_of_periods = len(periods) 
+            first_period = min(periods)
+            last_period = max(periods)
             
-            if day not in professor_classe_day[professor]:
-                professor_classe_day[professor][day] = []
+            periods_on_campus = (last_period - first_period) + 1
+            periods_interval = periods_on_campus - number_of_periods
             
-            professor_classe_day[professor][day].append(column)
-
-        for professor, schedule in professor_classe_day.items():
-            for day, column in schedule.items():
+            if periods_on_campus > 0: 
+                day_efficiency = (number_of_periods / periods_on_campus)
+            else: 
+                day_efficiency = 0
                 
-                number_of_classes = len(column)
-                first_class = min(column)
-                last_class = max(column)
-                
-                hours_on_campus = Data.calculate_hours_on_campus(first_class, last_class)
-                classes_hours = Data.calculate_classes_hours(number_of_classes)
-                classes_interval = Data.calculate_classes_interval(hours_on_campus, classes_hours)
-            
-            professor_stats = {
-                'hours_on_campus': hours_on_campus, 
-                'classes_hours': classes_hours,
-                'trips_to_campus': None, 
-                'number_of_classes': number_of_classes,
-                'classes_interval': classes_interval,
-                'day_efficiency': None,
+            stats = {
+                'ambient': ambient,
+                'periods_on_campus': periods_on_campus,
+                'periods_interval': periods_interval,
+                'number_of_periods': number_of_periods,
+                'day_efficiency': day_efficiency,
+                'trips_to_campus': 1
             }
-            ProfessorStatisticsDay.objects.update_or_create(
-                ambient = ambient,
+               
+            ProfessorStatisticsDay.objects.create(
                 professor = professor,
-                day = None,
-                semester = None,
-                defaults = professor_stats,
-            )  
+                timetable = ambient.published_timetable,
+                day = day, 
+                defaults = stats
+            )
+            
+    
                 
         

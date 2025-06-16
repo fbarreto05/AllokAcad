@@ -1,75 +1,26 @@
-import pandas as pd
-import plotly.express as px
 from dash import dcc, html
 from dash.dependencies import Input, Output
+import plotly.graph_objects as go
+import pandas as pd
 from django_plotly_dash import DjangoDash
-from AllokAcads.models import Ambient
+from django.db.models import Sum
+
 from .models import ProfessorStatisticsDay
 
+app1 = DjangoDash('HistogramaProfessores')
+app1.layout = html.Div([
+    dcc.Graph(id='histograma-distribuicao'),
+    html.Div(id='timetable-id-storage-1', style={'display': 'none'})
+])
 
-app = DjangoDash('dashboard')
-
-app.layout = html.Div(
-    style={'fontFamily': 'Arial, sans-serif', 'padding': '20px'},
-    children=[
-        html.H1('Gráfico - 1', style={'textAlign': 'center'}),
-
-        html.Hr(),
-
-        html.H3('Filtro por Ambiente'),
-        dcc.Dropdown(
-            id='ambient-filter',
-            options=[{'label': ambient.name, 'value': ambient.id} for ambient in Ambient.objects.all()],
-            placeholder="Selecione um Ambiente...",
-            style={'marginBottom': '20px'}
-        ),
-        dcc.Graph(id='stats-chart')
-    ]
-)
-@app.callback(
-    Output('stats-chart', 'figure'),
-    [Input('ambient-filter', 'value')]
-)
-def update_chart(selected_ambient_id):
-    if not selected_ambient_id:
-        return px.bar(title='Por favor, selecione um ambiente para visualizar os dados.')
-
-    stats_queryset = ProfessorStatisticsDay.objects.filter(
-        ambient_id=selected_ambient_id
-    ).order_by('profesor__user__name', 'day').values(
-        'profesor__user__name',
-        'day',
-        'hours_on_campus',
-        'classes_hours'
-    )
-
-    if not stats_queryset:
-        return px.bar(title=f'Não há dados de estatísticas para o ambiente selecionado.')
-
-    df = pd.DataFrame(list(stats_queryset))
+@app1.callback(Output('histograma-distribuicao', 'figure'), [Input('timetable-id-storage-1', 'children')])
+def update_histogram(timetable_id):
+    if not timetable_id: return go.Figure()
     
-    df.rename(columns={
-        'profesor__user__name': 'Professor',
-        'hours_on_campus': 'Horas no Campus',
-        'classes_hours': 'Horas em Aula'
-    }, inplace=True)
+    workloads = ProfessorStatisticsDay.objects.filter(timetable_id=timetable_id).values('professor').annotate(total_periods=Sum('number_of_periods'))
+    if not workloads: return go.Figure()
 
-    df_avg = df.groupby('Professor')[['Horas no Campus', 'Horas em Aula']].mean().reset_index()
-
-    fig = px.bar(
-        df_avg,
-        x='Professor',
-        y=['Horas no Campus', 'Horas em Aula'],
-        barmode='group', 
-        title=f'Média de Horas Diárias por Professor',
-        labels={'value': 'Média de Horas', 'variable': 'Métrica'},
-        template='plotly_white'
-    )
-    
-    fig.update_layout(
-        xaxis_title='Professor',
-        yaxis_title='Média de Horas por Dia',
-        legend_title='Métricas'
-    )
-
+    data = [item['total_periods'] for item in workloads]
+    fig = go.Figure(data=[go.Histogram(x=data, marker_color='#007BFF', opacity=0.75)])
+    fig.update_layout(title_text='Distribuição da Carga Horária', template='plotly_white', margin=dict(t=40, b=40, l=40, r=20))
     return fig
