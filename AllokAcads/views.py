@@ -247,7 +247,7 @@ def ambient_config_validate(request, ambientid):
             max_actv_in_a_day = request.POST.get('max_actv_in_a_day')
             min_actv_in_a_cicle = request.POST.get('min_actv_in_a_cicle')
             max_actv_in_a_cicle = request.POST.get('max_actv_in_a_cicle')
-        #a
+
             if picture:
                 picture_path = ambient_instance.picture.path
                 ambient_instance.picture = picture
@@ -633,7 +633,8 @@ def ambient_edit_rooms(request, roomid, ambientid):
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             member = ambient.members.filter(user = user)
-            return render(request, "AllokAcads/ambient_edit_rooms.html", {'room': room, 'ambient': ambient, 'roomid': roomid, 'user': user})
+            roomtypes = ambient[0].classroom_types.all()
+            return render(request, "AllokAcads/ambient_edit_rooms.html", {'room': room, 'ambient': ambient, 'roomid': roomid, 'user': user, 'roomtypes': roomtypes})
         else:
             return redirect('home')
     else:
@@ -1204,7 +1205,7 @@ def profile_edit(request):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         userid = user.userid
-        return render(request, "AllokAcads/profile_edit.html", {'userid' : userid})
+        return render(request, "AllokAcads/profile_edit.html", {'userid' : userid, 'user' : user})
     else:
         return redirect('login')
     
