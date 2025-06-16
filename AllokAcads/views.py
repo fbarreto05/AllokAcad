@@ -633,7 +633,7 @@ def ambient_edit_rooms(request, roomid, ambientid):
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             member = ambient.members.filter(user = user)
-            roomtypes = ambient[0].classroom_types.all()
+            roomtypes = ambient.classroom_types.all()
             return render(request, "AllokAcads/ambient_edit_rooms.html", {'room': room, 'ambient': ambient, 'roomid': roomid, 'user': user, 'roomtypes': roomtypes})
         else:
             return redirect('home')
