@@ -1,13 +1,179 @@
-<form action="{% url 'profile_edit_validate' %}" method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <label for="picture">Foto</label>
-    <input type="file" id="picture" name="picture"><br>
-    <br>
-    <label for="name">Nome</label>
-    <input type="text" id="name" name="name"><br>
-    <label for="description">Descrição</label>
-    <input type="text" id="description" name="description"><br>
-    <br>
-    <button type="submit" id="submit" name="submit">Editar Perfil</button>
-</form>
+{% extends "AllokAcads/base.html" %}
+{% load static %}
 
+{% block title %}AllokAcad | Editar Perfil{% endblock %}
+
+{% block body_class %}profile-edit-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/profile_edit.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="toast-container" class="toast-container">
+    {% for message in messages %}
+        <div class="toast toast-{{ message.tags }}">
+            <div class="toast-icon">
+                {% if message.tags == 'success' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <path d="m9 11 3 3L22 4"></path>
+                    </svg>
+                {% elif message.tags == 'error' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                {% elif message.tags == 'info' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                {% elif message.tags == 'warning' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                {% endif %}
+            </div>
+            <div class="toast-content">
+                <span class="toast-message">{{ message }}</span>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.style.animation = 'slideOutDown 0.4s ease-in forwards'; setTimeout(() => this.parentElement.remove(), 400);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="header">
+    <h1>Editar Perfil</h1>
+    <div class="action-buttons">
+        <a href="{% url 'profile' %}" class="back-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar ao Perfil
+        </a>
+    </div>
+</div>
+
+<div class="edit-container">
+    <div class="edit-card">
+        <div class="card-header">
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h2>Atualizar Informações</h2>
+                <p>Mantenha seus dados sempre atualizados</p>
+            </div>
+        </div>
+
+        <form action="{% url 'profile_edit_validate' %}" method="post" enctype="multipart/form-data" class="edit-form" id="profileForm">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h3>Foto de Perfil</h3>
+                <div class="photo-upload-section">
+                    <div class="current-photo">
+                        {% if user.picture %}
+                            <img src="{{ user.picture.url }}" alt="Foto atual" id="currentPhoto">
+                        {% else %}
+                            <div class="placeholder-photo" id="currentPhoto">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="photo-upload">
+                        <label for="picture" class="upload-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                                <circle cx="12" cy="13" r="3"></circle>
+                            </svg>
+                            Escolher Nova Foto
+                        </label>
+                        <input type="file" id="picture" name="picture" accept="image/*" class="file-input">
+                        <span class="file-hint">Máximo 5MB. Formatos: JPG, PNG, GIF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Informações Pessoais</h3>
+                
+                <div class="form-group">
+                    <label for="name">Nome Completo</label>
+                    <input type="text" id="name" name="name" value="{{ user.name }}" placeholder="Seu nome completo" required>
+                    <span class="form-hint">Como você gostaria de ser chamado no sistema</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Descrição</label>
+                    <textarea id="description" name="description" rows="4" placeholder="Conte um pouco sobre você...">{{ user.description|default:"" }}</textarea>
+                    <span class="form-hint">Uma breve descrição sobre você, seus interesses ou área de atuação</span>
+                </div>
+            </div>
+
+            <div class="form-section readonly-section">
+                <h3>Informações do Sistema</h3>
+                <div class="readonly-info">
+                    <div class="info-item">
+                        <label>ID do Usuário</label>
+                        <div class="readonly-value">{{ user.userid }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>E-mail</label>
+                        <div class="readonly-value">{{ user.email }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Data de Nascimento</label>
+                        <div class="readonly-value">{{ user.birthdate|date:"d/m/Y" }}</div>
+                    </div>
+                </div>
+                <p class="readonly-note">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    Essas informações não podem ser alteradas por questões de segurança
+                </p>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="cancel-button" onclick="window.history.back()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Cancelar
+                </button>
+                <button type="submit" class="save-button" id="saveButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17,21 17,13 7,13 7,21"></polyline>
+                        <polyline points="7,3 7,8 15,8"></polyline>
+                    </svg>
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'js/profile_edit.js' %}"></script>
+{% endblock %}

@@ -1,67 +1,170 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Criar Turma{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-create-classes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_create_classes.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_create_classes.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_classes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+<div class="header">
+    <h1>Criar Nova Turma</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_classes' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar às turmas
+        </a>
+    </div>
+</div>
+
+<div class="create-classes-container">
+    <form class="create-classes-form" action="{% url 'ambient_create_classes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" required><br>
-        <br>
-        <label for="available_schedules">Horários Disponíveis</label>
-        {% if schedules %}
-            <p>Periodos</p>
-                {% for schedule in schedules %}
-                    {% if forloop.counter0|divisibleby:columns %}
-                        <br>
-                        Dia {{ schedule.line|add:"1" }}
-                    {% endif %}
-                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
-                {% endfor %}
-        {% else %}
-            <p>Defina os períodos por dia e os dias por semana para acessar os horários disponíveis</p>
-        {% endif %}
         
-        
-        <br><br>
-        <label for="ideal_classrooms">Salas Ideais</label>
-        <br>
-        {% if classrooms %}
-            {% for classroom in classrooms %}
-                <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-                <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
-            {% endfor %}
-        {% else %}
-            <p>Cadastre salas para poder utilizá-las</p>
-        {% endif%}
-        <br>
-            <label for="favorite_professors">Professores Favoritos</label>
+        <div class="form-section">
+            <h2>Informações Básicas</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome da Turma</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Turma A - Informática 2024" required>
+                <span class="form-hint">Digite um nome identificativo para a turma.</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="number_of_students">Número de Estudantes</label>
+                <input type="number" id="number_of_students" name="number_of_students" placeholder="Ex: 30" min="1" required>
+                <span class="form-hint">Quantidade de alunos na turma.</span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Horários Disponíveis</h2>
+            {% if schedules %}
+                <div class="form-group">
+                    <label>Selecione os períodos disponíveis</label>
+                    <div class="schedules-grid">
+                        {% for schedule in schedules %}
+                            {% if forloop.counter0|divisibleby:columns %}
+                                <div class="day-header">Dia {{ schedule.line|add:"1" }}</div>
+                            {% endif %}
+                            <div class="schedule-item">
+                                <input type="checkbox" id="schedule_{{ schedule.id }}" name="available_schedules" value="{{ schedule.id }}">
+                                <label for="schedule_{{ schedule.id }}">Período {{ forloop.counter0|add:"1" }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Defina os períodos por dia e os dias por semana nas configurações do ambiente para acessar os horários disponíveis.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-section">
+            <h2>Salas Ideais</h2>
+            {% if classrooms %}
+                <div class="form-group">
+                    <label>Selecione as salas preferenciais</label>
+                    <div class="items-list">
+                        {% for classroom in classrooms %}
+                            <div class="item-with-weight">
+                                <div class="item-info">
+                                    <input type="checkbox" id="classroom_{{ classroom.id }}" name="ideal_classrooms" value="{{ classroom.id }}">
+                                    <label for="classroom_{{ classroom.id }}">{{ classroom.name }}</label>
+                                </div>
+                                <div class="weight-control">
+                                    <label for="classroom_weight_{{ classroom.id }}">Prioridade:</label>
+                                    <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
+                                    <span class="weight-value">100%</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Cadastre salas nos recursos para poder utilizá-las.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-section">
+            <h2>Professores Favoritos</h2>
             {% if professors %}
-                <br>
-                {% for professor in professors %}
-                    <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
-                    <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
-                {% endfor %}
+                <div class="form-group">
+                    <label>Selecione os professores preferenciais</label>
+                    <div class="items-list">
+                        {% for professor in professors %}
+                            <div class="item-with-weight">
+                                <div class="item-info">
+                                    <input type="checkbox" id="professor_{{ professor.id }}" name="favorite_professors" value="{{ professor.id }}">
+                                    <label for="professor_{{ professor.id }}">{{ professor.user.name }}</label>
+                                </div>
+                                <div class="weight-control">
+                                    <label for="professor_weight_{{ professor.id }}">Prioridade:</label>
+                                    <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
+                                    <span class="weight-value">100%</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             {% else %}
-                <p>Convide professores para poder utilizá-los</p>
+                <div class="empty-state">
+                    <p>Convide professores para o ambiente para poder utilizá-los.</p>
+                </div>
             {% endif %}
-        <br>
-            <label for="necessary_subjects">Matérias Necessárias</label>
-            <br>
+        </div>
+
+        <div class="form-section">
+            <h2>Matérias Necessárias</h2>
             {% if subjects %}
-                {% for subject in subjects %}
-                    <input type="checkbox" name="necessary_subjects" value="{{ subject.id }}">{{ subject.name }}
-                    <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}"><br>
-                    <br>
-                {% endfor %}
+                <div class="form-group">
+                    <label>Selecione as matérias e defina a quantidade de períodos</label>
+                    <div class="subjects-list">
+                        {% for subject in subjects %}
+                            <div class="subject-item">
+                                <div class="subject-info">
+                                    <input type="checkbox" id="subject_{{ subject.id }}" name="necessary_subjects" value="{{ subject.id }}">
+                                    <label for="subject_{{ subject.id }}">{{ subject.name }}</label>
+                                </div>
+                                <div class="periods-control">
+                                    <label for="periods_{{ subject.id }}">Períodos:</label>
+                                    <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}" min="0" max="20" placeholder="0">
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             {% else %}
-                <p>Cadastre matérias para poder utilizá-las</p>
+                <div class="empty-state">
+                    <p>Cadastre matérias nos recursos para poder utilizá-las.</p>
+                </div>
             {% endif %}
-        <br>
-        <label for="number_of_students">Número de Estudantes</label>
-        <input type="number" id="number_of_students" name="number_of_students" required><br>
-        <br>
-        <button type="submit" id="submit" name="submit">Criar</button>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_classes' ambient.ambientid %}" class="cancel-button">Cancelar</a>
+            <button type="submit" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Criar Turma
+            </button>
+        </div>
     </form>
+</div>
 {% endblock content %}
-
-

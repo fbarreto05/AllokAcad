@@ -1,22 +1,157 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Criar Tipo de Administrador{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-create-admtypes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_create_admtypes.css' %}">
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_admtypes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+<div class="header">
+    <h1>Criar Tipo de Administrador</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_admtypes' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar aos tipos
+        </a>
+    </div>
+</div>
+
+<div class="create-admtypes-container">
+    <form class="create-admtypes-form" action="{% url 'ambient_create_admtypes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" required><br>
-        <label for="can_configure_ambient">Pode Configurar o Ambiente</label>
-        <input type="checkbox" id="can_configure_ambient" name="can_configure_ambient"><br>
-        <label for="can_gerenciate_members">Pode Gerenciar Membros</label>
-        <input type="checkbox" id="can_gerenciate_members" name="can_gerenciate_members"><br>
-        <label for="can_register_resources">Pode Gerenciar Recursos</label>
-        <input type="checkbox" id="can_register_resources" name="can_register_resources"><br>
-        <label for="can_run_atribuition">Pode Executar a Atribuição</label>
-        <input type="checkbox" id="can_run_atribuition" name="can_run_atribuition"><br>
-        <label for="can_run_alocation">Pode Executar a Alocação</label>
-        <input type="checkbox" id="can_run_alocation" name="can_run_alocation"><br>
-        <br>
-        <button type="submit" id="submit" name="submit">Enviar</button>
+        
+        <div class="form-section">
+            <h2>Informações Básicas</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome do Tipo de Administrador</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Coordenador, Supervisor, Gestor..." required>
+                <span class="form-hint">Digite um nome que identifique este tipo de administrador.</span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Permissões do Administrador</h2>
+            <p class="section-description">Defina quais ações este tipo de administrador poderá realizar no sistema.</p>
+            
+            <div class="permissions-grid">
+                <div class="permission-item">
+                    <div class="permission-info">
+                        <div class="permission-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h4a2 2 0 0 1 2 2v1.28c.6.35 1 .98 1 1.72 0 .74-.4 1.39-1 1.73V15a2 2 0 0 1-2 2h-4v1.27c.6.35 1 .98 1 1.73a2 2 0 1 1-4 0c0-.74.4-1.39 1-1.73V17H7a2 2 0 0 1-2-2v-1.28c-.6-.35-1-.98-1-1.72 0-.74.4-1.39 1-1.73V9a2 2 0 0 1 2-2h4V5.73c-.6-.35-1-.98-1-1.73a2 2 0 0 1 2-2Z"></path>
+                            </svg>
+                        </div>
+                        <div class="permission-details">
+                            <label for="can_configure_ambient">Configurar Ambiente</label>
+                            <span class="permission-description">Permite alterar configurações gerais do ambiente</span>
+                        </div>
+                    </div>
+                    <div class="permission-toggle">
+                        <input type="checkbox" id="can_configure_ambient" name="can_configure_ambient">
+                        <label for="can_configure_ambient" class="toggle-label"></label>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <div class="permission-info">
+                        <div class="permission-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div class="permission-details">
+                            <label for="can_gerenciate_members">Gerenciar Membros</label>
+                            <span class="permission-description">Permite adicionar, remover e gerenciar membros</span>
+                        </div>
+                    </div>
+                    <div class="permission-toggle">
+                        <input type="checkbox" id="can_gerenciate_members" name="can_gerenciate_members">
+                        <label for="can_gerenciate_members" class="toggle-label"></label>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <div class="permission-info">
+                        <div class="permission-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            </svg>
+                        </div>
+                        <div class="permission-details">
+                            <label for="can_register_resources">Gerenciar Recursos</label>
+                            <span class="permission-description">Permite cadastrar e gerenciar recursos do sistema</span>
+                        </div>
+                    </div>
+                    <div class="permission-toggle">
+                        <input type="checkbox" id="can_register_resources" name="can_register_resources">
+                        <label for="can_register_resources" class="toggle-label"></label>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <div class="permission-info">
+                        <div class="permission-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 12l2 2 4-4"></path>
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                        </div>
+                        <div class="permission-details">
+                            <label for="can_run_atribuition">Executar Atribuição</label>
+                            <span class="permission-description">Permite executar o processo de atribuição</span>
+                        </div>
+                    </div>
+                    <div class="permission-toggle">
+                        <input type="checkbox" id="can_run_atribuition" name="can_run_atribuition">
+                        <label for="can_run_atribuition" class="toggle-label"></label>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <div class="permission-info">
+                        <div class="permission-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 6l4-4 4 4"></path>
+                                <path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"></path>
+                                <path d="M20 22l-6.828-6.828A4 4 0 0 1 12 12.3"></path>
+                            </svg>
+                        </div>
+                        <div class="permission-details">
+                            <label for="can_run_alocation">Executar Alocação</label>
+                            <span class="permission-description">Permite executar o processo de alocação</span>
+                        </div>
+                    </div>
+                    <div class="permission-toggle">
+                        <input type="checkbox" id="can_run_alocation" name="can_run_alocation">
+                        <label for="can_run_alocation" class="toggle-label"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_admtypes' ambient.ambientid %}" class="cancel-button">Cancelar</a>
+            <button type="submit" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                Criar Tipo de Administrador
+            </button>
+        </div>
     </form>
+</div>
 {% endblock content %}

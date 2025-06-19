@@ -1,13 +1,53 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Novo Tipo de Sala{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-create-roomtypes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_create_roomtypes.css' %}">
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_roomtypes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" required><br>
-        <br>
-        <button type="submit" id="submit" name="submit">Criar</button>
-    </form>
-{% endblock content %}
+<div class="header">
+    <h1>Novo Tipo de Sala</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_roomtypes' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar aos tipos
+        </a>
+    </div>
+</div>
 
+<div class="create-roomtypes-container">
+    <form class="create-roomtypes-form" action="{% url 'ambient_create_roomtypes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-section">
+            <h2>Informações do Tipo</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome do Tipo de Sala</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Laboratório, Auditório, Sala de Aula..." required>
+                <span class="form-hint">Digite o nome que identifica este tipo de ambiente.</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_roomtypes' ambient.ambientid %}" class="cancel-button">Cancelar</a>
+            <button type="submit" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"></path>
+                    <path d="M5 21V7l8-4v18"></path>
+                    <path d="M19 21V11l-6-4"></path>
+                </svg>
+                Criar Tipo de Sala
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock content %}

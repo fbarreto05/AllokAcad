@@ -98,12 +98,12 @@
 
 .exit-item {
     margin-left: auto;
-    color: #dc2626;
+    color: #6c757d;
 }
 
 .exit-item:hover {
-    background-color: #fef2f2;
-    color: #dc2626;
+    background-color: #f8f9fa;
+    color: #4361ee;
 }
 
 .ambient-container {
@@ -214,6 +214,24 @@
     color: #ffffff;
     font-size: 2.5rem;
     font-weight: 600;
+}
+
+.ambient-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ambient-id {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4361ee;
+    background-color: rgba(67, 97, 238, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: inline-block;
+    width: fit-content;
 }
 
 .ambient-description {
@@ -412,4 +430,62 @@
 .activity-item svg {
     color: #4361ee;
     flex-shrink: 0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.delete-ambient-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.delete-ambient-button:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.delete-ambient-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .delete-ambient-button {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
 }

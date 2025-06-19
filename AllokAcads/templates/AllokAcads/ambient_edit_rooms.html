@@ -1,23 +1,74 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Editar Sala{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-edit-rooms-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_edit_rooms.css' %}">
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_rooms_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+<div class="header">
+    <h1>Editar Sala: {{ room.name }}</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_rooms' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar às salas
+        </a>
+    </div>
+</div>
+
+<div class="edit-rooms-container">
+    <form class="edit-rooms-form" action="{% url 'ambient_edit_rooms_validate' room.id ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" value="{{ room.name }}" required><br>
-        <br>
-        <label for="roomtype">Tipo de Sala</label>
-        <select id="roomtype" name="roomtype">
-            {% for roomtype in roomtypes %}
-                <option value="{{ roomtype.id }}">{{ roomtype.name }}</option>
-            {% endfor %}
-        </select>
-        <label for="capacity">Capacidade</label>
-        <input type="number" id="capacity" name="capacity" value="{{ room.classroom_capacity }}" required><br>
-        <br>
-        <button type="submit" id="submit" name="submit">Criar</button>
+        
+        <div class="form-section">
+            <h2>Informações da Sala</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome da Sala</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Laboratório de Informática 1" value="{{ room.name }}" required>
+                <span class="form-hint">Digite um nome identificativo para a sala.</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="roomtype">Tipo de Sala</label>
+                <select id="roomtype" name="roomtype" required>
+                    <option value="">Selecione o tipo de sala</option>
+                    {% for roomtype in roomtypes %}
+                        <option value="{{ roomtype.id }}" {% if roomtype.id == room.roomtype.id %}selected{% endif %}>{{ roomtype.name }}</option>
+                    {% endfor %}
+                </select>
+                <span class="form-hint">Escolha o tipo que melhor descreve esta sala.</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="capacity">Capacidade</label>
+                <input type="number" id="capacity" name="capacity" placeholder="Ex: 40" min="1" value="{{ room.classroom_capacity }}" required>
+                <span class="form-hint">Número máximo de pessoas que a sala comporta.</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_rooms' ambient.ambientid %}" class="cancel-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6L6 18"></path>
+                    <path d="M6 6l12 12"></path>
+                </svg>
+                Cancelar
+            </a>
+            <button type="submit" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6L9 17l-5-5"></path>
+                </svg>
+                Salvar Alterações
+            </button>
+        </div>
     </form>
-{% endblock content %}
-
-
+</div>
+{% endblock %}

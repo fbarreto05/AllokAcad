@@ -1,13 +1,80 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Turmas{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-classes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_classes.css' %}">
+{% endblock %}
 
 {% block content %}
-    <br>
-    {% for class in classes %}
-        </br>
-        <a href="">{{ class.name }}</a>
-        <a href="{% url 'ambient_edit_classes' class.id ambient.ambientid %}">Editar</a>
-        <a href="{% url 'ambient_delete_classes' class.id ambient.ambientid %}">Excluir</a>
-    {% endfor %}
-    <br><br>
-    <a href="{% url 'ambient_create_classes' ambient.ambientid %}">Criar Turma</a>
+<div class="header">
+    <h1>Turmas</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_resources' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar aos recursos
+        </a>
+        <a href="{% url 'ambient_create_classes' ambient.ambientid %}" class="create-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nova Turma
+        </a>
+    </div>
+</div>
+
+<div class="classes-container">
+    {% if classes %}
+        <div class="classes-grid">
+            {% for class in classes %}
+                <div class="class-item">
+                    <div class="class-info">
+                        <h3 class="class-name">{{ class.name }}</h3>
+                        {% if class.formation %}
+                            <p class="class-formation">{{ class.formation.name }}</p>
+                        {% endif %}
+                        {% if class.num_uses %}
+                            <p class="class-details">{{ class.num_uses }} aulas por semana</p>
+                        {% endif %}
+                    </div>
+                    <div class="class-actions">
+                        <a href="{% url 'ambient_edit_classes' class.id ambient.ambientid %}" class="action-button edit-button" title="Editar turma">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Editar
+                        </a>
+                        <a href="{% url 'ambient_delete_classes' class.id ambient.ambientid %}" class="action-button delete-button" title="Excluir turma" onclick="return confirm('Tem certeza que deseja excluir esta turma?')">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Excluir
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-items">
+            <h3>Nenhuma turma cadastrada</h3>
+            <p>Comece criando sua primeira turma para organizar melhor suas aulas.</p>
+            <a href="{% url 'ambient_create_classes' ambient.ambientid %}" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Criar primeira turma
+            </a>
+        </div>
+    {% endif %}
+</div>
 {% endblock content %}
