@@ -120,13 +120,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: formData
-            });
-
-            if (response.redirected) {
+            });            if (response.redirected || response.url.includes('/login')) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
                 
                 setTimeout(() => {
-                    window.location.href = response.url;
+                    window.location.href = '/login';
+                }, 2000);
+            } else if (response.ok) {
+                showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
+                
+                setTimeout(() => {
+                    window.location.href = '/login';
                 }, 2000);
             } else {
                 submitButton.innerHTML = originalText;
