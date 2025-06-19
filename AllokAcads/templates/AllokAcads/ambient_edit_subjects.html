@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_subjects_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+    <form action="{% url 'ambient_edit_subjects_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <br>
         <label for="name">Nome</label>
@@ -41,6 +41,6 @@
         {% else %}
             <p>Cadastre formações para poder utilizá-las</p>
             {% endif %}
-        <button type="submit" id="submit" name="submit">Criar</button>
+        <button type="submit" id="submit" name="submit">Editar</button>
     </form>
 {% endblock content %}
