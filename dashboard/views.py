@@ -1,22 +1,22 @@
 from django.shortcuts import render
 from django.db.models import Avg
 from AllokAcads.models import Ambient
-from .models import Semester
+from . import services
 
 def professor_dashboard_view(request):
-    selected_ambient_id = request.GET.get('ambient')
-    selected_semester_id = request.GET.get('semester')
-
-    ambients = Ambient.objects.all()
-    semesters = Semester.objects.none()
-    
+    average_class_interval = services.calculate_average_class_interval()
+    average_trips = services.calculate_average_trips()
+    average_classes = services.calculate_average_classes()
+    number_of_professors = services.calculate_number_professors()
+    timetable_quality = services.get_timetable_quality()
+    ambient_list = services.get_ambient_list()
     context = {
-        'ambients': ambients,
-        'semesters': semesters,
-        'selected_ambient_id': int(selected_ambient_id) if selected_ambient_id else None,
-        'selected_semester_id': int(selected_semester_id) if selected_semester_id else None,
-        'average_class_interval': "N/D", 'average_trips': "N/D",
-        'average_classes': "N/D", 'timetable_quality': "N/D"
+        'average_class_interval': average_class_interval, 
+        'average_trips': average_trips,
+        'average_classes': average_classes,
+        'number_of_professors': number_of_professors,
+        'timetable_quality': timetable_quality,
+        'ambients' : ambient_list,
     }
     return render(request, 'dashboard/professor.html', context)
 
