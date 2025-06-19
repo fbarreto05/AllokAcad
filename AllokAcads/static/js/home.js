@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideOutDown 0.4s ease-in forwards';
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 400);
+            }
+        }, 5000);
+    });
 
     const ambientCards = document.querySelectorAll('.ambient-card');
     const modal = document.getElementById('join-ambient-modal');

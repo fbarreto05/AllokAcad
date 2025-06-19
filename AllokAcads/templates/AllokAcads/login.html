@@ -26,6 +26,18 @@
                     <h2>Bem-vindo(a) de volta</h2>
                     <p class="subtitle">Entre com suas credenciais para continuar</p>
                     
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
                     <form id="loginForm" action="{% url 'login_validate' %}" method="post">
                         {% csrf_token %}
                         <div class="form-group">
@@ -50,13 +62,6 @@
                                 </button>
                             </div>
                             <span class="error-message" id="passwordError"></span>
-                        </div>
-                        
-                        <div class="form-options">
-                            <div class="remember-me">
-                                <input type="checkbox" id="remember">
-                                <label for="remember">Lembrar de mim</label>
-                            </div>
                         </div>
                         
                         <button type="submit" class="login-button">

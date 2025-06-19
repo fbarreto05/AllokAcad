@@ -1,0 +1,257 @@
+.ambient-edit-formations-page {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding-bottom: 40px;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header h1::before {
+    content: "";
+    width: 4px;
+    height: 2rem;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    border-radius: 2px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.cancel-button,
+.save-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    transition: all 0.2s;
+}
+
+.cancel-button {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+
+.cancel-button:hover {
+    background-color: #e5e7eb;
+}
+
+.save-button {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+}
+
+.save-button:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+.edit-formations-container {
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    padding-top: 20px;
+}
+
+.edit-formations-form {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    overflow: visible;
+    border-left: 4px solid #ff9800;
+    position: relative;
+    animation: fadeInUp 0.6s ease forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.edit-formations-form::before {
+    content: "MODO EDIÇÃO";
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.form-section {
+    padding: 2rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 1.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #ff9800;
+    position: relative;
+}
+
+.form-section h2::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, #ff9800, #f57c00);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background-color: #fff;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:not([value=""]),
+.form-group input[type="text"][value]:not([value=""]) {
+    background: linear-gradient(90deg, #fff3e0 0%, #ffffff 100%);
+    border-color: #ffb74d;
+    font-weight: 500;
+}
+
+.form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #ff9800;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+}
+
+.form-group input[type="text"]::placeholder {
+    color: #9ca3af;
+}
+
+.form-group input[type="text"]:hover {
+    border-color: #ffcc80;
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.form-actions {
+    padding: 2rem;
+    background: #fff8e1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    border-top: 1px solid #ffcc80;
+}
+
+.form-actions .cancel-button,
+.form-actions .save-button {
+    min-width: 140px;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+      .header h1 {
+        text-align: center;
+        font-size: 1.5rem;
+        justify-content: center;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .edit-formations-container {
+        margin: 0 1rem;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        padding: 1.5rem;
+        flex-direction: column;
+    }
+    
+    .form-actions .cancel-button,
+    .form-actions .save-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .edit-formations-form::before {
+        right: 1rem;
+        top: -8px;
+        font-size: 0.7rem;
+        padding: 4px 12px;
+    }
+}
+
+.cancel-button:focus,
+.save-button:focus {
+    outline: none;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
