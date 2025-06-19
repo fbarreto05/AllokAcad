@@ -24,41 +24,6 @@
 </div>
 
 <div class="resources-grid">
-    <a href="{% url 'ambient_classes' ambient.ambientid %}" class="resource-card">
-        <div class="resource-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        </div>
-        <h3>Turmas</h3>
-        <p>Gerenciar turmas e suas preferências</p>
-    </a>
-    
-    <a href="{% url 'ambient_rooms' ambient.ambientid %}" class="resource-card">
-        <div class="resource-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                <path d="M3 9h18"></path>
-            </svg>
-        </div>
-        <h3>Salas</h3>
-        <p>Gerenciar salas de aula</p>
-    </a>
-    
-    <a href="{% url 'ambient_subjects' ambient.ambientid %}" class="resource-card">
-        <div class="resource-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-            </svg>
-        </div>
-        <h3>Matérias</h3>
-        <p>Gerenciar matérias e conteúdos</p>
-    </a>
-    
     <a href="{% url 'ambient_formations' ambient.ambientid %}" class="resource-card">
         <div class="resource-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -67,7 +32,7 @@
             </svg>
         </div>
         <h3>Formações</h3>
-        <p>Gerenciar formações acadêmicas</p>
+        <p>Base acadêmica do ambiente</p>
     </a>
     
     <a href="{% url 'ambient_roomtypes' ambient.ambientid %}" class="resource-card">
@@ -80,7 +45,7 @@
             </svg>
         </div>
         <h3>Tipos de Sala</h3>
-        <p>Gerenciar categorias de salas</p>
+        <p>Categorias de salas disponíveis</p>
     </a>
     
     <a href="{% url 'ambient_admtypes' ambient.ambientid %}" class="resource-card">
@@ -93,7 +58,42 @@
             </svg>
         </div>
         <h3>Tipos de Administrador</h3>
-        <p>Gerenciar níveis de permissão</p>
+        <p>Níveis de permissão do ambiente</p>
+    </a>
+    
+    <a href="{% url 'ambient_rooms' ambient.ambientid %}" class="resource-card">
+        <div class="resource-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                <path d="M3 9h18"></path>
+            </svg>
+        </div>
+        <h3>Salas</h3>
+        <p>Espaços físicos do ambiente</p>
+    </a>
+    
+    <a href="{% url 'ambient_subjects' ambient.ambientid %}" class="resource-card">
+        <div class="resource-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+        </div>
+        <h3>Matérias</h3>
+        <p>Conteúdos e disciplinas</p>
+    </a>
+    
+    <a href="{% url 'ambient_classes' ambient.ambientid %}" class="resource-card">
+        <div class="resource-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        </div>
+        <h3>Turmas</h3>
+        <p>Organização final dos estudantes</p>
     </a>
 </div>
 {% endblock %}
