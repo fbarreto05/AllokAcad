@@ -1,19 +1,29 @@
 from AllokAcads.models import Ambient
+from dashboard.models import ProfessorStatistics
+from django.db.models import Sum, Avg, Min, Max
 
-def calculate_average_class_interval():
-    return int(10)
+class calculateProfessor():
+    def average_periods_interval():
+        result = ProfessorStatistics.objects.aggregate(average_periods = Avg('periods_interval'))
+        return float(result['average_periods'])
 
-def calculate_average_trips():
-    return int(10)
+    def average_trips():
+        result = ProfessorStatistics.objects.aggregate(trips_to_campus = Avg('trips_to_campus'))
+        return float(result['trips_to_campus'])
 
-def calculate_average_classes():
-    return int(10)
+    def average_periods():
+        result = ProfessorStatistics.objects.aggregate(average_periods = Avg('number_of_periods'))
+        return float(result['average_periods'])
 
-def calculate_number_professors(): 
-    return int(10)
+    def number_professors(): 
+        return int(ProfessorStatistics.objects.all().count())
 
-def get_timetable_quality():
-    return 100
+    def get_timetable_quality():
+        return 100
 
-def get_ambient_list():
-    return Ambient.objects.all()
+    def get_ambient_list():
+        return Ambient.objects.all()
+    
+    def get_professor_periods():
+        result = ProfessorStatistics.objects.aggregate(professor_periods = ('id', 'number_of_periods'))
+        return result['professor_periods'] 
