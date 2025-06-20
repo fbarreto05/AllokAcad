@@ -38,13 +38,7 @@
         <main>
             <ul class="graphics-container">
                 <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='Hello'%}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
+                        {% plotly_app name='GraficoDeBarras'%}
                 </li>
                 <li class="graphic">
                     {% if dash_context %}

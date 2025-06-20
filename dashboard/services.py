@@ -24,6 +24,6 @@ class calculateProfessor():
     def get_ambient_list():
         return Ambient.objects.all()
     
-    def get_professor_periods():
-        result = ProfessorStatistics.objects.aggregate(professor_periods = ('id', 'number_of_periods'))
-        return result['professor_periods'] 
+    def get_professor_average_periods_list():
+        result = ProfessorStatistics.objects.values('name').annotate(periods_list = Avg('number_of_periods')).order_by('name')
+        return list(result)

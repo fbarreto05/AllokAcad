@@ -3,6 +3,7 @@ from django.db import models
 class ProfessorStatistics(models.Model):
     #ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
     #professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
+    name = models.CharField(max_length = 20, null=True)
     semester = models.CharField(max_length = 100)
     
     day = models.IntegerField()
@@ -17,7 +18,7 @@ class ProfessorStatistics(models.Model):
     
 class SpaceStatistics(models.Model): 
     #ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
-    #Sclassroom = models.ForeignKey('AllokAcads.Classroom', on_delete = models.CASCADE)
+    #classroom = models.ForeignKey('AllokAcads.Classroom', on_delete = models.CASCADE)
     semester = models.CharField(max_length = 100)
     
     create_at = models.DateField(auto_now_add = True)
