@@ -38,16 +38,16 @@
         <main>
             <ul class="graphics-container">
                 <li class="graphic">
-                        {% plotly_app name='GraficoDeBarras'%}
+                   
+                        {% plotly_app name="GraficoDeBarras" initial_arguments=contexto_para_dash %}
+        
                 </li>
                 <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='' initial_arguments=dash_context %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
+                        {% if dash_data_graph_bar.data %}
+                            {% plotly_app name="GraficoDeBarras" initial_arguments="" %}
+
+                        {% else %}
+                            {# Mensagem que aparece se os dados não forem carregados (ex: antes de selecionar filtros) #}
                 </li>
                 <li class="graphic">
                     {% if dash_context %}
