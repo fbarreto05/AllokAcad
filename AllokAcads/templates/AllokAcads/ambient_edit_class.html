@@ -28,7 +28,7 @@
         {% if classrooms %}
             {% for classroom in classrooms %}
                 <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-                <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+                <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
             {% endfor %}
         {% else %}
             <p>Cadastre salas para poder utilizá-las</p>
@@ -39,7 +39,7 @@
                 <br>
                 {% for professor in professors %}
                     <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
-                    <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
+                    <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
                 {% endfor %}
             {% else %}
                 <p>Convide professores para poder utilizá-los</p>

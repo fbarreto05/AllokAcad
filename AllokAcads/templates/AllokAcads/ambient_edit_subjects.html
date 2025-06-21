@@ -1,7 +1,7 @@
 {% include 'AllokAcads/ambient_bar.html' %}
 
 {% block content %}
-    <form action="{% url 'ambient_edit_subjects_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+    <form action="{% url 'ambient_edit_subjects_validate' subjectid ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <br>
         <label for="name">Nome</label>
@@ -12,7 +12,7 @@
             <br>
             {% for classroom in classrooms %}
                 <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-                <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
+                <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
             {% endfor %}
         {% else %}
             <p>Cadastre salas para poder utilizá-las</p>
@@ -23,7 +23,7 @@
             <br>
             {% for professor in professors %}
                 <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
-                <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
+                <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
                 <br>
             {% endfor %}
         {% else %}
@@ -35,7 +35,7 @@
             <br>
             {% for formation in formations %}
                 <input type="checkbox" name="relevant_formations" value="{{ formation.id }}">{{ formation.name }}
-                <input type="range" min="0" max="100" value="100" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}"><br>
+                <input type="range" min="0" max="100" value="75" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}"><br>
                 <br>
             {% endfor %}
         {% else %}

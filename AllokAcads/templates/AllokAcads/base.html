@@ -32,14 +32,14 @@
                 <div class="user-info">
                     <div class="user-avatar">
                         {% if user.profile_picture %}
-                        <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}">
+                        <img src="{{ user.profile_picture.url }}" alt="{{ user.name }}">
                         {% else %}
-                        <div class="user-initial">{{ username|default:"I"|make_list|first|upper }}</div>
+                        <div class="user-initial">{{ user.name|default:"I"|make_list|first|upper }}</div>
                         {% endif %}
                     </div>
                     <div class="user-text">
                         <span class="welcome-text">Bem-vindo(a),</span>
-                        <h2 class="username" title="{{ username }}">{{ username|default:"Usuário" }}</h2>
+                        <h2 class="username" title="{{ user.name }}">{{ user.name|default:"Usuário" }}</h2>
                     </div>
                 </div>
                 
