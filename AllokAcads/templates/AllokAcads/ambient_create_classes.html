@@ -31,6 +31,7 @@
     <form class="create-classes-form" action="{% url 'ambient_create_classes_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         
+
         <div class="form-section">
             <h2>Informações Básicas</h2>
             
@@ -85,7 +86,7 @@
                                 </div>
                                 <div class="weight-control">
                                     <label for="classroom_weight_{{ classroom.id }}">Prioridade:</label>
-                                    <input type="range" min="0" max="100" value="100" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
+                                    <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
                                     <span class="weight-value">100%</span>
                                 </div>
                             </div>
@@ -113,13 +114,14 @@
                                 </div>
                                 <div class="weight-control">
                                     <label for="professor_weight_{{ professor.id }}">Prioridade:</label>
-                                    <input type="range" min="0" max="100" value="100" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
+                                    <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
                                     <span class="weight-value">100%</span>
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
                 </div>
+
             {% else %}
                 <div class="empty-state">
                     <p>Convide professores para o ambiente para poder utilizá-los.</p>

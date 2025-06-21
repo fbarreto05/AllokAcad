@@ -29,6 +29,7 @@ class Member(models.Model):
     prefered_classrooms = models.ManyToManyField('Classroom_Preference')
     prefered_subjects = models.ManyToManyField('Subject_Preference')
     num_uses = models.IntegerField(default=0, null=True)
+    occupated_schedules = models.ManyToManyField('Schedule_Preference', related_name='occupated')
 
 class Class(models.Model):
     name = models.CharField(max_length=40)
@@ -44,6 +45,7 @@ class Classroom(models.Model):
     classroom_type = models.ForeignKey('ClassroomTP', null=True, on_delete=models.SET_NULL)
     classroom_capacity = models.IntegerField()
     num_uses = models.IntegerField(default=0, null=True)
+    occupated_schedules = models.ManyToManyField('Schedule_Preference')
 
 class Subject(models.Model):
     name = models.CharField(max_length=40)
