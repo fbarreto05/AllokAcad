@@ -111,11 +111,11 @@
                             <div class="formation-details">
                                 <div class="form-group">
                                     <label for="didatic_experience_time_{{ formation.id }}">Tempo de Experiência Didática (anos)</label>
-                                    <input type="number" id="didatic_experience_time_{{ formation.id }}" name="didatic_experience_time_{{ formation.id }}" class="form-control">
+                                    <input type="number" id="didatic_experience_time_{{ formation.id }}" name="didatic_experience_time_{{ formation.id }}" class="form-control" min="0">
                                 </div>
                                 <div class="form-group">
                                     <label for="professional_experience_time_{{ formation.id }}">Tempo de Experiência Profissional (anos)</label>
-                                    <input type="number" id="professional_experience_time_{{ formation.id }}" name="professional_experience_time_{{ formation.id }}" class="form-control">
+                                    <input type="number" id="professional_experience_time_{{ formation.id }}" name="professional_experience_time_{{ formation.id }}" class="form-control" min="0">
                                 </div>
                             </div>
                         </div>
@@ -134,12 +134,12 @@
                 <div class="form-row">
                     <div class="form-group half">
                         <label for="time_in_campus">Tempo no Campus (anos)</label>
-                        <input type="number" id="time_in_campus" name="time_in_campus" class="form-control" value="{{ member.time_in_campus }}">
+                        <input type="number" id="time_in_campus" name="time_in_campus" class="form-control" min="0" value="{{ member.time_in_campus }}">
                     </div>
                     
                     <div class="form-group half">
                         <label for="time_in_institution">Tempo na Instituição (anos)</label>
-                        <input type="number" id="time_in_institution" name="time_in_institution" class="form-control" value="{{ member.time_in_institution }}">
+                        <input type="number" id="time_in_institution" name="time_in_institution" class="form-control" min="0" value="{{ member.time_in_institution }}">
                     </div>
                 </div>
             </div>
@@ -182,4 +182,8 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_profile_edit.js' %}"></script>
 {% endblock %}
