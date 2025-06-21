@@ -2877,8 +2877,10 @@ def ambient_delete(request, ambientid):
 def profile_delete(request):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
+        userauth = UserAuth.objects.get(id = user.id)
         user.delete()
         logoutauth(request)
+        userauth.delete()
         return redirect('login')
     else:
         return redirect('login')
