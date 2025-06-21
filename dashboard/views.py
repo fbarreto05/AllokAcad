@@ -1,6 +1,4 @@
 from django.shortcuts import render
-from django.db.models import Avg
-from AllokAcads.models import Ambient
 from .services import calculateProfessor
 from .dash_app import app 
 import json
