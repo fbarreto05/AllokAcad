@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Dashboard de Análise</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/space_dashboard.css' %}">
+
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="dashboard-name">
+                <h2>Dashboard dos espaços</h2>
+                <p>Mostra métricas dos espaços no semester selecionado</p>
+            </div>
+            <ul class="indicators">
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
+                <li class="indicator">1</li>
+            </ul>
+            <div class="header-filters-container">
+                <select name="ambient" id="ambient-select">
+                    <option value="">Ambiente</option>
+
+                    {% for ambient in ambients %}
+                        <option value="{{ ambient.id }}">{{ ambient.name }}</option>
+                    {% endfor %}
+
+                </select>
+                <select name="semester" id="semester-select">
+                    <option>Semestre</option>
+
+                    {% for semester in semesters %}
+                        <option value="{{ semester.id }}">{{ semester.name }}</option>
+                    {% endfor %}
+
+                </select>
+            </div>
+        </header>
+        <main>
+            <ul class="graphics-container">
+                <li class="graphic">
+                    2
+                </li>
+                <li class="graphic">
+                 2
+                </li>
+                <li class="graphic">
+                    2
+                </li>
+                <li class="graphic">
+                    2
+                </li>
+            </ul>
+        </main>
+        <footer>
+            <nav class="switch-dashboard">
+                <a href="?view = spaces" class="button-active">Espaços</a>
+                <a href="?view = professors" class="button">Professores</a>
+            </nav>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,13 +1,155 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Salas{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-rooms-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_rooms.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_rooms.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-    <br>
-    {% for room in rooms %}
-        </br>
-        <a href="">{{ room.name }}</a>
-        <a href="{% url 'ambient_edit_rooms' room.id ambient.ambientid %}">Editar</a>
-        <a href="{% url 'ambient_delete_rooms' room.id ambient.ambientid %}">Excluir</a>
-    {% endfor %}
-    <br><br>
-    <a href="{% url 'ambient_create_rooms' ambient.ambientid %}">Criar Sala</a>
+<div class="header">
+    <div class="header-content">
+        <div class="header-text">
+            <h1>Salas do Ambiente <span class="rooms-count">({{ rooms|length }})</span></h1>
+            <p class="header-subtitle">Gerencie as salas disponíveis para suas atividades</p>
+        </div>
+    </div>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_resources' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar aos recursos
+        </a>
+        <a href="{% url 'ambient_create_rooms' ambient.ambientid %}" class="create-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+            Nova Sala
+        </a>
+    </div>
+</div>
+
+<div class="rooms-container">
+    {% if rooms %}
+        <div class="rooms-gallery">
+            {% for room in rooms %}
+                <div class="room-card">
+                    <div class="room-visual">
+                        <div class="room-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                                <path d="M8 14h.01"></path>
+                                <path d="M12 14h.01"></path>
+                                <path d="M16 14h.01"></path>
+                                <path d="M8 18h.01"></path>
+                                <path d="M12 18h.01"></path>
+                                <path d="M16 18h.01"></path>
+                            </svg>
+                        </div>
+                        <div class="room-capacity">
+                            {% if room.num_uses %}
+                                <span class="capacity-badge">{{ room.num_uses }} pessoas</span>
+                            {% else %}
+                                <span class="capacity-badge">Capacidade não definida</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="room-content">
+                        <div class="room-info">
+                            <h3 class="room-name">{{ room.name }}</h3>
+                            {% if room.room_type %}
+                                <p class="room-type">{{ room.room_type.name }}</p>
+                            {% endif %}
+                            <div class="room-features">
+                                {% if room.num_uses %}
+                                    <span class="feature-tag">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                        {{ room.num_uses }} lugares
+                                    </span>
+                                {% endif %}
+                                {% if room.room_type %}
+                                    <span class="feature-tag type-tag">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <rect x="7" y="7" width="10" height="10" rx="1" ry="1"></rect>
+                                        </svg>
+                                        {{ room.room_type.name }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="room-actions">
+                            <div class="action-group">
+                                <a href="#" class="action-btn view-btn" title="Visualizar sala">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
+                                <a href="{% url 'ambient_edit_rooms' room.id ambient.ambientid %}" class="action-btn edit-btn" title="Editar sala">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </a>
+                                <a href="{% url 'ambient_delete_rooms' room.id ambient.ambientid %}" class="action-btn delete-btn" title="Excluir sala">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-rooms">
+            <div class="empty-illustration">
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                    <path d="M8 14h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M16 14h.01"></path>
+                    <path d="M8 18h.01"></path>
+                    <path d="M12 18h.01"></path>
+                    <path d="M16 18h.01"></path>
+                </svg>
+            </div>
+            <div class="empty-content">
+                <h3>Nenhuma sala cadastrada</h3>
+                <p>Comece criando salas para organizar melhor o espaço físico do seu ambiente.</p>
+                <a href="{% url 'ambient_create_rooms' ambient.ambientid %}" class="create-first-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                    </svg>
+                    Criar primeira sala
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
 {% endblock content %}

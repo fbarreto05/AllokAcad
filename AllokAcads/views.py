@@ -259,18 +259,16 @@ def ambient_config_validate(request, ambientid):
                 ambient_instance.periods_in_a_day = periods_in_a_day
             if days_in_a_cicle:
                 ambient_instance.days_in_a_cicle = days_in_a_cicle
-            if form_opening:
-                ambient_instance.form_opening = form_opening
-            if form_closing:
-                ambient_instance.form_closing = form_closing
-            if alt_solicitations_opening:
-                ambient_instance.alt_solicitations_opening = alt_solicitations_opening
-            if alt_solicitations_closing:
-                ambient_instance.alt_solicitations_closing = alt_solicitations_closing
+            
+            ambient_instance.form_opening = form_opening if form_opening else None
+            ambient_instance.form_closing = form_closing if form_closing else None
+            ambient_instance.alt_solicitations_opening = alt_solicitations_opening if alt_solicitations_opening else None
+            ambient_instance.alt_solicitations_closing = alt_solicitations_closing if alt_solicitations_closing else None
+            
             if min_actv_in_a_day:
                 ambient_instance.min_actv_in_day = min_actv_in_a_day
             if max_actv_in_a_day:
-                ambient_instance.max_actv_in_day = min_actv_in_a_day
+                ambient_instance.max_actv_in_day = max_actv_in_a_day
             if min_actv_in_a_cicle:
                 ambient_instance.min_actv_in_cicle = min_actv_in_a_cicle
             if max_actv_in_a_cicle:
@@ -286,6 +284,7 @@ def ambient_config_validate(request, ambientid):
                         schedule.save()
                         ambient_instance.available_schedules.add(schedule)
 
+            messages.success(request, 'Configurações do ambiente atualizadas com sucesso!')
             return redirect(f'/ambient/config/{ambient[0].ambientid}')
         else:
             return redirect('home')

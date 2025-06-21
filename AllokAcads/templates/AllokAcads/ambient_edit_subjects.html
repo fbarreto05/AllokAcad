@@ -1,48 +1,145 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Editar Matéria{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-edit-subjects-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_edit_subjects.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_edit_subjects.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_edit_subjects_validate' subjectid ambient.ambientid %}" method="post" enctype="multipart/form-data">
+<div class="header">
+    <h1>Editar Matéria: {{ subject.name }}</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_subjects' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar às matérias
+        </a>
+    </div>
+</div>
+
+<div class="edit-subjects-container">
+    <form class="edit-subjects-form" action="{% url 'ambient_edit_subjects_validate' subject.id ambient.ambientid %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" value="{{ subject.name }}" required><br>
-        <br>
-        <label for="ideal_classrooms">Salas Ideais</label>
-        {% if classrooms %}
-            <br>
-            {% for classroom in classrooms %}
-                <input type="checkbox" name="ideal_classrooms" value="{{ classroom.id }}">{{ classroom.name }}
-                <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}"><br>
-            {% endfor %}
-        {% else %}
-            <p>Cadastre salas para poder utilizá-las</p>
-        {% endif %}
-        <br>
-        <label for="favorite_professors">Professores Favoritos</label>
-        {% if professors %}
-            <br>
-            {% for professor in professors %}
-                <input type="checkbox" name="favorite_professors" value="{{ professor.id }}">{{ professor.user.name }}
-                <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}"><br>
-                <br>
-            {% endfor %}
-        {% else %}
-            <p> Convide professores para poder utilizá-los </p>
-        {% endif %}
-        <br>
-        <label for="relevant_formations">Formações Relevantes</label>
-        {% if formations %}
-            <br>
-            {% for formation in formations %}
-                <input type="checkbox" name="relevant_formations" value="{{ formation.id }}">{{ formation.name }}
-                <input type="range" min="0" max="100" value="75" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}"><br>
-                <br>
-            {% endfor %}
-        {% else %}
-            <p>Cadastre formações para poder utilizá-las</p>
+        
+        <div class="form-section">
+            <h2>Informações Básicas</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome da Matéria</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Matemática, Português, História..." value="{{ subject.name }}" required>
+                <span class="form-hint">Digite o nome da disciplina ou matéria.</span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Salas Ideais</h2>
+            {% if classrooms %}
+                <div class="form-group">
+                    <label>Selecione as salas preferenciais</label>
+                    <div class="items-list">
+                        {% for classroom in classrooms %}
+                            <div class="item-with-weight">
+                                <div class="item-info">
+                                    <input type="checkbox" id="classroom_{{ classroom.id }}" name="ideal_classrooms" value="{{ classroom.id }}"
+                                        {% if classroom in subject.ideal_classrooms.all %}checked{% endif %}>
+                                    <label for="classroom_{{ classroom.id }}">{{ classroom.name }}</label>
+                                </div>
+                                <div class="weight-control">
+                                    <label for="classroom_weight_{{ classroom.id }}">Prioridade:</label>
+                                    <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
+                                    <span class="weight-value">100%</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Cadastre salas nos recursos para poder utilizá-las.</p>
+                </div>
+
             {% endif %}
-        <button type="submit" id="submit" name="submit">Editar</button>
+        </div>
+
+        <div class="form-section">
+            <h2>Professores Favoritos</h2>
+            {% if professors %}
+                <div class="form-group">
+                    <label>Selecione os professores preferenciais</label>
+                    <div class="items-list">
+                        {% for professor in professors %}
+                            <div class="item-with-weight">
+                                <div class="item-info">
+                                    <input type="checkbox" id="professor_{{ professor.id }}" name="favorite_professors" value="{{ professor.id }}"
+                                        {% if professor in subject.favorite_professors.all %}checked{% endif %}>
+                                    <label for="professor_{{ professor.id }}">{{ professor.user.name }}</label>
+                                </div>
+                                <div class="weight-control">
+                                    <label for="professor_weight_{{ professor.id }}">Prioridade:</label>
+                                    <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
+                                    <span class="weight-value">100%</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Convide professores para o ambiente para poder utilizá-los.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-section">
+            <h2>Formações Relevantes</h2>
+            {% if formations %}
+                <div class="form-group">
+                    <label>Selecione as formações relacionadas</label>
+                    <div class="items-list">
+                        {% for formation in formations %}
+                            <div class="item-with-weight">
+                                <div class="item-info">
+                                    <input type="checkbox" id="formation_{{ formation.id }}" name="relevant_formations" value="{{ formation.id }}"
+                                        {% if formation in subject.relevant_formations.all %}checked{% endif %}>
+                                    <label for="formation_{{ formation.id }}">{{ formation.name }}</label>
+                                </div>
+                                <div class="weight-control">
+                                    <label for="formation_weight_{{ formation.id }}">Prioridade:</label>
+                                    <input type="range" min="0" max="100" value="75" id="formation_weight_{{ formation.id }}" name="formation_weight_{{ formation.id }}" class="weight-slider">
+                                    <span class="weight-value">100%</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Cadastre formações nos recursos para poder utilizá-las.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_subjects' ambient.ambientid %}" class="cancel-button">Cancelar</a>
+            <button type="submit" class="save-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17,21 17,13 7,13 7,21"></polyline>
+                    <polyline points="7,3 7,8 15,8"></polyline>
+                </svg>
+                Salvar Alterações
+            </button>
+        </div>
     </form>
+</div>
 {% endblock content %}
-
-

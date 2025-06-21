@@ -1,13 +1,98 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Tipos de Salas{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-roomtypes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_roomtypes.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_roomtypes.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-    <br>
-    {% for roomtype in roomtypes %}
-        </br>
-        <a href="">{{ roomtype.name }}</a>
-        <a href="{% url 'ambient_edit_roomtypes' roomtype.id ambient.ambientid %}">Editar</a>
-        <a href="{% url 'ambient_delete_roomtypes' roomtype.id ambient.ambientid %}">Excluir</a>
-    {% endfor %}
-    <br><br>
-    <a href="{% url 'ambient_create_roomtypes' ambient.ambientid %}">Criar Tipo de Sala</a>
+<div class="header">
+    <div class="header-left">
+        <h1>Tipos de Salas Cadastrados</h1>
+        <span class="roomtypes-count">{{ roomtypes|length }} tipos</span>
+    </div>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_resources' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar aos recursos
+        </a>
+        <a href="{% url 'ambient_create_roomtypes' ambient.ambientid %}" class="create-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Novo Tipo de Sala
+        </a>
+    </div>
+</div>
+
+<div class="roomtypes-container">
+    {% if roomtypes %}
+        <div class="roomtypes-gallery">
+            {% for roomtype in roomtypes %}
+                <div class="roomtype-card">
+                    <div class="roomtype-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21h18"></path>
+                            <path d="M5 21V7l8-4v18"></path>
+                            <path d="M19 21V11l-6-4"></path>
+                        </svg>
+                    </div>
+                    <div class="roomtype-content">
+                        <h3 class="roomtype-name">{{ roomtype.name }}</h3>
+                        {% if roomtype.num_uses %}
+                            <p class="roomtype-usage">{{ roomtype.num_uses }} usos</p>
+                        {% endif %}
+                    </div>
+                    <div class="roomtype-actions">
+                        <a href="{% url 'ambient_edit_roomtypes' roomtype.id ambient.ambientid %}" class="edit-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Editar
+                        </a>
+                        <a href="{% url 'ambient_delete_roomtypes' roomtype.id ambient.ambientid %}" class="delete-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Excluir
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"></path>
+                    <path d="M5 21V7l8-4v18"></path>
+                    <path d="M19 21V11l-6-4"></path>
+                </svg>
+            </div>
+            <h3>Nenhum tipo de sala cadastrado</h3>
+            <p>Comece criando tipos de salas para categorizar e organizar os ambientes do seu espaço.</p>
+            <a href="{% url 'ambient_create_roomtypes' ambient.ambientid %}" class="empty-action-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Criar Primeiro Tipo
+            </a>
+        </div>
+    {% endif %}
+</div>
 {% endblock content %}

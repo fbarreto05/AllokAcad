@@ -1,13 +1,52 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Nova Formação{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-create-formations-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_create_formations.css' %}">
+{% endblock %}
 
 {% block content %}
-    <form action="{% url 'ambient_create_formations_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <br>
-        <label for="name">Nome</label>
-        <input type="text" id="name" name="name" required><br>
-        <br>
-        <button type="submit" id="submit" name="submit">Criar</button>
-    </form>
-{% endblock content %}
+<div class="header">
+    <h1>Nova Formação</h1>
+    <div class="action-buttons">
+        <a href="{% url 'ambient_formations' ambient.ambientid %}" class="cancel-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"></path>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Voltar às formações
+        </a>
+    </div>
+</div>
 
+<div class="create-formations-container">
+    <form class="create-formations-form" action="{% url 'ambient_create_formations_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-section">
+            <h2>Informações da Formação</h2>
+            
+            <div class="form-group">
+                <label for="name">Nome da Formação</label>
+                <input type="text" id="name" name="name" placeholder="Ex: Mestrado em Educação, Graduação em Matemática..." required>
+                <span class="form-hint">Digite o nome da formação acadêmica ou certificação.</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'ambient_formations' ambient.ambientid %}" class="cancel-button">Cancelar</a>
+            <button type="submit" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                </svg>
+                Criar Formação
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock content %}

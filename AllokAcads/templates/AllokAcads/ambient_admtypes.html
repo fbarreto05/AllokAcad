@@ -1,13 +1,98 @@
-{% include 'AllokAcads/ambient_bar.html' %}
+{% extends "AllokAcads/base.html" %}
+{% load static %}
+
+{% block title %}AllokAcad | Tipos de Administrador{% endblock %}
+
+{% block body_class %}page-with-sidebar ambient-admtypes-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambient_admtypes.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambient_admtypes.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-    <br>
-    {% for admtype in admtypes %}
-        </br>
-        <a href="">{{ admtype.name }}</a>
-        <a href="{% url 'ambient_edit_admtypes' admtype.id ambient.ambientid %}">Editar</a>
-        <a href="{% url 'ambient_delete_admtypes' admtype.id ambient.ambientid %}">Excluir</a>
-    {% endfor %}
-    <br><br>
-    <a href="{% url 'ambient_create_admtypes' ambient.ambientid %}">Criar Tipo de Administrador</a>
+<div class="header">
+    <h1>Tipos de Administrador</h1>
+    <div class="header-info">
+        <span class="admtypes-count">{{ admtypes|length }} tipo{{ admtypes|length|pluralize:"s" }}</span>
+        <div class="action-buttons">
+            <a href="{% url 'ambient_resources' ambient.ambientid %}" class="back-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5"></path>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Voltar aos recursos
+            </a>
+            <a href="{% url 'ambient_create_admtypes' ambient.ambientid %}" class="create-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                Criar Tipo
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="admtypes-container">
+    {% if admtypes %}
+        <div class="admtypes-list">
+            {% for admtype in admtypes %}
+                <div class="admtype-item">
+                    <div class="admtype-info">
+                        <div class="admtype-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h4a2 2 0 0 1 2 2v1.28c.6.35 1 .98 1 1.72 0 .74-.4 1.39-1 1.73V15a2 2 0 0 1-2 2h-4v1.27c.6.35 1 .98 1 1.73a2 2 0 1 1-4 0c0-.74.4-1.39 1-1.73V17H7a2 2 0 0 1-2-2v-1.28c-.6-.35-1-.98-1-1.72 0-.74.4-1.39 1-1.73V9a2 2 0 0 1 2-2h4V5.73c-.6-.35-1-.98-1-1.73a2 2 0 0 1 2-2Z"></path>
+                            </svg>
+                        </div>
+                        <div class="admtype-details">
+                            <h3 class="admtype-name">{{ admtype.name }}</h3>
+                            <p class="admtype-description">Tipo de administrador do sistema</p>
+                        </div>
+                    </div>
+                    <div class="admtype-actions">
+                        <a href="{% url 'ambient_edit_admtypes' admtype.id ambient.ambientid %}" class="edit-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Editar
+                        </a>
+                        <a href="{% url 'ambient_delete_admtypes' admtype.id ambient.ambientid %}" class="delete-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                            Excluir
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h4a2 2 0 0 1 2 2v1.28c.6.35 1 .98 1 1.72 0 .74-.4 1.39-1 1.73V15a2 2 0 0 1-2 2h-4v1.27c.6.35 1 .98 1 1.73a2 2 0 1 1-4 0c0-.74.4-1.39 1-1.73V17H7a2 2 0 0 1-2-2v-1.28c-.6-.35-1-.98-1-1.72 0-.74.4-1.39 1-1.73V9a2 2 0 0 1 2-2h4V5.73c-.6-.35-1-.98-1-1.73a2 2 0 0 1 2-2Z"></path>
+                </svg>
+            </div>
+            <h2>Nenhum tipo de administrador</h2>
+            <p>Você ainda não criou nenhum tipo de administrador para este ambiente.</p>
+            <a href="{% url 'ambient_create_admtypes' ambient.ambientid %}" class="create-first-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                Criar primeiro tipo
+            </a>
+        </div>
+    {% endif %}
+</div>
 {% endblock content %}

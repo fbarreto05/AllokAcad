@@ -1,0 +1,198 @@
+.ambient-create-formations-page {
+    background-color: #f8f9fa;
+    padding-bottom: 40px;
+}
+
+.ambient-create-formations-page .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.ambient-create-formations-page .header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.cancel-button,
+.create-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;    text-decoration: none;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.cancel-button {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+
+.cancel-button:hover {
+    background-color: #e5e7eb;
+}
+
+.create-button {
+    background: linear-gradient(135deg, #4361ee, #3751d2);
+    color: white;
+}
+
+.create-button:hover {
+    background: linear-gradient(135deg, #3751d2, #2940b8);
+}
+
+.create-formations-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.create-formations-form {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.form-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.form-section:last-of-type {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.form-section h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #4361ee;
+    margin: 0 0 1.5rem 0;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #4a5568;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #4361ee;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.form-actions .cancel-button,
+.form-actions .create-button {
+    min-width: 140px;
+    justify-content: center;
+}
+
+.cancel-button:focus,
+.create-button:focus {
+    outline: none;
+}
+
+.cancel-button:active,
+.create-button:active {
+    outline: none;
+    box-shadow: none;
+    transform: none;
+}
+
+@media (max-width: 768px) {
+    .ambient-create-formations-page .header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .ambient-create-formations-page .header h1 {
+        text-align: center;
+        font-size: 1.5rem;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .create-formations-container {
+        margin: 0 1rem;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .cancel-button,
+    .create-button {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ambient-create-formations-page .header h1 {
+        font-size: 1.4rem;
+    }
+
+    .form-section h2 {
+        font-size: 1.2rem;
+    }
+
+    .form-section {
+        padding: 1rem;
+    }
+
+    .create-formations-container {
+        margin: 0 0.5rem;
+    }
+}
