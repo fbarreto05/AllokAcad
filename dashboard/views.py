@@ -27,8 +27,6 @@ def professor_dashboard_view(request):
         'number_of_professors': number_of_professors,
         'timetable_quality': timetable_quality,
         'ambients' : ambient_list,
-        'dash_name': 'GraficoDeBarras',
-        'dash_data_graph_bar': data_dash,
     }
     
     return render(request, 'dashboard/professor.html', context)
