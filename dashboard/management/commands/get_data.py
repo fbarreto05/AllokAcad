@@ -2,9 +2,7 @@ from dashboard.models import ProfessorStatistics
 from AllokAcads.models import Ambient
 from collections import defaultdict
 
-class Command(Command): 
-    def handle(self, *args, **opitions): 
-        
+class Command(Command):
     
     def calculate_semester_statistics(ambient_id):   
         try: 
@@ -48,7 +46,7 @@ class Command(Command):
                     'trips_to_campus': 1
                 }
                 
-                ProfessorStatisticsDay.objects.create(
+                ProfessorStatistics.objects.create(
                     professor = professor,
                     timetable = ambient.published_timetable,
                     day = day, 

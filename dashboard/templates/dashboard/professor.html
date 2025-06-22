@@ -14,11 +14,11 @@
                 <p>Mostra métricas dos professores no semester selecionado</p>
             </div>
             <ul class="indicators">
-                <li class="indicator">{{ average_class_interval }}</li>
-                <li class="indicator">{{ average_trips }}</li>
-                <li class="indicator">{{ average_classes }}</li>
-                <li class="indicator">{{ number_of_professors }}</li>
-                <li class="indicator">{{ timetable_quality }}</li>
+                <li class="indicator" id="indicator-avg-interval">{{ average_class_interval }}</li>
+                <li class="indicator" id="indicator-avg-trips">{{ average_trips }}</li>
+                <li class="indicator" id="indicator-avg-classes">{{ average_classes }}</li>
+                <li class="indicator" id="indicator-num-professors">{{ number_of_professors }}</li>
+                <li class="indicator" id="indicator-timetable-quality">{{ timetable_quality }}</li>
             </ul>
             <div class="header-filters-container">
                 <select name="ambient" id="ambient-select">
@@ -27,12 +27,9 @@
                         <option value="{{ ambient.id }}">{{ ambient.name }}</option>
                     {% endfor %}
                 </select>
-                <select name="semester" id="semester-select">
-                    <option value="">Semestre</option>
-                    {% for semester in semesters %}
-                        <option value="{{ semester.id }}">{{ semester.name }}</option>
-                    {% endfor %}
-                </select>
+                <button class="button" id="update-button">
+                    Atualizar
+                </button>
             </div>
         </header>
         <main>
@@ -85,25 +82,48 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ambientSelect = document.getElementById('ambient-select');
-            const semesterSelect = document.getElementById('semester-select');
-
-            function updateUrl() {
-                const ambientId = ambientSelect.value;
-                const semesterId = semesterSelect.value;
-
-                if (ambientId && semesterId) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('ambient', ambientId);
-                    url.searchParams.set('semester', semesterId);
-                    window.location.href = url.toString();
-                }
-            }
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ambientSelect = document.getElementById('ambient-select');
+        const updateButton = document.getElementById('update-button')
             
-            ambientSelect.addEventListener('change', updateUrl);
-            semesterSelect.addEventListener('change', updateUrl);
-        });
-    </script>
+        updateButton.addEventListener('click', () => {
+            const ambientId = ambientSelect.value
+            updateDashboardData(ambientId);
+        })
+
+        async function updateDashboardData(ambientId) {
+            document.getElementById('indicator-avg-interval').textContent = 'Vazio'
+            document.getElementById('indicator-avg-trips').textContent = 'Vazio'
+            document.getElementById('indicator-avg-classes').textContent = 'Vazio'
+            document.getElementById('indicator-num-professors').textContent = 'Vazio'
+            document.getElementById('indicator-timetable-quality').textContent = 'Vazio'
+
+            const url = new URL('/dashboard/api/update-dashboard-data/', window.location.origin);
+
+            if (ambientId) {
+                url.searchParams.append('ambient', ambientId)
+            }
+
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Erro('Deu ruim')
+                }
+                const newData = await response.json();
+
+                document.getElementById('indicator-avg-interval').textContent = newData.indicators.average_class_interval;
+                document.getElementById('indicator-avg-trips').textContent = newData.indicators.average_trips;
+                document.getElementById('indicator-avg-classes').textContent = newData.indicators.average_classes;
+                document.getElementById('indicator-num-professors').textContent = newData.indicators.number_of_professors;
+                document.getElementById('indicator-timetable-quality').textContent = newData.indicators.timetable_quality;
+
+            } catch (erro) {
+                console.error('Erro: Atualização do dashboard')
+            }
+                
+        }
+    });
+</script>
 {% endblock %}
