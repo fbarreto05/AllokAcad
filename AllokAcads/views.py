@@ -29,7 +29,7 @@ def login_validate(request):
             loginauth(request, userauth)   
             return redirect(f'/home')
         
-        return redirect('login')
+        return redirect('')
 
 def register(request):
     if request.user.is_authenticated:
@@ -86,14 +86,14 @@ def home(request):
     
         return render(request, "AllokAcads/home.html", {'user' : user, 'username' : username, 'userid' : userid, 'ambients' : ambients})
     else:
-        return redirect('login')
+        return redirect('')
 
 def create_ambient(request):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         return render(request, "AllokAcads/create_ambient.html", {'user' : user, 'userid' : user.userid})
     else:
-        return redirect('login')
+        return redirect('')
 
 def generate_ambientid():
     identificator = ""
@@ -151,7 +151,7 @@ def create_ambient_validate(request):
 
         return redirect(f'/home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient(request, ambientid):
     if request.user.is_authenticated:
@@ -199,7 +199,7 @@ def ambient(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_form(request, ambientid):
     if request.user.is_authenticated:
@@ -234,7 +234,7 @@ def ambient_form(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_config(request, ambientid):
     if request.user.is_authenticated:
@@ -256,7 +256,7 @@ def ambient_config(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 
 def ambient_config_validate(request, ambientid):
@@ -324,7 +324,7 @@ def ambient_config_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_profile(request, ambientid):
     if request.user.is_authenticated:
@@ -337,7 +337,7 @@ def ambient_profile(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_members(request, ambientid):
     if request.user.is_authenticated:
@@ -351,7 +351,7 @@ def ambient_members(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_form_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -375,7 +375,7 @@ def ambient_form_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_solicitations(request, ambientid):
     if request.user.is_authenticated:
@@ -395,7 +395,7 @@ def ambient_solicitations(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def accept_solicitation(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -415,7 +415,7 @@ def accept_solicitation(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def refuse_solicitation(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -428,7 +428,7 @@ def refuse_solicitation(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_resources(request, ambientid):
     if request.user.is_authenticated:
@@ -451,7 +451,7 @@ def ambient_resources(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_subjects(request, ambientid):
     if request.user.is_authenticated:
@@ -465,7 +465,7 @@ def ambient_subjects(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_subjects(request, ambientid):
     if request.user.is_authenticated:
@@ -481,7 +481,7 @@ def ambient_create_subjects(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_subjects(request, subjectid, ambientid):
     if request.user.is_authenticated:
@@ -498,7 +498,7 @@ def ambient_edit_subjects(request, subjectid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_subjects_validate(request, subjectid, ambientid):
     if request.user.is_authenticated:
@@ -549,7 +549,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete_subjects(request, subjectid, ambientid):
     if request.user.is_authenticated:
@@ -564,7 +564,7 @@ def ambient_delete_subjects(request, subjectid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_classes(request, classid, ambientid):
     if request.user.is_authenticated:
@@ -585,7 +585,7 @@ def ambient_edit_classes(request, classid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_classes_validate(request, classid, ambientid):
     if request.user.is_authenticated:
@@ -645,7 +645,7 @@ def ambient_edit_classes_validate(request, classid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete_classes(request, classid, ambientid):
     if request.user.is_authenticated:
@@ -660,7 +660,7 @@ def ambient_delete_classes(request, classid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_edit_rooms(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -675,7 +675,7 @@ def ambient_edit_rooms(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_rooms_validate(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -699,7 +699,7 @@ def ambient_edit_rooms_validate(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete_rooms(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -713,7 +713,7 @@ def ambient_delete_rooms(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_edit_formations(request, formationid, ambientid):
     if request.user.is_authenticated:
@@ -727,7 +727,7 @@ def ambient_edit_formations(request, formationid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_formations_validate(request, formationid, ambientid):
     if request.user.is_authenticated:
@@ -746,7 +746,7 @@ def ambient_edit_formations_validate(request, formationid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete_formations(request, formationid, ambientid):
     if request.user.is_authenticated:
@@ -760,7 +760,7 @@ def ambient_delete_formations(request, formationid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_edit_roomtypes(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -773,7 +773,7 @@ def ambient_edit_roomtypes(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_roomtypes_validate(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -790,7 +790,7 @@ def ambient_edit_roomtypes_validate(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_delete_roomtypes(request, roomid, ambientid):
     if request.user.is_authenticated:
@@ -804,7 +804,7 @@ def ambient_delete_roomtypes(request, roomid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_admtypes(request, admtypeid, ambientid):
     if request.user.is_authenticated:
@@ -817,7 +817,7 @@ def ambient_edit_admtypes(request, admtypeid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_edit_admtypes_validate(request, admtypeid, ambientid):
     if request.user.is_authenticated:
@@ -848,7 +848,7 @@ def ambient_edit_admtypes_validate(request, admtypeid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete_admtypes(request, admtypeid, ambientid):
     if request.user.is_authenticated:
@@ -862,7 +862,7 @@ def ambient_delete_admtypes(request, admtypeid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_subjects_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -903,7 +903,7 @@ def ambient_create_subjects_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_rooms(request, ambientid):
     if request.user.is_authenticated:
@@ -917,7 +917,7 @@ def ambient_rooms(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_rooms(request, ambientid):
     if request.user.is_authenticated:
@@ -931,7 +931,7 @@ def ambient_create_rooms(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_rooms_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -953,7 +953,7 @@ def ambient_create_rooms_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_roomtypes(request, ambientid):
     if request.user.is_authenticated:
@@ -967,7 +967,7 @@ def ambient_roomtypes(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_roomtypes(request, ambientid):
     if request.user.is_authenticated:
@@ -980,7 +980,7 @@ def ambient_create_roomtypes(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_roomtypes_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -998,7 +998,7 @@ def ambient_create_roomtypes_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_classes(request, ambientid):
     if request.user.is_authenticated:
@@ -1013,7 +1013,7 @@ def ambient_classes(request, ambientid):
         else:
                 return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_classes(request, ambientid):
     if request.user.is_authenticated:
@@ -1032,7 +1032,7 @@ def ambient_create_classes(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_create_classes_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -1079,7 +1079,7 @@ def ambient_create_classes_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_formations(request, ambientid):
     if request.user.is_authenticated:
@@ -1093,7 +1093,7 @@ def ambient_formations(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def ambient_create_formations(request, ambientid):
     if request.user.is_authenticated:
@@ -1106,7 +1106,7 @@ def ambient_create_formations(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_create_formations_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -1125,7 +1125,7 @@ def ambient_create_formations_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_admtypes(request, ambientid):
     if request.user.is_authenticated:
@@ -1139,7 +1139,7 @@ def ambient_admtypes(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_create_admtypes(request, ambientid):
     if request.user.is_authenticated:
@@ -1152,7 +1152,7 @@ def ambient_create_admtypes(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_create_admtypes_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -1178,7 +1178,7 @@ def ambient_create_admtypes_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_profile_edit(request, ambientid):
     if request.user.is_authenticated:
@@ -1192,7 +1192,7 @@ def ambient_profile_edit(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_profile_edit_validate(request, ambientid):
     if request.user.is_authenticated:
@@ -1228,7 +1228,7 @@ def ambient_profile_edit_validate(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def profile(request):
     if request.user.is_authenticated:
@@ -1237,7 +1237,7 @@ def profile(request):
         picture = user.picture
         return render(request, "AllokAcads/profile.html", {'userid' : userid, 'user' : user, 'picture' : picture})
     else:
-        return redirect('login')
+        return redirect('')
     
 def profile_edit(request):
     if request.user.is_authenticated:
@@ -1245,7 +1245,7 @@ def profile_edit(request):
         userid = user.userid
         return render(request, "AllokAcads/profile_edit.html", {'userid' : userid, 'user' : user})
     else:
-        return redirect('login')
+        return redirect('')
     
 def profile_edit_validate(request):
     if request.user.is_authenticated:
@@ -1265,7 +1265,7 @@ def profile_edit_validate(request):
         user.save()
         return redirect(f'/home/profile')
     else:
-        return redirect('login')
+        return redirect('')
     
 def enter_ambient(request):
     if request.user.is_authenticated:
@@ -1288,7 +1288,7 @@ def enter_ambient(request):
             redirect(f'/home/')
         return redirect(f'/home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def professor_true(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -1303,7 +1303,7 @@ def professor_true(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def professor_false(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -1318,7 +1318,7 @@ def professor_false(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def change_position(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -1333,7 +1333,7 @@ def change_position(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def remove_member(request, memberid, ambientid):
     if request.user.is_authenticated:
@@ -1367,7 +1367,7 @@ def change_position_validate(request, memberid, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def check_conflitant_schedules_classroom(classroom, activitie):
     activities_with_classroom = list(Activitie.objects.filter(tclassroom = classroom))
@@ -2697,7 +2697,7 @@ def run_atribuition(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
 
 def run_alocation(request, ambientid):
     if request.user.is_authenticated:
@@ -2887,14 +2887,14 @@ def run_alocation(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def exit(request):
     if request.user.is_authenticated:
         logoutauth(request)
-        return redirect('login')
+        return redirect('')
     else:
-        return redirect('login')
+        return redirect('')
     
 def ambient_delete(request, ambientid):
     if request.user.is_authenticated:
@@ -2907,7 +2907,7 @@ def ambient_delete(request, ambientid):
         else:
             return redirect('home')
     else:
-        return redirect('login')
+        return redirect('')
     
 def profile_delete(request):
     if request.user.is_authenticated:
@@ -2916,6 +2916,6 @@ def profile_delete(request):
         user.delete()
         logoutauth(request)
         userauth.delete()
-        return redirect('login')
+        return redirect('')
     else:
-        return redirect('login')
+        return redirect('')
