@@ -1,0 +1,308 @@
+.ambient-solicitations-page {
+    background-color: #f8fafc;
+}
+
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-left: 4px solid;
+    animation: slideInUp 0.4s ease-out;
+    position: relative;
+    min-width: 300px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toast:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.toast-success {
+    border-left-color: #10b981;
+}
+
+.toast-error {
+    border-left-color: #ef4444;
+}
+
+.toast-info {
+    border-left-color: #3b82f6;
+}
+
+.toast-warning {
+    border-left-color: #f59e0b;
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 4px;
+}
+
+.toast-success .toast-icon {
+    background: #dcfce7;
+    color: #059669;
+}
+
+.toast-error .toast-icon {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.toast-info .toast-icon {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.toast-warning .toast-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-message {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .toast {
+        min-width: auto;
+        padding: 14px 16px;
+    }
+    
+    .toast-message {
+        font-size: 13px;
+    }
+}
+
+.ambient-solicitations-page .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.ambient-solicitations-page .header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.ambient-solicitations-page .action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background-color: #e5e7eb;
+    color: #374151;
+    border-color: #b0b0b0;
+}
+
+.ambient-solicitations-page .ambient-nav {
+    display: flex;
+    margin-bottom: 2.5rem;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 0.75rem;
+}
+
+.ambient-solicitations-page .ambient-nav a {
+    padding: 0.625rem 1.25rem;
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.25s ease;
+    font-size: 0.95rem;
+    margin: 0 3px;
+}
+
+.ambient-solicitations-page .ambient-nav a:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+.ambient-solicitations-page .ambient-nav a.active {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.solicitations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.solicitation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #f3f4f6;
+}
+
+.solicitation-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.solicitation-info h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.375rem;
+}
+
+.solicitation-info p {
+    font-size: 0.9rem;
+    color: #6b7280;
+    background-color: #f9fafb;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.solicitation-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.accept-btn, .refuse-btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+}
+
+.accept-btn {
+    background-color: #10b981;
+    color: white;
+}
+
+.accept-btn:hover {
+    background-color: #059669;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.refuse-btn {
+    background-color: #ef4444;
+    color: white;
+}
+
+.refuse-btn:hover {
+    background-color: #dc2626;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.no-solicitations {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: #6b7280;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f3f4f6;
+    font-size: 1.05rem;
+}
