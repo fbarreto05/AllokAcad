@@ -18,7 +18,7 @@ from django.urls import path, include
 from . import views
 
 urlpatterns = [
-    path('login', views.login, name='login'),
+    path('', views.login, name='login'),
     path('login_validate', views.login_validate, name='login_validate'),
     path('register', views.register, name='register'),
     path('register_validate', views.register_validate, name='register_validate'),

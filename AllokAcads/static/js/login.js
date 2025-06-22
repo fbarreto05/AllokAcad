@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (window.location.href.includes('/login') && document.referrer.includes('/login')) {
+    if (window.location.href.includes('/') && document.referrer.includes('/')) {
 
         const errorElement = document.createElement('div');
         errorElement.className = 'form-error';
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.redirected) {
                 window.location.href = response.url;
             } else {
-                window.location.href = '/login';
+                window.location.href = '/';
             }
 
         } catch (error) {
