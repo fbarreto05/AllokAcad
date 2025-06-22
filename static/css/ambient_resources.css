@@ -1,0 +1,87 @@
+.ambient-resources-page .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.ambient-resources-page .header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background-color: #e5e7eb;
+}
+
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.resource-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+}
+
+.resource-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.resource-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 15px;
+    background-color: #eef2ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.resource-icon svg {
+    color: #4361ee;
+    width: 32px;
+    height: 32px;
+}
+
+.resource-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #2d3748;
+}
+
+.resource-card p {
+    font-size: 0.9rem;
+    color: #718096;
+    margin: 0;
+}

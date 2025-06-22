@@ -1,0 +1,314 @@
+.ambient-formations-page {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding-bottom: 40px;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.formations-count {
+    background: linear-gradient(135deg, #4361ee 0%, #3451d4 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+    white-space: nowrap;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.cancel-button,
+.create-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.cancel-button {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+
+.cancel-button:hover {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.create-button {
+    background: linear-gradient(135deg, #4361ee 0%, #3451d4 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+}
+
+.create-button:hover {
+    background: linear-gradient(135deg, #3451d4 0%, #2a41c4 100%);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+    color: white;
+}
+
+.formations-container {
+    width: 100%;
+}
+
+.formations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.formation-item {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.formation-item:hover {
+    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.15);
+    border-color: #4361ee;
+    transform: translateY(-2px);
+}
+
+.formation-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.formation-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #4361ee 0%, #3451d4 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.formation-details {
+    flex: 1;
+}
+
+.formation-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 0.5rem 0;
+}
+
+.formation-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    background: #f3f4f6;
+    color: #6b7280;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.formation-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.edit-button,
+.delete-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.edit-button {
+    background-color: #fff7ed;
+    color: #ff9800;
+    border-color: #fed7aa;
+}
+
+.edit-button:hover {
+    background-color: #ff9800;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.delete-button {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.delete-button:hover {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 2px dashed #e5e7eb;
+}
+
+.empty-icon {
+    margin: 0 auto 1.5rem;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4361ee;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 1rem 0;
+}
+
+.empty-state p {
+    color: #6b7280;
+    font-size: 1rem;
+    margin: 0 0 2rem 0;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #4361ee 0%, #3451d4 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.3);
+    transition: all 0.3s ease;
+}
+
+.empty-action-button:hover {
+    background: linear-gradient(135deg, #3451d4 0%, #2a41c4 100%);
+    box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+    transform: translateY(-2px);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    
+    .header-left {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+      .header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .formation-item {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .formation-info {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .formation-actions {
+        justify-content: center;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .formation-actions {
+        flex-direction: column;
+    }
+    
+    .formation-meta {
+        justify-content: center;
+    }
+}
