@@ -84,14 +84,14 @@ def home(request):
         ambients = user.ambients.all()
         username = user.name
     
-        return render(request, "AllokAcads/home.html", {'username' : username, 'userid' : userid, 'ambients' : ambients})
+        return render(request, "AllokAcads/home.html", {'user' : user, 'username' : username, 'userid' : userid, 'ambients' : ambients})
     else:
         return redirect('login')
 
 def create_ambient(request):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
-        return render(request, "AllokAcads/create_ambient.html", {'userid' : user.userid})
+        return render(request, "AllokAcads/create_ambient.html", {'user' : user, 'userid' : user.userid})
     else:
         return redirect('login')
 
@@ -195,6 +195,41 @@ def ambient(request, ambientid):
                 'activities': activities,
                 'table': ordered_table,
                 'not_alocated': not_alocated
+            })
+        else:
+            return redirect('home')
+    else:
+        return redirect('login')
+    
+def ambient_form(request, ambientid):
+    if request.user.is_authenticated:
+        user = User.objects.get(userid = request.user.username)
+        userid = user.userid
+        ambient = Ambient.objects.filter(ambientid=ambientid).first()
+        if ambient.members.filter(user = user): 
+            member = ambient.members.filter(user=user).first()
+            schedules = ambient.available_schedules.all()
+            classrooms = ambient.classrooms.all()
+            classes = ambient.classes.all()
+            subjects = ambient.subjects.all()
+            columns = ambient.periods_in_a_day
+            activities = ambient.activities.all()
+            picture = ambient.picture
+            username = user.name
+
+            return render(request, "AllokAcads/ambient_form.html", {
+                'ambient': ambient,
+                'user': user,
+                'userid': userid,
+                'username': username,
+                'member': member,
+                'schedules': schedules,
+                'classrooms': classrooms,
+                'classes': classes,
+                'subjects': subjects,
+                'columns': columns,
+                'picture': picture,
+                'activities': activities,
             })
         else:
             return redirect('home')
@@ -336,7 +371,7 @@ def ambient_form_validate(request, ambientid):
                 subject_preference = Subject_Preference(subject=subject, subject_weight=subject_weight)
                 subject_preference.save()
                 member[0].prefered_subjects.add(subject_preference)
-            return redirect(f'/ambient/{ambientid}')
+            return redirect(f'/ambient/form/{ambientid}')
         else:
             return redirect('home')
     else:
@@ -1493,7 +1528,7 @@ def check_conflitant_schedules_professor(professor, activitie):
                     if a_formation.formation == formation:
                         professional_experience_1_count = formation.professional_experience_time
                         didatic_experience_1_count = formation.didatic_experience_time
-                        if a_formation.formation_degree == 'Tecnólogo':
+                        if a_formation.formation_degree == 'Graduado':
                             degree_1_count += 25
                         elif a_formation.formation_degree == 'Mestre':
                             degree_1_count += 50
@@ -1506,7 +1541,7 @@ def check_conflitant_schedules_professor(professor, activitie):
                     if a_formation.formation == formation:
                         professional_experience_2_count = formation.professional_experience_time
                         didatic_experience_2_count = formation.didatic_experience_time
-                        if a_formation.formation_degree == 'Tecnólogo':
+                        if a_formation.formation_degree == 'Graduado':
                             degree_2_count += 25
                         elif a_formation.formation_degree == 'Mestre':
                             degree_2_count += 50
@@ -1729,7 +1764,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_1_count = formation.professional_experience_time
                                         didatic_experience_1_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -1740,7 +1775,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_2_count = formation.professional_experience_time
                                         didatic_experience_2_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -1851,7 +1886,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_1_count = formation.professional_experience_time
                                         didatic_experience_1_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -1862,7 +1897,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_2_count = formation.professional_experience_time
                                         didatic_experience_2_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -1988,7 +2023,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_1_count = formation.professional_experience_time
                                         didatic_experience_1_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -1999,7 +2034,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_2_count = formation.professional_experience_time
                                         didatic_experience_2_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -2095,7 +2130,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_1_count = formation.professional_experience_time
                                         didatic_experience_1_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -2106,7 +2141,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_2_count = formation.professional_experience_time
                                         didatic_experience_2_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -2229,7 +2264,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_1_count = formation.professional_experience_time
                                         didatic_experience_1_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -2240,7 +2275,7 @@ def run_atribuition(request, ambientid):
                                     if a_formation.formation == formation:
                                         professional_experience_2_count = formation.professional_experience_time
                                         didatic_experience_2_count = formation.didatic_experience_time
-                                        if a_formation.formation_degree == 'Tecnólogo':
+                                        if a_formation.formation_degree == 'Graduado':
                                             degree_2_count += 25
                                         elif a_formation.formation_degree == 'Mestre':
                                             degree_2_count += 50
@@ -2352,7 +2387,7 @@ def run_atribuition(request, ambientid):
                                             if a_formation.formation == formation:
                                                 professional_experience_1_count = formation.professional_experience_time
                                                 didatic_experience_1_count = formation.didatic_experience_time
-                                                if a_formation.formation_degree == 'Tecnólogo':
+                                                if a_formation.formation_degree == 'Graduado':
                                                     degree_1_count += 25
                                                 elif a_formation.formation_degree == 'Mestre':
                                                     degree_1_count += 50
@@ -2363,7 +2398,7 @@ def run_atribuition(request, ambientid):
                                             if a_formation.formation == formation:
                                                 professional_experience_2_count = formation.professional_experience_time
                                                 didatic_experience_2_count = formation.didatic_experience_time
-                                                if a_formation.formation_degree == 'Tecnólogo':
+                                                if a_formation.formation_degree == 'Graduado':
                                                     degree_2_count += 25
                                                 elif a_formation.formation_degree == 'Mestre':
                                                     degree_2_count += 50
@@ -2565,7 +2600,7 @@ def run_atribuition(request, ambientid):
                         if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
                             tsubjects_professor2 = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                         if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                            if candidate.formation.formation_degree == 'Tecnólogo':
+                            if candidate.formation.formation_degree == 'Graduado':
                                 degree = 25
                             elif candidate.formation.formation_degree == 'Mestre':
                                 degree = 50
