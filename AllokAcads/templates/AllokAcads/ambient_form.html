@@ -1,0 +1,39 @@
+{% extends "AllokAcads/base.html" %}
+
+{% block content %}
+    {% if schedules or classrooms or classes or subjects %}
+        <p>Preencha seu formulário abaixo: </p>
+        <br>
+        <form action="{% url 'ambient_form_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if schedules %}
+                <label for="available_schedules">Horários Disponíveis</label>
+                <br>
+                <p>Periodos</p>
+                    {% for schedule in schedules %}
+                        {% if forloop.counter0|divisibleby:columns %}
+                            <br>
+                            Dia {{ schedule.line|add:"1" }}
+                        {% endif %}
+                        <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+                    {% endfor %}
+            {% endif %}
+            {% if subjects %}
+                <br><br>
+                    <label for="prefered_subjects">Matérias Preferidas</label>
+                    <br>
+                    {% for subject in subjects %}
+                        <br>       
+                        <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
+                        <select name="option_{{ subject.id }}" id="option_{{ subject.id }}">
+                            <option selected value="100">Opção primária</option>
+                            <option value="50">Opção secundária</option>
+                        </select>
+                        <br>
+                    {% endfor %}
+            {% endif %}
+            <br><br>
+            <button type="submit" id="submit" name="submit">Enviar</button>
+        </form>    
+    {% endif %}
+{% endblock %}

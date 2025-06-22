@@ -30,6 +30,7 @@ urlpatterns = [
     path('home/create_ambient_validate', views.create_ambient_validate, name='create_ambient_validate'),
     path('home/enter_ambient', views.enter_ambient, name='enter_ambient'),
     path('ambient/<str:ambientid>', views.ambient, name='ambient'),
+    path('ambient/form/<str:ambientid>', views.ambient_form, name='ambient_form'),
     path('ambient/form/validate/<str:ambientid>', views.ambient_form_validate, name='ambient_form_validate'),
     path('ambient/config/<str:ambientid>', views.ambient_config, name='ambient_config'),
     path('ambient/delete/<str:ambientid>', views.ambient_delete, name='ambient_delete'),

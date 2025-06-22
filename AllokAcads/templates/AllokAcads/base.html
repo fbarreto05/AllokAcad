@@ -31,8 +31,8 @@
                 
                 <div class="user-info">
                     <div class="user-avatar">
-                        {% if user.profile_picture %}
-                        <img src="{{ user.profile_picture.url }}" alt="{{ user.name }}">
+                        {% if user.picture %}
+                        <img src="{{ user.picture.url }}" alt="{{ user.name }}">
                         {% else %}
                         <div class="user-initial">{{ user.name|default:"I"|make_list|first|upper }}</div>
                         {% endif %}

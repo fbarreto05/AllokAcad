@@ -24,19 +24,7 @@
 
 <div class="header">
     <h1>{{ ambient.name }}</h1>
-    {% if member.admin_type.can_register_resources %}
-    <div class="header-actions">
-        <button class="delete-ambient-button" onclick="openDeleteModal()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-            </svg>
-            Deletar Ambiente
-        </button>
-    </div>
-    {% endif %}
+    
 </div>
 
 <div id="ambient-nav" class="ambient-nav">
@@ -184,7 +172,7 @@
                         Dia {{ alocation.column|add:"1" }}:
                     {% endif %}
                     {% for activitie in alocation.activitie.all %}
-                        <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass }}, {{ activitie.tsubject }}, {{ activitie.tprofessor }}, {{ activitie.tclassroom }}: {{alocation.line}}, {{alocation.column}}/</p>
+                        <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass.name }}, {{ activitie.tsubject.name }}, {{ activitie.tprofessor.user.name }}, {{ activitie.tclassroom.name }} || Linha: {{alocation.line}}, Coluna: {{alocation.column}} /</p>
                     {% endfor %}
                 {% endfor %}
                 <br>
@@ -196,41 +184,7 @@
             
             <br>
             {% if member.is_professor %}
-                {% if schedules or classrooms or classes or subjects %}
-                <p>Preencha seu formulário abaixo: </p>
-                    <br>
-                    <form action="{% url 'ambient_form_validate' ambient.ambientid %}" method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        {% if schedules %}
-                            <label for="available_schedules">Horários Disponíveis</label>
-                            <br>
-                            <p>Periodos</p>
-                                {% for schedule in schedules %}
-                                    {% if forloop.counter0|divisibleby:columns %}
-                                        <br>
-                                        Dia {{ schedule.line|add:"1" }}
-                                    {% endif %}
-                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
-                                {% endfor %}
-                        {% endif %}
-                        {% if subjects %}
-                            <br><br>
-                                <label for="prefered_subjects">Matérias Preferidas</label>
-                                <br>
-                                {% for subject in subjects %}
-                                    <br>       
-                                    <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">{{ subject.name }}
-                                    <select name="option_{{ subject.id }}" id="option_{{ subject.id }}">
-                                        <option selected value="100">Opção primária</option>
-                                        <option value="50">Opção secundária</option>
-                                    </select>
-                                    <br>
-                                {% endfor %}
-                        {% endif %}
-                        <br><br>
-                        <button type="submit" id="submit" name="submit">Enviar</button>
-                    </form>    
-                {% endif %}
+                <button><a href="{% url 'ambient_form' ambient.ambientid %}">Preencher Formulário</a></button>
             {% endif %}
 
             
