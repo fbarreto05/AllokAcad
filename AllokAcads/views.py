@@ -29,7 +29,7 @@ def login_validate(request):
             loginauth(request, userauth)   
             return redirect(f'/home')
         
-        return redirect('/login')
+        return redirect('login')
 
 def register(request):
     if request.user.is_authenticated:
