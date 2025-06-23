@@ -59,8 +59,8 @@
         </main>
         <footer>
             <nav class="switch-dashboard">
-                <a href="?view = spaces" class="button-active">Espaços</a>
-                <a href="?view = professors" class="button">Professores</a>
+                <a href="{% url 'dashboard_app:professor_dashboard' %}" class="button">Professores</a>
+                <a href="{% url 'dashboard_app:space_dashboard' %}" class="button-active">Espaços</a>
             </nav>
         </footer>
     </div>

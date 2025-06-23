@@ -28,6 +28,11 @@ def professor_dashboard_view(request):
 def update_dashboard_data(request):
     ambient_id = request.GET.get('ambient', None)
     
+    ambient_list = calculateProfessor.get_ambient_list()
+    
+    for ambient in ambient_list:
+        calculateProfessor.statistics(ambient_id = ambient.id)
+    
     average_class_interval = calculateProfessor.average_periods_interval(ambient_id = ambient_id)
     average_trips = calculateProfessor.average_trips(ambient_id = ambient_id)
     average_classes = calculateProfessor.average_periods(ambient_id = ambient_id)
