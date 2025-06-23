@@ -1479,27 +1479,28 @@ def check_conflitant_schedules_professor(professor, activitie):
         else:
             available_schedules = 0
             activities_with_professor2 = activities_with_professor.remove(tactivitie)
-            num_activities2 = len(activities_with_professor2)
-            for tactivitie in activities_with_professor2:
-                last_column = 0
-                last_line = 0
-                for schedule in tactivitie.tclass.prefered_schedules.all():
-                    if ((schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0) and schedule not in list(tactivitie.tprofessor.prefered_schedules.all())):
-                        available = False
-                        for i in range(tactivitie.activities_qtd):
-                            schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
-                            if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
-                                available = True
-                                last_line = schedule.line
-                                last_column = schedule.column+i
-                            else:
-                                available = False
-                        if available: available_schedules += 1
-                if available_schedules >= num_activities2 or available_schedules == 0:
-                    available_sch_qtd += 1
-                else:
-                    no_available_sch = tactivitie
-                    no_available_sch_qtd += 1
+            if activities_with_professor2:
+                for tactivitie in activities_with_professor2:
+                    num_activities2 = len(activities_with_professor2)
+                    last_column = 0
+                    last_line = 0
+                    for schedule in tactivitie.tclass.prefered_schedules.all():
+                        if ((schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0) and schedule not in list(tactivitie.tprofessor.prefered_schedules.all())):
+                            available = False
+                            for i in range(tactivitie.activities_qtd):
+                                schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
+                                if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
+                                    available = True
+                                    last_line = schedule.line
+                                    last_column = schedule.column+i
+                                else:
+                                    available = False
+                            if available: available_schedules += 1
+                    if available_schedules >= num_activities2 or available_schedules == 0:
+                        available_sch_qtd += 1
+                    else:
+                        no_available_sch = tactivitie
+                        no_available_sch_qtd += 1
     if available_sch_qtd == num_activities:
         return True
     else:
@@ -2661,10 +2662,9 @@ def run_atribuition(request, ambientid):
                         conflitant_professor.save()
 
             #garante que as atividades restantes sejam atribuídas a quem deve ser
-
                 not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-                candidates = ambient.members.all().filter(is_professor = True).order_by('-num_uses')
                 for not_atribuited_activitie in not_atribuited_activities:
+                    candidates = ambient.members.all().filter(is_professor = True).order_by('num_uses')
                     highest_weight = 0
                     chosen_professor = None
                     for candidate in candidates:
@@ -2691,7 +2691,9 @@ def run_atribuition(request, ambientid):
                             conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
                             conflitant_schedules.save()
                             conflitant_professor.save()
+                    
                 #atribui randomicamente (deve gerar erro, e tbm gerar erro se houverem atividades em branco)
+
 
             return redirect(f'/ambient/{ambientid}')
         else:
