@@ -1,9 +1,8 @@
 from django.db import models
 
 class ProfessorStatistics(models.Model):
-    #ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
-    #professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
-    name = models.CharField(max_length = 20, null=True)
+    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
+    professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
     semester = models.CharField(max_length = 100)
     
     day = models.IntegerField()
