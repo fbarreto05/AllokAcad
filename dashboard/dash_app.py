@@ -26,9 +26,9 @@ def generate(initial_arguments = None):
                 "periods_list": "Média de Períodos",
             }
         )
-        
+        print('To aqqui')
         return html.Div([
-            dcc.Graph(figure = fig)
+           html.H1('Hello')
         ])
 
 app.layout = generate

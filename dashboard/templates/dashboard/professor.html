@@ -14,11 +14,22 @@
                 <p>Mostra métricas dos professores no semester selecionado</p>
             </div>
             <ul class="indicators">
-                <li class="indicator">{{ average_class_interval }}</li>
-                <li class="indicator">{{ average_trips }}</li>
-                <li class="indicator">{{ average_classes }}</li>
-                <li class="indicator">{{ number_of_professors }}</li>
-                <li class="indicator">{{ timetable_quality }}</li>
+                <li class="indicator" id="indicator-avg-interval">
+                    <span class="indicator-value">{{ average_class_interval }}</span>
+                    <span class="indicator-label">Intervalo Médio</span>
+                </li>
+                <li class="indicator" id="indicator-avg-classes">
+                    <span class="indicator-value">{{ average_classes }}</span>
+                    <span class="indicator-label">Média de Aulas/Dia</span>
+                </li>
+                <li class="indicator" id="indicator-num-professors">
+                    <span class="indicator-value">{{ number_of_professors }}</span>
+                    <span class="indicator-label">Nº de Professores</span>
+                </li>
+                <li class="indicator" id="indicator-timetable-quality">
+                    <span class="indicator-value">{{ timetable_quality }}</span>
+                    <span class="indicator-label">Qualidade da Alocação</span>
+                </li>
             </ul>
             <div class="header-filters-container">
                 <select name="ambient" id="ambient-select">
@@ -27,24 +38,17 @@
                         <option value="{{ ambient.id }}">{{ ambient.name }}</option>
                     {% endfor %}
                 </select>
-                <select name="semester" id="semester-select">
-                    <option value="">Semestre</option>
-                    {% for semester in semesters %}
-                        <option value="{{ semester.id }}">{{ semester.name }}</option>
-                    {% endfor %}
-                </select>
+                <button class="button" id="update-button">
+                    Atualizar
+                </button>
             </div>
         </header>
         <main>
             <ul class="graphics-container">
                 <li class="graphic">
-                    {% if dash_data_graph_bar.data %}
-                        {% plotly_app name="" initial_arguments="" %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
+                        {% plotly_app name="GraficoDeBarras" %}
+                 
+                
                 </li>
                 <li class="graphic">
                     {% if dash_data_graph_bar.data %}
@@ -77,33 +81,53 @@
         </main>
         <footer>
             <nav class="switch-dashboard">
-                <a href="?view=spaces" class="button-active">Espaços</a>
-                <a href="?view=professors" class="button">Professores</a>
+                <a href="{% url 'dashboard_app:professor_dashboard' %}" class="button-active">Professores</a>
+                <a href="{% url 'dashboard_app:space_dashboard' %}" class="button">Espaços</a>
             </nav>
         </footer>
     </div>
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ambientSelect = document.getElementById('ambient-select');
-            const semesterSelect = document.getElementById('semester-select');
-
-            function updateUrl() {
-                const ambientId = ambientSelect.value;
-                const semesterId = semesterSelect.value;
-
-                if (ambientId && semesterId) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('ambient', ambientId);
-                    url.searchParams.set('semester', semesterId);
-                    window.location.href = url.toString();
-                }
-            }
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ambientSelect = document.getElementById('ambient-select');
+        const updateButton = document.getElementById('update-button');
             
-            ambientSelect.addEventListener('change', updateUrl);
-            semesterSelect.addEventListener('change', updateUrl);
-        });
-    </script>
+        updateButton.addEventListener('click', () => {
+            const ambientId = ambientSelect.value;
+            updateDashboardData(ambientId);
+        })
+
+        async function updateDashboardData(ambientId) {
+            document.querySelector('#indicator-avg-interval .indicator-value').textContent = '...';
+            document.querySelector('#indicator-avg-classes .indicator-value').textContent = '...';
+            document.querySelector('#indicator-num-professors .indicator-value').textContent = '...';
+            document.querySelector('#indicator-timetable-quality .indicator-value').textContent = '...';
+
+            const url = new URL('/dashboard/api/update-dashboard-data/', window.location.origin);
+
+            if (ambientId) {
+                url.searchParams.append('ambient', ambientId);
+            }
+
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Erro('Erro')
+                }
+                const newData = await response.json();
+
+                document.querySelector('#indicator-avg-interval .indicator-value').textContent = newData.indicators.average_class_interval;
+                document.querySelector('#indicator-avg-classes .indicator-value').textContent = newData.indicators.average_classes;
+                document.querySelector('#indicator-num-professors .indicator-value').textContent = newData.indicators.number_of_professors;
+                document.querySelector('#indicator-timetable-quality .indicator-value').textContent = newData.indicators.timetable_quality;
+
+            } catch (erro) {
+                console.error('Erro: Atualização do dashboard');
+            }         
+        }
+    });
+</script>
 {% endblock %}

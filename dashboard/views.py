@@ -1,11 +1,11 @@
+
 from django.shortcuts import render
 from .services import calculateProfessor
 from .dash_app import app 
 import json
+from django.http import JsonResponse
 
-def professor_dashboard_view(request):
-    ambient_id = request.GET.get('ambient')
-    semester_id = request.GET.get('semester')
+def professor_dashboard_view(request): 
     
     average_class_interval = calculateProfessor.average_periods_interval()
     average_trips = calculateProfessor.average_trips()
@@ -15,11 +15,6 @@ def professor_dashboard_view(request):
     
     ambient_list = calculateProfessor.get_ambient_list()
     
-    data_list = calculateProfessor.get_professor_average_periods_list()
-    
-    data_dash = {
-        'data': data_list
-    }
     context = {
         'average_class_interval': average_class_interval, 
         'average_trips': average_trips,
@@ -28,8 +23,33 @@ def professor_dashboard_view(request):
         'timetable_quality': timetable_quality,
         'ambients' : ambient_list,
     }
-    
     return render(request, 'dashboard/professor.html', context)
+
+def update_dashboard_data(request):
+    ambient_id = request.GET.get('ambient', None)
+    
+    ambient_list = calculateProfessor.get_ambient_list()
+    
+    for ambient in ambient_list:
+        calculateProfessor.statistics(ambient_id = ambient.id)
+    
+    average_class_interval = calculateProfessor.average_periods_interval(ambient_id = ambient_id)
+    average_trips = calculateProfessor.average_trips(ambient_id = ambient_id)
+    average_classes = calculateProfessor.average_periods(ambient_id = ambient_id)
+    number_of_professors = calculateProfessor.number_professors(ambient_id = ambient_id)
+    timetable_quality = calculateProfessor.get_timetable_quality(ambient_id = ambient_id)
+    
+    data = {
+        'indicators': {
+            'average_class_interval': average_class_interval, 
+            'average_trips': average_trips,
+            'average_classes': average_classes,
+            'number_of_professors': number_of_professors,
+            'timetable_quality': timetable_quality,
+        }
+        
+    }
+    return JsonResponse(data)
 
 def space_dashboard_view(request):
     return render(request, 'dashboard/space.html') 
