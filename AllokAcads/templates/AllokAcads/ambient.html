@@ -8,7 +8,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ambient.css' %}">
-<link rel="stylesheet" href="{% static 'css/confirmation-modal.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -250,51 +249,8 @@
         </div>
     </div>
 </div>
-
-<div id="deleteModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Confirmar Exclusão</h3>
-            <button class="modal-close" onclick="closeDeleteModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="warning-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-            </div>
-            <p><strong>Tem certeza que deseja deletar o ambiente "{{ ambient.name }}"?</strong></p>
-            <p class="warning-text">Esta ação é <strong>irreversível</strong> e irá remover permanentemente:</p>
-            <ul class="warning-list">
-                <li>Todas as turmas e suas configurações</li>
-                <li>Todas as salas e tipos de sala</li>
-                <li>Todas as matérias e formações</li>
-                <li>Todos os membros e suas preferências</li>
-                <li>Todas as atribuições e alocações</li>
-            </ul>
-        </div>
-        <div class="modal-actions">
-            <button class="cancel-button" onclick="closeDeleteModal()">Cancelar</button>
-            <a href="{% url 'ambient_delete' ambient.ambientid %}" class="delete-confirm-button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                Sim, Deletar Ambiente
-            </a>
-        </div>
-    </div>
-</div>
 {% endblock content %}
 
 {% block extra_js %}
-<script src="{% static 'js/confirmation-modal.js' %}"></script>
 <script src="{% static 'js/ambient.js' %}"></script>
 {% endblock %}

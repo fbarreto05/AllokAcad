@@ -28,7 +28,6 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['3.23.126.5', '3.128.174.142', 'allokacad.xyz']
 
-
 # Application definition
 
 INSTALLED_APPS = [

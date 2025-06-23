@@ -29,7 +29,7 @@ def login_validate(request):
             loginauth(request, userauth)   
             return redirect(f'/home')
         
-        return redirect('/')
+        return redirect('/?error=login_failed')
 
 def register(request):
     if request.user.is_authenticated:
@@ -75,7 +75,28 @@ def register_validate(request):
         user = User(userid=identificator, picture=picture, name=name, email=email, birthdate=birthdate)
         user.save()
 
-        return render(request, "AllokAcads/register.html")
+        # Redirecionar para login com dados do usuário na URL (encoded)
+        import urllib.parse
+        from datetime import datetime
+        
+        # Converter a data para formato brasileiro se existir
+        formatted_birthdate = ''
+        if birthdate:
+            try:
+                # birthdate vem como string "YYYY-MM-DD" do formulário
+                date_obj = datetime.strptime(birthdate, '%Y-%m-%d')
+                formatted_birthdate = date_obj.strftime('%d/%m/%Y')
+            except:
+                formatted_birthdate = birthdate
+        
+        user_data = {
+            'userid': identificator,
+            'name': name,
+            'email': email,
+            'birthdate': formatted_birthdate
+        }
+        encoded_data = urllib.parse.urlencode(user_data)
+        return redirect(f'/?new_user=true&{encoded_data}')
 
 def home(request):
     if request.user.is_authenticated:
