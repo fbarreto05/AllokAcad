@@ -2664,7 +2664,7 @@ def run_atribuition(request, ambientid):
             #garante que as atividades restantes sejam atribuídas a quem deve ser
                 not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
                 for not_atribuited_activitie in not_atribuited_activities:
-                    candidates = ambient.members.all().filter(is_professor = True).order_by('-num_uses')
+                    candidates = ambient.members.all().filter(is_professor = True).order_by('num_uses')
                     highest_weight = 0
                     chosen_professor = None
                     for candidate in candidates:
