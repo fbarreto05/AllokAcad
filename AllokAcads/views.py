@@ -689,7 +689,7 @@ def ambient_edit_rooms_validate(request, roomid, ambientid):
                 room.name = name
             roomtype = request.POST.get("roomtype")
             if roomtype:
-                room.classroom_type = capacity
+                room.classroom_type = ClassroomTP.objects.get(id = request.POST.get('roomtype'))
             capacity = request.POST.get("capacity")
             if capacity:
                 room.classroom_capacity = capacity
