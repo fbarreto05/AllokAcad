@@ -7,7 +7,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const nameError = document.getElementById('nameError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');    function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');
+    const togglePassword = document.querySelector('.toggle-password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
+
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.style.display = 'block';
+                eyeOffIcon.style.display = 'none';
+            } else {
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'block';
+            }
+            
+            passwordInput.focus();
+        });
+    }
+
+    function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
     }
@@ -71,11 +93,14 @@ document.addEventListener('DOMContentLoaded', function() {
         clearError(emailError);
         clearError(passwordError);
         clearError(birthdateError);
-        
-        let hasError = false;
+          let hasError = false;
         
         if (!nameInput.value.trim()) {
             showError(nameError, 'Por favor, insira seu nome completo');
+            nameInput.classList.add('error');
+            hasError = true;
+        } else if (nameInput.value.trim().length < 5) {
+            showError(nameError, 'O nome deve ter pelo menos 5 caracteres');
             nameInput.classList.add('error');
             hasError = true;
         }
@@ -120,11 +145,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: formData
-            });            if (response.redirected || response.url.includes('/')) {
+            });            if (response.redirected || response.url.includes('/?new_user=')) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
                 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = response.url || '/';
                 }, 2000);
             } else if (response.ok) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');

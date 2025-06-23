@@ -131,6 +131,47 @@ input[type="date"]:focus {
     outline: none;
 }
 
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-input-container input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: #4361ee;
+}
+
+.toggle-password:focus {
+    outline: none;
+    color: #4361ee;
+}
+
+.eye-icon, .eye-off-icon {
+    stroke: currentColor;
+}
+
 input[type="date"]::placeholder {
     color: #666;
 }
