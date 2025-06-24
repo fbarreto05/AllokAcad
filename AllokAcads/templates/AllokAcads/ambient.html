@@ -162,30 +162,137 @@
                 </div>
             </div>
 
-            <br>
-            {% if table %}
-                <p>Tabela: </p>
-                {% for alocation in table %}
-                    {% if forloop.counter0|divisibleby:columns %}
-                        <br>
-                        Dia {{ alocation.column|add:"1" }}:
-                    {% endif %}
-                    {% for activitie in alocation.activitie.all %}
-                        <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass.name }}, {{ activitie.tsubject.name }}, {{ activitie.tprofessor.user.name }}, {{ activitie.tclassroom.name }} || Linha: {{alocation.line}}, Coluna: {{alocation.column}} /</p>
-                    {% endfor %}
-                {% endfor %}
-                <br>
-                <p>Não Alocado: </p>
-                {% for alocation in not_alocated %}
-                    <p>/ {{ alocation.activitie.tclass }}, {{ alocation.activitie.tsubject }}, {{ alocation.activitie.professor }}, {{ alocation.activitie.tclassroom }} /</p>
-                {% endfor %}
-            {% endif %}
-            
-            <br>
             {% if member.is_professor %}
-                <button><a href="{% url 'ambient_form' ambient.ambientid %}">Preencher Formulário</a></button>
+            <div class="professor-action-section">
+                <div class="professor-action-card">
+                    <div class="professor-action-content">
+                        <div class="professor-action-info">
+                            <div class="professor-action-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="professor-action-text">
+                                <h4>Formulário de Preferências</h4>
+                                <p>Preencha suas preferências de horários e salas para otimizar sua alocação.</p>
+                            </div>
+                        </div>
+                        <a href="{% url 'ambient_form' ambient.ambientid %}" class="professor-action-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14"></path>
+                                <path d="M12 5l7 7-7 7"></path>
+                            </svg>
+                            Preencher Formulário
+                        </a>
+                    </div>
+                </div>
+            </div>
             {% endif %}
 
+            {% if table %}
+            <div class="info-card schedule-card">
+                <div class="info-header">
+                    <h3>Grade de Horários</h3>
+                    <span class="schedule-badge">{{ table|length }} alocações</span>
+                </div>
+                <div class="info-body">
+                    <div class="schedule-table-container">
+                        <table class="schedule-table">
+                            <thead>
+                                <tr>
+                                    <th class="period-header">Período</th>
+                                    {% for day in "12345"|make_list %}
+                                        <th class="day-header">Dia {{ day }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in "12345678"|make_list %}
+                                <tr>
+                                    <td class="period-cell">
+                                        <div class="period-number">{{ period }}º</div>
+                                    </td>
+                                    {% for day in "12345"|make_list %}
+                                    <td class="schedule-cell">
+                                        {% for alocation in table %}
+                                            {% if alocation.line|add:"1"|stringformat:"s" == period and alocation.column|add:"1"|stringformat:"s" == day %}
+                                                {% for activitie in alocation.activitie.all %}
+                                                <div class="activity-block">
+                                                    <div class="activity-header">
+                                                        <span class="subject-name">{{ activitie.tsubject.name }}</span>
+                                                        <span class="class-name">{{ activitie.tclass.name }}</span>
+                                                    </div>
+                                                    <div class="activity-details">
+                                                        <div class="professor-info">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                                <circle cx="12" cy="7" r="4"/>
+                                                            </svg>
+                                                            {{ activitie.tprofessor.user.name }}
+                                                        </div>
+                                                        <div class="classroom-info">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                                                <path d="M3 9h18"/>
+                                                            </svg>
+                                                            {{ activitie.tclassroom.name }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not_alocated %}
+            <div class="info-card unallocated-card">
+                <div class="info-header">
+                    <h3>Atividades Não Alocadas</h3>
+                    <span class="unallocated-badge">{{ not_alocated|length }} atividades</span>
+                </div>
+                <div class="info-body">
+                    <div class="unallocated-list">
+                        {% for alocation in not_alocated %}
+                        <div class="unallocated-item">
+                            <div class="unallocated-header">
+                                <span class="unallocated-subject">{{ alocation.activitie.tsubject }}</span>
+                                <span class="unallocated-class">{{ alocation.activitie.tclass }}</span>
+                            </div>
+                            <div class="unallocated-details">
+                                <div class="unallocated-professor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    {{ alocation.activitie.professor }}
+                                </div>
+                                <div class="unallocated-classroom">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <path d="M3 9h18"/>
+                                    </svg>
+                                    {{ alocation.activitie.tclassroom }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             {% if member.admin_type.can_run_atribuition or member.admin_type.can_run_alocation %}
             <div class="admin-actions-card">

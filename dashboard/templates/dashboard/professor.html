@@ -1,133 +1,133 @@
-{% extends 'base.html' %}
+{% extends '../base.html' %}
 {% load static %}
 {% load plotly_dash %}
+
+{% block dashboard_title %}Dashboard dos Professores{% endblock %}
 
 {% block styles %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/professor_dashboard.css' %}">
 {% endblock %}
 
 {% block content %}
+    <nav class="dashboard-nav" role="navigation" aria-label="Navegação entre dashboards">
+        <a href="{% url 'dashboard_app:professor_dashboard' %}" class="active" aria-current="page">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Professores
+        </a>
+        <a href="{% url 'dashboard_app:space_dashboard' %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+            </svg>
+            Espaços
+        </a>
+    </nav>
+
     <div class="dashboard-container">
         <header class="dashboard-header">
-            <div class="dashboard-name">
-                <h2>Dashboard dos professores</h2>
-                <p>Mostra métricas dos professores no semester selecionado</p>
+            <div class="dashboard-title">
+                <h1>Dashboard dos Professores</h1>
+                <p>Análise completa de métricas dos professores no semestre selecionado</p>
             </div>
-            <ul class="indicators">
-                <li class="indicator" id="indicator-avg-interval">
-                    <span class="indicator-value">{{ average_class_interval }}</span>
-                    <span class="indicator-label">Intervalo Médio</span>
-                </li>
-                <li class="indicator" id="indicator-avg-classes">
-                    <span class="indicator-value">{{ average_classes }}</span>
-                    <span class="indicator-label">Média de Aulas/Dia</span>
-                </li>
-                <li class="indicator" id="indicator-num-professors">
-                    <span class="indicator-value">{{ number_of_professors }}</span>
-                    <span class="indicator-label">Nº de Professores</span>
-                </li>
-                <li class="indicator" id="indicator-timetable-quality">
-                    <span class="indicator-value">{{ timetable_quality }}</span>
-                    <span class="indicator-label">Qualidade da Alocação</span>
-                </li>
-            </ul>
-            <div class="header-filters-container">
-                <select name="ambient" id="ambient-select">
-                    <option value="">Ambiente</option>
-                    {% for ambient in ambients %}
-                        <option value="{{ ambient.id }}">{{ ambient.name }}</option>
-                    {% endfor %}
-                </select>
-                <button class="button" id="update-button">
-                    Atualizar
-                </button>
+            
+            <div class="metrics-grid">
+                <div class="metric-card" id="metric-avg-interval">
+                    <div class="metric-value" aria-live="polite">{{ average_class_interval|default:"--" }}</div>
+                    <div class="metric-label">Intervalo Médio</div>
+                </div>
+                <div class="metric-card" id="metric-avg-classes">
+                    <div class="metric-value" aria-live="polite">{{ average_classes|default:"--" }}</div>
+                    <div class="metric-label">Média de Aulas/Dia</div>
+                </div>
+                <div class="metric-card" id="metric-num-professors">
+                    <div class="metric-value" aria-live="polite">{{ number_of_professors|default:"--" }}</div>
+                    <div class="metric-label">Nº de Professores</div>
+                </div>
+                <div class="metric-card" id="metric-timetable-quality">
+                    <div class="metric-value" aria-live="polite">{{ timetable_quality|default:"100" }}</div>
+                    <div class="metric-label">Qualidade da Alocação</div>
+                </div>
+            </div>
+            
+            <div class="dashboard-controls">
+                <div class="control-group">
+                    <select name="ambient" id="ambient-select" aria-label="Selecionar ambiente para filtrar dados">
+                        <option value="">Todos os Ambientes</option>
+                        {% for ambient in ambients %}
+                            <option value="{{ ambient.id }}">{{ ambient.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                        Atualizar
+                    </button>
+                </div>
             </div>
         </header>
-        <main>
-            <ul class="graphics-container">
-                <li class="graphic">
-                        {% plotly_app name="GraficoDeBarras" %}
-                 
-                
-                </li>
-                <li class="graphic">
-                    {% if dash_data_graph_bar.data %}
-                        {% plotly_app name='' initial_arguments="" %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-                <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='' initial_arguments=dash_context %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-                <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='' initial_arguments=dash_context %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-            </ul>
+        
+        <main class="charts-grid">
+            <div class="chart-container" role="img" aria-label="Gráfico de barras dos professores">
+                {% plotly_app name="GraficoDeBarras" %}
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Análise detalhada por ambiente">
+                {% if dash_data_graph_bar.data %}
+                    {% plotly_app name="" initial_arguments="" %}
+                {% else %}
+                    <div class="chart-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <p>Selecione um ambiente para visualizar os gráficos detalhados</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Análises estatísticas">
+                {% if dash_context %}
+                    {% plotly_app name="" initial_arguments=dash_context %}
+                {% else %}
+                    <div class="chart-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path d="M18 20V10"/>
+                            <path d="M12 20V4"/>
+                            <path d="M6 20v-6"/>
+                        </svg>
+                        <p>Configure os filtros para exibir as análises estatísticas</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Dados adicionais">
+                {% if dash_context %}
+                    {% plotly_app name="" initial_arguments=dash_context %}
+                {% else %}
+                    <div class="chart-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                        <p>Dados adicionais aparecerão aqui conforme os filtros aplicados</p>
+                    </div>
+                {% endif %}
+            </div>
         </main>
-        <footer>
-            <nav class="switch-dashboard">
-                <a href="{% url 'dashboard_app:professor_dashboard' %}" class="button-active">Professores</a>
-                <a href="{% url 'dashboard_app:space_dashboard' %}" class="button">Espaços</a>
-            </nav>
-        </footer>
     </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ambientSelect = document.getElementById('ambient-select');
-        const updateButton = document.getElementById('update-button');
-            
-        updateButton.addEventListener('click', () => {
-            const ambientId = ambientSelect.value;
-            updateDashboardData(ambientId);
-        })
-
-        async function updateDashboardData(ambientId) {
-            document.querySelector('#indicator-avg-interval .indicator-value').textContent = '...';
-            document.querySelector('#indicator-avg-classes .indicator-value').textContent = '...';
-            document.querySelector('#indicator-num-professors .indicator-value').textContent = '...';
-            document.querySelector('#indicator-timetable-quality .indicator-value').textContent = '...';
-
-            const url = new URL('/dashboard/api/update-dashboard-data/', window.location.origin);
-
-            if (ambientId) {
-                url.searchParams.append('ambient', ambientId);
-            }
-
-            try {
-                const response = await fetch(url);
-
-                if (!response.ok) {
-                    throw new Erro('Erro')
-                }
-                const newData = await response.json();
-
-                document.querySelector('#indicator-avg-interval .indicator-value').textContent = newData.indicators.average_class_interval;
-                document.querySelector('#indicator-avg-classes .indicator-value').textContent = newData.indicators.average_classes;
-                document.querySelector('#indicator-num-professors .indicator-value').textContent = newData.indicators.number_of_professors;
-                document.querySelector('#indicator-timetable-quality .indicator-value').textContent = newData.indicators.timetable_quality;
-
-            } catch (erro) {
-                console.error('Erro: Atualização do dashboard');
-            }         
-        }
-    });
-</script>
+    <script src="{% static 'js/professor_dashboard.js' %}"></script>
 {% endblock %}

@@ -47,140 +47,139 @@ document.addEventListener('DOMContentLoaded', function() {
                 eyeOffIcon.style.display = 'none';
             } else {
                 eyeIcon.style.display = 'none';
-                eyeOffIcon.style.display = 'block';        }
+                eyeOffIcon.style.display = 'block';
+            }
             
-        passwordInput.focus();
-    });
-}
-
-function validateForm() {
-    let isValid = true;
-
-    if (!identifierInput.value.trim()) {
-        identifierError.textContent = 'O identificador é obrigatório';
-        identifierInput.classList.add('error');
-        isValid = false;
-    } else {
-        identifierError.textContent = '';
-        identifierInput.classList.remove('error');
-    }
-
-    if (!passwordInput.value) {
-        passwordError.textContent = 'A senha é obrigatória';
-        passwordInput.classList.add('error');
-        isValid = false;
-    } else {
-        passwordError.textContent = '';
-        passwordInput.classList.remove('error');
-    }
-
-        return isValid;
-}
-
-const urlParams = new URLSearchParams(window.location.search);
-
-if (urlParams.get('error') === 'login_failed') {
-    const errorElement = document.createElement('div');
-    errorElement.className = 'form-error';
-    errorElement.textContent = 'Identificador ou senha incorretos. Tente novamente.';
-    
-    const formContainer = document.querySelector('.form-container');
-    if (formContainer && loginForm) {
-        formContainer.insertBefore(errorElement, loginForm);
-    }
-}
-
-const newUserId = urlParams.get('new_user');
-if (newUserId === 'true') {
-    const userData = {
-        userid: urlParams.get('userid'),
-        name: urlParams.get('name'),
-        email: urlParams.get('email'),
-        birthdate: urlParams.get('birthdate')
-    };
-    showWelcomeModal(userData);
-}
-
-if (urlParams.has('error') || urlParams.has('new_user')) {
-    const newUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, newUrl);
-}
-
-loginForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    clearError(identifierError);
-    clearError(passwordError);
-    
-    let hasError = false;
-    
-    if (!identifierInput.value.trim()) {
-        showError(identifierError, 'Por favor, insira seu identificador');
-        identifierInput.classList.add('error');
-        hasError = true;
-    }
-    
-    if (!passwordInput.value.trim()) {
-        showError(passwordError, 'Por favor, insira sua senha');
-        passwordInput.classList.add('error');
-        hasError = true;
-    }
-    
-    if (hasError) return;
-
-    try {
-        const response = await fetch('/login_validate', { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: new URLSearchParams({
-                'id': identifierInput.value.trim(),
-                'password': passwordInput.value
-            })
+            passwordInput.focus();
         });
+    }    function validateForm() {
+        let isValid = true;
 
-        if (response.redirected) {
-            window.location.href = response.url;
+        if (!identifierInput.value.trim()) {
+            identifierError.textContent = 'O identificador é obrigatório';
+            identifierInput.classList.add('error');
+            isValid = false;
         } else {
-            window.location.href = '/';
+            identifierError.textContent = '';
+            identifierInput.classList.remove('error');
         }
-    } catch (error) {
-        showError(identifierError, 'Erro ao conectar ao servidor. Tente novamente.');
-    }
-});
 
-function showWelcomeModal(userData) {
-    const modal = document.getElementById('welcomeModal');
-    const userIdElement = document.getElementById('welcomeUserId');
-    const userNameElement = document.getElementById('welcomeUserName');
+        if (!passwordInput.value) {
+            passwordError.textContent = 'A senha é obrigatória';
+            passwordInput.classList.add('error');
+            isValid = false;
+        } else {
+            passwordError.textContent = '';
+            passwordInput.classList.remove('error');
+        }
 
-    userIdElement.textContent = userData.userid;
-    userNameElement.textContent = userData.name || 'Usuário';
-
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+        return isValid;    }
+    const urlParams = new URLSearchParams(window.location.search);
     
-    const copyBtn = document.getElementById('copyUserIdBtn');
-    copyBtn.addEventListener('click', function() {
-        copyToClipboard(userData.userid);
-    });
-    
-    const understoodBtn = document.getElementById('understoodBtn');
-    understoodBtn.addEventListener('click', function() {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
+    if (urlParams.get('error') === 'login_failed') {
+        const errorElement = document.createElement('div');
+        errorElement.className = 'form-error';
+        errorElement.textContent = 'Identificador ou senha incorretos. Tente novamente.';
         
-        const identifierInput = document.getElementById('identifier');
-        if (identifierInput) {
-            identifierInput.value = userData.userid;
-            identifierInput.focus();
+        const formContainer = document.querySelector('.form-container');
+        if (formContainer && loginForm) {
+            formContainer.insertBefore(errorElement, loginForm);
         }
-    });
-}
+    }
 
-function copyToClipboard(text) {
+    const newUserId = urlParams.get('new_user');
+    if (newUserId === 'true') {
+        const userData = {
+            userid: urlParams.get('userid'),
+            name: urlParams.get('name'),
+            email: urlParams.get('email'),
+            birthdate: urlParams.get('birthdate')
+        };
+        showWelcomeModal(userData);
+    }
+
+    if (urlParams.has('error') || urlParams.has('new_user')) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        clearError(identifierError);
+        clearError(passwordError);
+        
+        let hasError = false;
+        
+        if (!identifierInput.value.trim()) {
+            showError(identifierError, 'Por favor, insira seu identificador');
+            identifierInput.classList.add('error');
+            hasError = true;
+        }
+        
+        if (!passwordInput.value.trim()) {
+            showError(passwordError, 'Por favor, insira sua senha');
+            passwordInput.classList.add('error');
+            hasError = true;
+        }
+        
+        if (hasError) return;
+
+        try {
+            const response = await fetch('/login_validate', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: new URLSearchParams({
+                    'id': identifierInput.value.trim(),
+                    'password': passwordInput.value
+                })
+            });
+
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else {
+                window.location.href = '/';
+            }        } catch (error) {
+            showError(identifierError, 'Erro ao conectar ao servidor. Tente novamente.');
+        }    });
+
+    function showWelcomeModal(userData) {
+        const modal = document.getElementById('welcomeModal');
+        const userIdElement = document.getElementById('welcomeUserId');
+        const userNameElement = document.getElementById('welcomeUserName');
+        const userEmailElement = document.getElementById('welcomeUserEmail');
+        const userBirthdateElement = document.getElementById('welcomeUserBirthdate');
+        
+        userIdElement.textContent = userData.userid;
+        userNameElement.textContent = userData.name || 'Não informado';
+        userEmailElement.textContent = userData.email || 'Não informado';
+        userBirthdateElement.textContent = userData.birthdate || 'Não informado';
+        
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        const copyBtn = document.getElementById('copyUserIdBtn');
+        copyBtn.addEventListener('click', function() {
+            copyToClipboard(userData.userid);
+        });
+        
+        const understoodBtn = document.getElementById('understoodBtn');
+        understoodBtn.addEventListener('click', function() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            const identifierInput = document.getElementById('identifier');
+            if (identifierInput) {
+                identifierInput.value = userData.userid;
+                identifierInput.focus();
+            }
+        });
+    }
+
+    function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
             const copyBtn = document.getElementById('copyUserIdBtn');
             const originalContent = copyBtn.innerHTML;
@@ -190,16 +189,16 @@ function copyToClipboard(text) {
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <path d="m9 11 3 3L22 4"></path>
                 </svg>
+                Copiado!
             `;
             copyBtn.style.background = '#10b981';
-            copyBtn.style.color = 'white';
             
             setTimeout(() => {
                 copyBtn.innerHTML = originalContent;
-                copyBtn.style.background = '#f3f4f6';
-                copyBtn.style.color = '#6b7280';
+                copyBtn.style.background = '#4361ee';
             }, 2000);
         }).catch(() => {
+            
             const textArea = document.createElement('textarea');
             textArea.value = text;
             document.body.appendChild(textArea);
