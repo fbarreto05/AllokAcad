@@ -1,6 +1,7 @@
+
 from django.shortcuts import render, redirect
 from django.conf import settings
-import random, os, datetime, time
+import random, os, datetime, time, shutil
 from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
@@ -9,6 +10,9 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import logout as logoutauth
 from django.contrib.auth import login as loginauth
 from django.contrib.auth.models import User as UserAuth
+import pwd
+import grp
+
 
 # Create your views here.
 
@@ -55,17 +59,19 @@ def register_validate(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         birthdate = request.POST.get('birthdate')
-    
+
         while(True):
             identificator = generate_userid()
             user = User.objects.filter(userid = identificator)
             if(len(user) == 0):
                 break
-            
+
+
         directory = os.path.join(settings.BASE_DIR, f'media/users/{identificator}/user_picture')
         os.makedirs(directory, exist_ok=True)
         default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'users/user.png')
         copyfile(default_picture_path, os.path.join(directory, 'user.png'))
+
         picture = f'users/{identificator}/user_picture/user.png'
 
         userauth = UserAuth(username=identificator, email=email)
