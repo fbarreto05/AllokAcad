@@ -7,29 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nameError = document.getElementById('nameError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');
-    const togglePassword = document.querySelector('.toggle-password');
-    const eyeIcon = document.querySelector('.eye-icon');
-    const eyeOffIcon = document.querySelector('.eye-off-icon');
-
-    if (togglePassword) {
-        togglePassword.addEventListener('click', function() {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            if (type === 'password') {
-                eyeIcon.style.display = 'block';
-                eyeOffIcon.style.display = 'none';
-            } else {
-                eyeIcon.style.display = 'none';
-                eyeOffIcon.style.display = 'block';
-            }
-            
-            passwordInput.focus();
-        });
-    }
-
-    function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');    function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
     }
