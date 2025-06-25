@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (submitButton) {
-                submitButton.disabled = true;
+                submitButton.disabled = false;
                 submitButton.innerHTML = `
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
                         <path d="M21 12a9 9 0 11-6.219-8.56"/>

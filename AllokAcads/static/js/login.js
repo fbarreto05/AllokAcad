@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
-    const identifierInput = document.getElementById('identifier');
+    const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const identifierError = document.getElementById('identifierError');
     const passwordError = document.getElementById('passwordError');
@@ -24,9 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    identifierInput.addEventListener('input', () => {
+    emailInput.addEventListener('input', () => {
         clearError(identifierError);
-        identifierInput.classList.remove('error');
+        emailInput.classList.remove('error');
         removeLoginError();
     });
 
@@ -55,13 +55,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }    function validateForm() {
         let isValid = true;
 
-        if (!identifierInput.value.trim()) {
-            identifierError.textContent = 'O identificador é obrigatório';
-            identifierInput.classList.add('error');
+        if (!emailInput.value.trim()) {
+            identifierError.textContent = 'O email é obrigatório';
+            emailInput.classList.add('error');
             isValid = false;
         } else {
             identifierError.textContent = '';
-            identifierInput.classList.remove('error');
+            emailInput.classList.remove('error');
         }
 
         if (!passwordInput.value) {
@@ -111,9 +111,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let hasError = false;
         
-        if (!identifierInput.value.trim()) {
-            showError(identifierError, 'Por favor, insira seu identificador');
-            identifierInput.classList.add('error');
+        if (!emailInput.value.trim()) {
+            showError(identifierError, 'Por favor, insira seu email');
+            emailInput.classList.add('error');
             hasError = true;
         }
         
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: new URLSearchParams({
-                    'id': identifierInput.value.trim(),
+                    'email': emailInput.value.trim(),
                     'password': passwordInput.value
                 })
             });
@@ -171,10 +171,10 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.remove('active');
             document.body.style.overflow = '';
             
-            const identifierInput = document.getElementById('identifier');
-            if (identifierInput) {
-                identifierInput.value = userData.userid;
-                identifierInput.focus();
+            const emailrInput = document.getElementById('email');
+            if (emailInput) {
+                emailInput.value = userData.email;
+                emailInput.focus();
             }
         });
     }
