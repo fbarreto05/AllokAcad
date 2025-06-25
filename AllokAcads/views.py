@@ -333,7 +333,7 @@ def ambient_config_validate(request, ambientid):
             ambient_instance.save()
 
             if (periods_in_a_day and days_in_a_cicle) or (periods_in_a_day and ambient_instance.days_in_a_cicle) or (ambient_instance.periods_in_a_day or days_in_a_cicle):
-                ambient_instance.available_schedules.clear()
+                ambient_instance.available_schedules.all().delete()
                 for i in range(int(days_in_a_cicle)):
                     for j in range(int(periods_in_a_day)):
                         schedule = Schedule_Preference(line=i, column=j)
@@ -1405,7 +1405,7 @@ def check_conflitant_schedules_classroom(classroom, activitie):
             if (schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0):
                 available = False
                 for i in range(tactivitie.activities_qtd):
-                    schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
+                    schedule_range = Schedule_Preference.objects.get(id = schedule.id)
                     if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
                         available = True
                         last_line = schedule.line
@@ -1427,7 +1427,7 @@ def check_conflitant_schedules_classroom(classroom, activitie):
                         if ((schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0) and schedule not in list(tactivitie.tprofessor.prefered_schedules.all())):
                             available = False
                             for i in range(tactivitie.activities_qtd):
-                                schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
+                                schedule_range = Schedule_Preference.objects.get(id = schedule.id)
                                 if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
                                     available = True
                                     last_line = schedule.line
@@ -1487,7 +1487,7 @@ def check_conflitant_schedules_professor(professor, activitie):
             if (schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0):
                 available = False
                 for i in range(tactivitie.activities_qtd):
-                    schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
+                    schedule_range = Schedule_Preference.objects.get(id = schedule.id)
                     if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
                         available = True
                         last_line = schedule.line
@@ -1509,7 +1509,7 @@ def check_conflitant_schedules_professor(professor, activitie):
                         if ((schedule.line == last_line and schedule.column > last_column) or (schedule.line != last_line) or (last_column == 0) and schedule not in list(tactivitie.tprofessor.prefered_schedules.all())):
                             available = False
                             for i in range(tactivitie.activities_qtd):
-                                schedule_range = Schedule_Preference.objects.get(line=schedule.line, column=schedule.column+i)
+                                schedule_range = Schedule_Preference.objects.get(id = schedule.id)
                                 if schedule_range and tactivitie.tclass.prefered_schedules.filter(id = schedule_range.id):
                                     available = True
                                     last_line = schedule.line
