@@ -672,14 +672,14 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                 if number_of_students:
                     tclass.number_of_students = number_of_students
                 
+                tclass.prefered_schedules.clear()
                 if schedule_ids:
-                    tclass.prefered_schedules.clear()
                     for schedule_id in schedule_ids:
                         schedule = Schedule_Preference.objects.get(id = schedule_id)
                         tclass.prefered_schedules.add(schedule)
                 
-                if classroom_ids:
-                    tclass.ideal_classrooms.all().delete()
+                tclass.ideal_classrooms.all().delete()
+                if classroom_ids:   
                     for classroom_id in classroom_ids:
                         classroom = Classroom.objects.get(id = classroom_id)
                         classroom_weight = request.POST.get(f"classroom_weight_{classroom_id}")
@@ -687,8 +687,8 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                         classroom_preference.save()
                         tclass.ideal_classrooms.add(classroom_preference)
                 
-                if professor_ids:
-                    tclass.favorite_professors.all().delete()
+                tclass.favorite_professors.all().delete()
+                if professor_ids: 
                     for professor_id in professor_ids:
                         professor = Member.objects.get(id = professor_id)
                         professor_weight = request.POST.get(f"professor_weight_{professor_id}")
