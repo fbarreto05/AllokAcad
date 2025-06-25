@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
-    const identifierInput = document.getElementById('identifier');
+    const identifierInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const identifierError = document.getElementById('identifierError');
     const passwordError = document.getElementById('passwordError');
@@ -172,7 +172,7 @@ function showWelcomeModal(userData) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
         
-        const identifierInput = document.getElementById('identifier');
+        const identifierInput = document.getElementById('email');
         if (identifierInput) {
             identifierInput.value = userData.userid;
             identifierInput.focus();
