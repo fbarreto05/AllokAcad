@@ -54,7 +54,7 @@
             <h2>Horários Disponíveis</h2>
             {% if schedules %}
                 <div class="form-group">
-                    <label>Selecione os períodos disponíveis</label>
+                    <label>Selecione os horáros disponíveis</label>
                     <div class="schedules-grid">
                         {% for schedule in schedules %}
                             {% if forloop.counter0|divisibleby:columns %}
@@ -62,15 +62,15 @@
                             {% endif %}
                             <div class="schedule-item">
                                 <input type="checkbox" id="schedule_{{ schedule.id }}" name="available_schedules" value="{{ schedule.id }}"
-                                    {% if schedule in tclass.available_schedules.all %}checked{% endif %}>
-                                <label for="schedule_{{ schedule.id }}">Período {{ forloop.counter0|add:"1" }}</label>
+                                    {% if schedule in prefered_schedules %}checked{% endif %}>
+                                <label for="schedule_{{ schedule.id }}">Horário {{ schedule.column|add:1 }}</label>
                             </div>
                         {% endfor %}
                     </div>
                 </div>
             {% else %}
                 <div class="empty-state">
-                    <p>Defina os períodos por dia e os dias por semana nas configurações do ambiente para acessar os horários disponíveis.</p>
+                    <p>Defina os horários por dia e os dias por semana nas configurações do ambiente para acessar os horários disponíveis.</p>
                 </div>
             {% endif %}
         </div>
@@ -85,12 +85,16 @@
                             <div class="item-with-weight">
                                 <div class="item-info">
                                     <input type="checkbox" id="classroom_{{ classroom.id }}" name="ideal_classrooms" value="{{ classroom.id }}"
-                                        {% if classroom in tclass.ideal_classrooms.all %}checked{% endif %}>
+                                        {% if classroom.id in ideal_classrooms %}checked{% endif %}>
                                     <label for="classroom_{{ classroom.id }}">{{ classroom.name }}</label>
                                 </div>
                                 <div class="weight-control">
                                     <label for="classroom_weight_{{ classroom.id }}">Prioridade:</label>
-                                    <input type="range" min="0" max="100" value="75" id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
+                                    <input type="range" min="0" max="100"   
+                                    {% for ideal_classroom, weight in classrooms_and_weights %}
+                                        {% if classroom.id == ideal_classroom %}value={{ weight }}{% endif %}
+                                    {% endfor %} 
+                                    id="classroom_weight_{{ classroom.id }}" name="classroom_weight_{{ classroom.id }}" class="weight-slider">
                                     <span class="weight-value">100%</span>
                                 </div>
                             </div>
@@ -114,12 +118,16 @@
                             <div class="item-with-weight">
                                 <div class="item-info">
                                     <input type="checkbox" id="professor_{{ professor.id }}" name="favorite_professors" value="{{ professor.id }}"
-                                        {% if professor in tclass.favorite_professors.all %}checked{% endif %}>
+                                        {% if professor.id in favorite_professors %}checked{% endif %}>
                                     <label for="professor_{{ professor.id }}">{{ professor.user.name }}</label>
                                 </div>
                                 <div class="weight-control">
                                     <label for="professor_weight_{{ professor.id }}">Prioridade:</label>
-                                    <input type="range" min="0" max="100" value="75" id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
+                                    <input type="range" min="0" max="100" 
+                                    {% for favorite_professor, weight in professors_and_weights %}
+                                        {% if professor.id == favorite_professor %}value={{ weight }}{% endif %}
+                                    {% endfor %} 
+                                     id="professor_weight_{{ professor.id }}" name="professor_weight_{{ professor.id }}" class="weight-slider">
                                     <span class="weight-value">100%</span>
                                 </div>
                             </div>
@@ -138,18 +146,21 @@
             <h2>Matérias Necessárias</h2>
             {% if subjects %}
                 <div class="form-group">
-                    <label>Selecione as matérias e defina a quantidade de períodos</label>
+                    <label>Selecione as matérias e defina a quantidade de horários</label>
                     <div class="subjects-list">
                         {% for subject in subjects %}
                             <div class="subject-item">
                                 <div class="subject-info">
                                     <input type="checkbox" id="subject_{{ subject.id }}" name="necessary_subjects" value="{{ subject.id }}"
-                                        {% if subject in tclass.necessary_subjects.all %}checked{% endif %}>
+                                        {% if subject.id in necessary_subjects %}checked{% endif %}>
                                     <label for="subject_{{ subject.id }}">{{ subject.name }}</label>
                                 </div>
                                 <div class="periods-control">
-                                    <label for="periods_{{ subject.id }}">Períodos:</label>
-                                    <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}" min="0" max="20" placeholder="0" value="1">
+                                    <label for="periods_{{ subject.id }}">Horários:</label>
+                                    <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}" min="0" max="20" placeholder="0"
+                                    {% for necessary_subject, period in subjects_and_periods %}
+                                        {% if subject.id == necessary_subject %}value={{ period }}{% endif %}
+                                    {% endfor %} >
                                 </div>
                             </div>
                         {% endfor %}

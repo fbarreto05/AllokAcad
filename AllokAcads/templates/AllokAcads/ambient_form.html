@@ -61,7 +61,7 @@
                         </svg>
                         <h2>Horários Disponíveis</h2>
                     </div>
-                    <p class="section-description">Selecione os períodos em que você está disponível para lecionar</p>
+                    <p class="section-description">Selecione os horários em que você está disponível para lecionar</p>
                 </div>
                 
                 <div class="schedule-grid">
@@ -69,24 +69,25 @@
                         <table class="schedule-selector">
                             <thead>
                                 <tr>
-                                    <th class="period-header">Período</th>
-                                    {% for day in "12345"|make_list %}
-                                        <th class="day-header">Dia {{ day }}</th>
+                                    <th class="period-header">Horário</th>
+                                    {% for day in columns_range %}
+                                        <th class="day-header">Dia {{ day|add:1 }}</th>
                                     {% endfor %}
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for period in "12345678"|make_list %}
+                                {% for period in periods_range %}
                                 <tr>
                                     <td class="period-cell">
-                                        <div class="period-number">{{ period }}º Período</div>
+                                        <div class="period-number">{{ period|add:1 }}º Horário</div>
                                     </td>
-                                    {% for day in "12345"|make_list %}
+                                    {% for day in columns_range %}
                                     <td class="schedule-selector-cell">
                                         {% for schedule in schedules %}
-                                            {% if schedule.line|add:"1"|stringformat:"s" == period and schedule.column|add:"1"|stringformat:"s" == day %}
+                                            {% if schedule.line == day and schedule.column == period %}
                                                 <label class="schedule-checkbox">
-                                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+                                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}" 
+                                                    {% if schedule in member_schedules %} checked {% endif %}>
                                                     <span class="checkmark"></span>
                                                 </label>
                                             {% endif %}
@@ -119,7 +120,7 @@
                     {% for subject in subjects %}
                     <div class="subject-card">
                         <label class="subject-checkbox">
-                            <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">
+                            <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}" {%if subject.id in prefered_subjects %}checked{%endif%}>
                             <span class="subject-checkmark"></span>
                             <div class="subject-info">
                                 <span class="subject-name">{{ subject.name }}</span>
@@ -127,8 +128,15 @@
                         </label>
                         <div class="preference-level">
                             <select name="option_{{ subject.id }}" id="option_{{ subject.id }}" class="preference-select">
-                                <option selected value="100">Opção Primária</option>
-                                <option value="50">Opção Secundária</option>
+                                <option value="100"
+                                {% for prefered_subject, weight in subjects_and_weight %}
+                                        {% if subject.id == prefered_subject and weight == 100 %}selected{% endif %}
+                                {% endfor %} >Opção Primária
+                                </option>
+                                <option value="50"
+                                {% for prefered_subject, weight in subjects_and_weight %}
+                                        {% if subject.id == prefered_subject and weight == 50 %}selected{% endif %}
+                                {% endfor %}>Opção Secundária</option>
                             </select>
                         </div>
                     </div>

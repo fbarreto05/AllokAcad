@@ -52,7 +52,7 @@
             <h2>Horários Disponíveis</h2>
             {% if schedules %}
                 <div class="form-group">
-                    <label>Selecione os períodos disponíveis</label>
+                    <label>Selecione os horários disponíveis</label>
                     <div class="schedules-grid">
                         {% for schedule in schedules %}
                             {% if forloop.counter0|divisibleby:columns %}
@@ -60,14 +60,14 @@
                             {% endif %}
                             <div class="schedule-item">
                                 <input type="checkbox" id="schedule_{{ schedule.id }}" name="available_schedules" value="{{ schedule.id }}">
-                                <label for="schedule_{{ schedule.id }}">Período {{ forloop.counter0|add:"1" }}</label>
+                                <label for="schedule_{{ schedule.id }}">Horário {{ schedule.column|add:1 }}</label>
                             </div>
                         {% endfor %}
                     </div>
                 </div>
             {% else %}
                 <div class="empty-state">
-                    <p>Defina os períodos por dia e os dias por semana nas configurações do ambiente para acessar os horários disponíveis.</p>
+                    <p>Defina os horários por dia e os dias por semana nas configurações do ambiente para acessar os horários disponíveis.</p>
                 </div>
             {% endif %}
         </div>
@@ -133,7 +133,7 @@
             <h2>Matérias Necessárias</h2>
             {% if subjects %}
                 <div class="form-group">
-                    <label>Selecione as matérias e defina a quantidade de períodos</label>
+                    <label>Selecione as matérias e defina a quantidade de horários</label>
                     <div class="subjects-list">
                         {% for subject in subjects %}
                             <div class="subject-item">
@@ -142,7 +142,7 @@
                                     <label for="subject_{{ subject.id }}">{{ subject.name }}</label>
                                 </div>
                                 <div class="periods-control">
-                                    <label for="periods_{{ subject.id }}">Períodos:</label>
+                                    <label for="periods_{{ subject.id }}">Horários:</label>
                                     <input type="number" id="periods_{{ subject.id }}" name="periods_{{ subject.id }}" min="0" max="20" placeholder="0" value="1">
                                 </div>
                             </div>

@@ -41,7 +41,7 @@
                 <select id="roomtype" name="roomtype" required>
                     <option value="">Selecione o tipo de sala</option>
                     {% for roomtype in roomtypes %}
-                        <option value="{{ roomtype.id }}" {% if roomtype.id == room.roomtype.id %}selected{% endif %}>{{ roomtype.name }}</option>
+                        <option value="{{ roomtype.id }}" {% if roomtype.id == room.classroom_type.id %}selected{% endif %}>{{ roomtype.name }}</option>
                     {% endfor %}
                 </select>
                 <span class="form-hint">Escolha o tipo que melhor descreve esta sala.</span>
