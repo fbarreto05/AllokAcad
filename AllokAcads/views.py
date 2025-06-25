@@ -110,7 +110,8 @@ def register_validate(request):
 
 def home(request):
     if request.user.is_authenticated:
-        if User.objects.filter(userid = request.user.username):
+        user = User.objects.filter(userid = request.user.username)
+        if user:
             user = User.objects.get(userid = request.user.username)
         else:
             logoutauth(request)
