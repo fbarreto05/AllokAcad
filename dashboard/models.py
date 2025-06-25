@@ -5,7 +5,7 @@ class ProfessorStatistics(models.Model):
     professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
     semester = models.CharField(max_length = 100)
     
-    day = models.IntegerField()
+    day = models.IntegerField(null='True')
     periods_on_campus = models.IntegerField(default = 0)
     periods_interval = models.IntegerField(default = 0) 
     number_of_periods = models.IntegerField(default = 0)

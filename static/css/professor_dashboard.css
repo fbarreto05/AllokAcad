@@ -1,46 +1,158 @@
-:root{ 
-    --background-color: #91B0BE; 
-    --graphic-color: #789CAC;
-    --indicator-color: #6F8A9A;
-    --text-color: #363B45;
+:root {
+    --primary-blue: #4169E1; 
+    --light-blue-bg: #F0F4FF; 
+    --white: #FFFFFF;
+    --dark-grey-text: #333333; 
+    --medium-grey-text: #6c757d; 
+    --border-color: #dee2e6; 
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --success-color: #28a745;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-*{
-    padding: 0;
+* {
+    box-sizing: border-box;
     margin: 0;
+    padding: 0;
 }
-body{
-    background-color: var(--background-color);
-    color: var(--text-color);
+body {
+    font-family: var(--font-family);
+    background-color: var(--light-blue-bg);
+    color: var(--dark-grey-text);
 }
-ul{
-    list-style-type: none;
+
+ul {
+    list-style: none;
 }
-.dashboard-header{
+a {
+    text-decoration: none;
+    color: var(--primary-blue);
+}
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 1600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--white);
+    border-radius: 12px;
+}
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 1.5rem; 
+}
+.dashboard-name h2 {
+    font-size: 1.5rem;
+    color: var(--dark-grey-text);
+    margin-bottom: 0.5rem;
+}
+.dashboard-name p {
+    font-size: 1rem;
+    color: var(--medium-grey-text);
+}
+.indicators {
+    display: flex;
+    gap: 1rem;
+    flex-grow: 1; 
+    justify-content: center;
+}
+.indicator {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--light-blue-bg);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    min-width: 150px;     
+}
+.indicator-value {
+    font-size: 1.5rem; 
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+.indicator-label {
+    font-size: 1rem; 
+    font-weight: 500;
+    color: var(--medium-grey-text);
+}
+.header-filters-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0.5rem;
 }
-.indicators{
-    display: flex;
-    gap: 5px;
+#ambient-select {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 1rem;
+    background-color: var(--white);
+    cursor: pointer;
 }
-.indicator{
-    background-color: var(--indicator-color);
-    border-radius: 8px;
+.button, #update-button {
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
 }
-select{
-    background-color: var(--graphic-color, #789CAC);
-    color: var(--text-color);
+main {
+    padding-top: 2rem;
 }
-.graphics-container{
+.graphics-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem;
 }
-.graphic{
-    background-color: var(--graphic-color);
+.graphic {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--white);
+    padding: 1.5rem;
     border-radius: 8px;
+    border: 1px solid var(--border-color);
+    min-height: 400px;
 }
-.dashboard-container{
-    padding: 50px;
+.placeholder {
+    text-align: center;
+    color: var(--medium-grey-text);
+    font-size: 1rem;
+}
+.placeholder p {
+    max-width: 250px;
+}
+footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 2rem;
+    margin-top: 0;
+    border-top: 1px solid var(--border-color);
+}
+.switch-dashboard a {
+    padding: 0.5rem 1.5rem;
+    margin: 0 0.5rem;
+    border-radius: 20px; 
+    font-weight: 500;
+    border: 1px;
+}
+.switch-dashboard a.button {
+    background-color: var(--light-blue-bg);
+    color: var(--primary-blue);
+    border: 1px solid var(--border-color);
+}
+.switch-dashboard a.button-active {
+    background-color: var(--primary-blue);
+    color: var(--white);
+    font-weight: 600;
 }

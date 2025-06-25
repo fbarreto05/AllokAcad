@@ -58,21 +58,21 @@
                             <thead>
                                 <tr>
                                     <th class="period-header">Período</th>
-                                    {% for day in "12345"|make_list %}
-                                        <th class="day-header">Dia {{ day }}</th>
+                                    {% for day in columns_range %}
+                                        <th class="day-header">Dia {{ day|add:1 }}</th>
                                     {% endfor %}
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for period in "12345678"|make_list %}
+                                {% for period in periods_range %}
                                 <tr>
                                     <td class="period-cell">
-                                        <div class="period-number">{{ period }}º Período</div>
+                                        <div class="period-number">{{ period|add:1 }}º Período</div>
                                     </td>
-                                    {% for day in "12345"|make_list %}
+                                    {% for day in columns_range %}
                                     <td class="schedule-selector-cell">
                                         {% for schedule in schedules %}
-                                            {% if schedule.line|add:"1"|stringformat:"s" == period and schedule.column|add:"1"|stringformat:"s" == day %}
+                                            {% if schedule.line == day and schedule.column == period %}
                                                 <label class="schedule-checkbox">
                                                     <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
                                                     <span class="checkmark"></span>
