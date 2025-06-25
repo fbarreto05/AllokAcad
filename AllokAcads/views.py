@@ -10,8 +10,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import logout as logoutauth
 from django.contrib.auth import login as loginauth
 from django.contrib.auth.models import User as UserAuth
-import pwd
-import grp
+# import pwd
+# import grp
 
 
 # Create your views here.
