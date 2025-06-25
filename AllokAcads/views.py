@@ -110,7 +110,11 @@ def register_validate(request):
 
 def home(request):
     if request.user.is_authenticated:
-        user = User.objects.get(userid = request.user.username)
+        if User.objects.filter(userid = request.user.username):
+            user = User.objects.get(userid = request.user.username)
+        else:
+            logoutauth(request)
+            return redirect('/')
         userid = user.userid
         ambients = user.ambients.all()
         username = user.name
