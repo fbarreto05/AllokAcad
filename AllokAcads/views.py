@@ -237,6 +237,8 @@ def ambient_form(request, ambientid):
             activities = ambient.activities.all()
             picture = ambient.picture
             username = user.name
+            columns_range = range(ambient.days_in_a_cicle)
+            periods_range = range(ambient.periods_in_a_day)
 
             return render(request, "AllokAcads/ambient_form.html", {
                 'ambient': ambient,
@@ -251,6 +253,8 @@ def ambient_form(request, ambientid):
                 'columns': columns,
                 'picture': picture,
                 'activities': activities,
+                'columns_range': columns_range,
+                'periods_range': periods_range,
             })
         else:
             return redirect('home')
