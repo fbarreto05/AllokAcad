@@ -104,7 +104,8 @@
                         <div class="formation-card">
                             <div class="formation-header">
                                 <div class="custom-checkbox">
-                                    <input type="checkbox" id="formation_{{ formation.id }}" name="member_formations" value="{{ formation.id }}">
+                                    <input type="checkbox" id="formation_{{ formation.id }}" name="member_formations" value="{{ formation.id }}"
+                                    {% if formation.id in relevant_formations %}checked{% endif %}>
                                     <label for="formation_{{ formation.id }}">{{ formation.name }}</label>
                                 </div>
                             </div>

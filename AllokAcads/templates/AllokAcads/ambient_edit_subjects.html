@@ -51,7 +51,7 @@
                             <div class="item-with-weight">
                                 <div class="item-info">
                                     <input type="checkbox" id="classroom_{{ classroom.id }}" name="ideal_classrooms" value="{{ classroom.id }}"
-                                        {% if classroom in subject.ideal_classrooms.all %}checked{% endif %}>
+                                        {% if classroom.id in ideal_classrooms %}checked{% endif %}>
                                     <label for="classroom_{{ classroom.id }}">{{ classroom.name }}</label>
                                 </div>
                                 <div class="weight-control">
@@ -81,7 +81,7 @@
                             <div class="item-with-weight">
                                 <div class="item-info">
                                     <input type="checkbox" id="professor_{{ professor.id }}" name="favorite_professors" value="{{ professor.id }}"
-                                        {% if professor in subject.favorite_professors.all %}checked{% endif %}>
+                                        {% if professor.id in favorite_professors %}checked{% endif %}>
                                     <label for="professor_{{ professor.id }}">{{ professor.user.name }}</label>
                                 </div>
                                 <div class="weight-control">
@@ -110,7 +110,7 @@
                             <div class="item-with-weight">
                                 <div class="item-info">
                                     <input type="checkbox" id="formation_{{ formation.id }}" name="relevant_formations" value="{{ formation.id }}"
-                                        {% if formation in subject.relevant_formations.all %}checked{% endif %}>
+                                        {% if formation.id in relevant_formations %}checked{% endif %}>
                                     <label for="formation_{{ formation.id }}">{{ formation.name }}</label>
                                 </div>
                                 <div class="weight-control">

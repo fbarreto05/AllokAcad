@@ -49,7 +49,7 @@
                         </svg>
                         <h2>Horários Disponíveis</h2>
                     </div>
-                    <p class="section-description">Selecione os períodos em que você está disponível para lecionar</p>
+                    <p class="section-description">Selecione os horários em que você está disponível para lecionar</p>
                 </div>
                 
                 <div class="schedule-grid">
@@ -57,7 +57,7 @@
                         <table class="schedule-selector">
                             <thead>
                                 <tr>
-                                    <th class="period-header">Período</th>
+                                    <th class="period-header">Horário</th>
                                     {% for day in columns_range %}
                                         <th class="day-header">Dia {{ day|add:1 }}</th>
                                     {% endfor %}
@@ -67,7 +67,7 @@
                                 {% for period in periods_range %}
                                 <tr>
                                     <td class="period-cell">
-                                        <div class="period-number">{{ period|add:1 }}º Período</div>
+                                        <div class="period-number">{{ period|add:1 }}º Horário</div>
                                     </td>
                                     {% for day in columns_range %}
                                     <td class="schedule-selector-cell">

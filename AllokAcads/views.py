@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.contrib.auth import logout as logoutauth
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth import login as loginauth
 from django.contrib.auth.models import User as UserAuth
 
@@ -22,12 +23,16 @@ def login_validate(request):
     if request.user.is_authenticated:
         return redirect(f'/home')
     else:
-        identificator = request.POST.get('id')
+        email = request.POST.get('email')
+        print(email)
         password = request.POST.get('password')
-        userauth = authenticate(request, username=identificator, password=password)
-        if userauth is not None:
-            loginauth(request, userauth)   
-            return redirect(f'/home')
+        user = User.objects.filter(email=email)
+        if user:
+            identificator = user[0].userid
+            userauth = authenticate(request, username=identificator, password=password)
+            if userauth is not None:
+                loginauth(request, userauth)   
+                return redirect(f'/home')
         
         return redirect('/?error=login_failed')
 
@@ -55,7 +60,10 @@ def register_validate(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         birthdate = request.POST.get('birthdate')
-    
+
+        if User.objects.filter(email=email):
+            return redirect('/register')
+        
         while(True):
             identificator = generate_userid()
             user = User.objects.filter(userid = identificator)
@@ -67,6 +75,7 @@ def register_validate(request):
         default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'users/user.png')
         copyfile(default_picture_path, os.path.join(directory, 'user.png'))
         picture = f'users/{identificator}/user_picture/user.png'
+
 
         userauth = UserAuth(username=identificator, email=email)
         userauth.set_password(password)
@@ -96,7 +105,8 @@ def register_validate(request):
             'birthdate': formatted_birthdate
         }
         encoded_data = urllib.parse.urlencode(user_data)
-        return redirect(f'/?new_user=true&{encoded_data}')
+        return redirect(f'/')
+        #return redirect(f'/?new_user=true&{encoded_data}')
 
 def home(request):
     if request.user.is_authenticated:
@@ -370,7 +380,7 @@ def ambient_members(request, ambientid):
         userid = user.userid
         ambient = Ambient.objects.filter(ambientid = ambientid)
         if ambient[0].members.filter(user = user):         
-            members = ambient[0].members.all()
+            members = ambient[0].members.all().order_by('user__name')
             member = ambient[0].members.get(user = user)
             return render(request, "AllokAcads/ambient_members.html", {'ambient' : ambient[0], 'user' : user, 'members' : members,  'tmember' : member, 'userid': userid})
         else:
@@ -485,7 +495,7 @@ def ambient_subjects(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            subjects = ambient[0].subjects.all()
+            subjects = ambient[0].subjects.all().order_by('name')
             return render(request, "AllokAcads/ambient_subjects.html", {'ambient' : ambient[0], 'user' : user, 'subjects' : subjects, 'userid': userid})
         else:
             return redirect('home')
@@ -499,9 +509,9 @@ def ambient_create_subjects(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            classrooms = ambient[0].classrooms.all()
-            professors = ambient[0].members.all().filter(is_professor = True)
-            formations = ambient[0].formations.all()
+            classrooms = ambient[0].classrooms.all().order_by('name')
+            professors = ambient[0].members.all().filter(is_professor = True).order_by('name')
+            formations = ambient[0].formations.all().order_by('name')
             return render(request, "AllokAcads/ambient_create_subjects.html", {'ambient' : ambient[0], 'user' : user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid})
         else:
             return redirect('home')
@@ -516,10 +526,13 @@ def ambient_edit_subjects(request, subjectid, ambientid):
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             subject = Subject.objects.get(id = subjectid)
-            classrooms = ambient.classrooms.all()
-            professors = ambient.members.all().filter(is_professor = True)
-            formations = ambient.formations.all()
-            return render(request, "AllokAcads/ambient_edit_subjects.html", {'subject': subject, 'ambient': ambient, 'subjectid': subjectid, 'user': user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid})
+            ideal_classrooms = subject.ideal_classrooms.values_list('classroom', flat=True)
+            favorite_professors = subject.favorite_professors.values_list('professor', flat=True)
+            relevant_formations = subject.relevant_formations.values_list('formation', flat=True)
+            classrooms = ambient.classrooms.all().order_by('name')
+            professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
+            formations = ambient.formations.all().order_by('name')
+            return render(request, "AllokAcads/ambient_edit_subjects.html", {'subject': subject, 'ambient': ambient, 'subjectid': subjectid, 'user': user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid, 'ideal_classrooms': list(ideal_classrooms), 'favorite_professors': list(favorite_professors), 'relevant_formations': list(relevant_formations)})
         else:
             return redirect('home')
     else:
@@ -601,12 +614,15 @@ def ambient_edit_classes(request, classid, ambientid):
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             user = User.objects.get(userid = userid)
             schedules = ambient.available_schedules.all()
-            classrooms = ambient.classrooms.all()
-            professors = ambient.members.all().filter(is_professor = True)
-            subjects = ambient.subjects.all()
+            classrooms = ambient.classrooms.all().order_by('name')
+            professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
+            subjects = ambient.subjects.all().order_by('name')
+            ideal_classrooms = tclass.ideal_classrooms.values_list('classroom', flat=True)
+            favorite_professors = tclass.favorite_professors.values_list('professor', flat=True)
+            necessary_subjects = tclass.necessary_subjects.values_list('subject', flat=True)
             columns = ambient.periods_in_a_day
             username = user.name
-            return render(request, "AllokAcads/ambient_edit_class.html", {'tclass' : tclass, 'ambient': ambient, 'classid': classid, 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns})
+            return render(request, "AllokAcads/ambient_edit_class.html", {'tclass' : tclass, 'ambient': ambient, 'classid': classid, 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns, 'ideal_classrooms': list(ideal_classrooms), 'favorite_professors': list(favorite_professors), 'necessary_subjects': list(necessary_subjects)})
         else:
             return redirect('home')
     else:
@@ -695,7 +711,7 @@ def ambient_edit_rooms(request, roomid, ambientid):
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             member = ambient.members.filter(user = user)
-            roomtypes = ambient.classroom_types.all()
+            roomtypes = ambient.classroom_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_edit_rooms.html", {'room': room, 'ambient': ambient, 'roomid': roomid, 'user': user, 'roomtypes': roomtypes})
         else:
             return redirect('home')
@@ -937,7 +953,7 @@ def ambient_rooms(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            rooms = ambient[0].classrooms.all()
+            rooms = ambient[0].classrooms.all().order_by('name')
             return render(request, "AllokAcads/ambient_rooms.html", {'ambient' : ambient[0], 'user' : user, 'rooms' : rooms, 'userid': userid})
         else:
             return redirect('home')
@@ -951,7 +967,7 @@ def ambient_create_rooms(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            roomtypes = ambient[0].classroom_types.all()
+            roomtypes = ambient[0].classroom_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_create_rooms.html", {'ambient' : ambient[0], 'user' : user, 'roomtypes' : roomtypes, 'userid': userid})
         else:
             return redirect('home')
@@ -987,7 +1003,7 @@ def ambient_roomtypes(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            roomtypes = ambient[0].classroom_types.all()
+            roomtypes = ambient[0].classroom_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_roomtypes.html", {'ambient' : ambient[0], 'user' : user, 'roomtypes' : roomtypes, 'userid': userid})
         else:
             return redirect('home')
@@ -1030,7 +1046,7 @@ def ambient_classes(request, ambientid):
         user = User.objects.get(userid = request.user.username)
         userid = user.userid
         ambient = Ambient.objects.filter(ambientid = ambientid)
-        classes = ambient[0].classes.all()
+        classes = ambient[0].classes.all().order_by('name')
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
             username = user.name
@@ -1048,9 +1064,9 @@ def ambient_create_classes(request, ambientid):
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
             schedules = ambient[0].available_schedules.all()
-            classrooms = ambient[0].classrooms.all()
-            professors = ambient[0].members.all().filter(is_professor = True)
-            subjects = ambient[0].subjects.all()
+            classrooms = ambient[0].classrooms.all().order_by('name')
+            professors = ambient[0].members.all().filter(is_professor = True).order_by('name')
+            subjects = ambient[0].subjects.all().order_by('name')
             columns = ambient[0].periods_in_a_day
             username = user.name
             return render(request, "AllokAcads/ambient_create_classes.html", {'ambient': ambient[0], 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns})
@@ -1113,7 +1129,7 @@ def ambient_formations(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            formations = ambient[0].formations.all()
+            formations = ambient[0].formations.all().order_by('name')
             return render(request, "AllokAcads/ambient_formations.html", {'ambient' : ambient[0], 'user' : user, 'formations' : formations, 'userid': userid})
         else:
             return redirect('home')
@@ -1159,7 +1175,7 @@ def ambient_admtypes(request, ambientid):
         ambient = Ambient.objects.filter(ambientid = ambientid)
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
-            admtypes = ambient[0].admin_types.all()
+            admtypes = ambient[0].admin_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_admtypes.html", {'ambient' : ambient[0], 'user' : user, 'admtypes' : admtypes, 'userid': userid})
         else:
             return redirect('home')
@@ -1213,7 +1229,8 @@ def ambient_profile_edit(request, ambientid):
         if ambient[0].members.filter(user = user):
             member = ambient[0].members.all().filter(user = user)
             formations = ambient[0].formations.all()
-            return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user, 'formations' : formations, 'userid': userid, 'member': member[0]})
+            relevant_formations = member[0].formations.values_list('formation', flat=True)
+            return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user, 'formations' : formations, 'userid': userid, 'member': member[0], 'relevant_formations': list(relevant_formations)})
         else:
             return redirect('home')
     else:
@@ -1279,6 +1296,8 @@ def profile_edit_validate(request):
         picture = request.FILES.get('picture')
         name = request.POST.get('name')
         description = request.POST.get('description')
+        password = request.POST.get('password')
+        email = request.POST.get('email')
         if picture:
             picture_path = user.picture.path
             user.picture = picture
@@ -1287,6 +1306,16 @@ def profile_edit_validate(request):
             user.name = name
         if description:
             user.description = description
+        if password:
+            userp = request.user
+            userp.set_password(password)
+            userp.save()
+            update_session_auth_hash(request, user)
+        if email:
+            user.email = email
+            usere = request.user
+            usere.email = email
+            usere.save()
         user.save()
         return redirect(f'/home/profile')
     else:
@@ -2732,153 +2761,68 @@ def run_alocation(request, ambientid):
         ambient = Ambient.objects.get(ambientid = ambientid)
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_run_alocation:
-            timetable = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
-            timetable.save()
-            ambient.published_timetable = timetable
-            ambient.save()
-            for schedule in ambient.available_schedules.all():
-                alocation = Alocation(line = schedule.column, column = schedule.line)
-                alocation.save()
-                ambient.published_timetable.table.add(alocation)
+            if ambient.activities.order_by('?').first().tprofessor != None:
+                timetable = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
+                timetable.save()
+                ambient.published_timetable = timetable
                 ambient.save()
-            activities = ambient.activities.all()
-            swap = True
-            while(swap):
-                swap = False
-                for activitie in activities:
-                    highest_weight = 0
-                    chosen_sch = None
-                    for schedule_c in activitie.tclass.prefered_schedules.all():
-                        line = schedule_c.line
-                        column = schedule_c.column
-                        weight = 0
-                        count_conflit = 0
-                        conflit = None
-                        p_weight = 0
-                        for i in range(activitie.activities_qtd):
-                            if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-
-                                for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
-                                    for actv in alocation.activitie.all():
-                                        if((actv.tprofessor == activitie.tprofessor or actv.tclass == activitie.tclass or actv.tclassroom == activitie.tclassroom) and actv != conflit):
-                                            count_conflit += 1
-                                            conflit = actv
-                                            if count_conflit > 1:
-                                                break
-
-                                if(conflit == None):
-                                    ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+i)
-                                    weight += 1
-                                    if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
-                                        weight += 1
-
-                                elif (count_conflit < 2):
-                                    p_weight = 0
-                                    p_ambient_sch = 0
-                                    for j in range(activitie.activities_qtd):
-                                        if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
-                                            if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
-                                                p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
-                                                p_weight += 1
-                                                if activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
-                                                    p_weight += 1
-
-                                    t_weight = 0
-                                    t_ambient_sch = 0
-                                    t_activitie = conflit
-                                    for j in range(t_activitie.activities_qtd):
-                                        if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
-                                            t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
-                                            t_weight += 1
-                                            if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
-                                                t_weight += 1
-                                    
-                                    if p_weight > t_weight:
-                                        swap = True
-                                        weight = p_weight
-                                        chosen_sch = schedule_c
-                                        change = True
-                                    else:
-                                        weight = 0
-                                        break
-                                else:
-                                    weight = 0
-                                    break
-                            else:
-                                weight = 0
-                                break
-                            
-
-                        if weight > highest_weight:
-                            chosen_sch = schedule_c
-                            highest_weight = weight
-                            if weight > p_weight:
-                                change = False
-                        
-                    if highest_weight and chosen_sch:
-                        for i in range(activitie.activities_qtd):
-                            print(highest_weight, chosen_sch, chosen_sch.column+i, chosen_sch.line)
-                            t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                            print(t_alocation)
-                            print(t_alocation.activitie.all())
-                            t_alocation.activitie.add(activitie)
-                            if change:
-                                t_alocation.activitie.remove(t_activitie)
-            
-            not_alocated_activities = []
-            for activitie in activities:
-                if not ambient.published_timetable.table.all().filter(activitie = activitie):
-                    not_alocated_activities.append(activitie)
-
-            swap = True    
-            while(swap):
-                swap = False
-                change = False
-                for not_alocated_activitie in not_alocated_activities:
-                    highest_weight = 0
-                    chosen_sch = None
-                    if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:   
-                        for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
+                for schedule in ambient.available_schedules.all():
+                    alocation = Alocation(line = schedule.column, column = schedule.line)
+                    alocation.save()
+                    ambient.published_timetable.table.add(alocation)
+                    ambient.save()
+                activities = ambient.activities.all()
+                swap = True
+                while(swap):
+                    swap = False
+                    for activitie in activities:
+                        highest_weight = 0
+                        chosen_sch = None
+                        for schedule_c in activitie.tclass.prefered_schedules.all():
                             line = schedule_c.line
                             column = schedule_c.column
-                            weight = 0        
+                            weight = 0
                             count_conflit = 0
                             conflit = None
                             p_weight = 0
-                            for i in range(not_alocated_activitie.activities_qtd):
-                                if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
-                                    
+                            for i in range(activitie.activities_qtd):
+                                if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
+
                                     for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
                                         for actv in alocation.activitie.all():
-                                            if((actv.tprofessor == not_alocated_activitie.tprofessor or actv.tclass == not_alocated_activitie.tclass or actv.tclassroom == not_alocated_activitie.tclassroom) and actv != conflit):
+                                            if((actv.tprofessor == activitie.tprofessor or actv.tclass == activitie.tclass or actv.tclassroom == activitie.tclassroom) and actv != conflit):
                                                 count_conflit += 1
                                                 conflit = actv
                                                 if count_conflit > 1:
                                                     break
 
-                                    if (conflit == None):
+                                    if(conflit == None):
+                                        ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+i)
                                         weight += 1
-                                    elif(count_conflit < 2):
+                                        if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
+                                            weight += 1
+
+                                    elif (count_conflit < 2):
                                         p_weight = 0
                                         p_ambient_sch = 0
-                                        for j in range(not_alocated_activitie.activities_qtd):
-                                            if not_alocated_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                        for j in range(activitie.activities_qtd):
+                                            if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
                                                 if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
                                                     p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
                                                     p_weight += 1
-                                                    if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                                    if activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
                                                         p_weight += 1
 
                                         t_weight = 0
                                         t_ambient_sch = 0
-                                        t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
+                                        t_activitie = conflit
                                         for j in range(t_activitie.activities_qtd):
                                             if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
                                                 t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
                                                 t_weight += 1
                                                 if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
                                                     t_weight += 1
-
+                                        
                                         if p_weight > t_weight:
                                             swap = True
                                             weight = p_weight
@@ -2896,20 +2840,109 @@ def run_alocation(request, ambientid):
                                 
 
                             if weight > highest_weight:
-                                    chosen_sch = schedule_c
-                                    highest_weight = weight
-                                    t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                                    if weight > p_weight:
-                                        change = False
-                    
+                                chosen_sch = schedule_c
+                                highest_weight = weight
+                                if weight > p_weight:
+                                    change = False
+                            
                         if highest_weight and chosen_sch:
-                            for i in range(not_alocated_activitie.activities_qtd):
+                            for i in range(activitie.activities_qtd):
+                                print(highest_weight, chosen_sch, chosen_sch.column+i, chosen_sch.line)
                                 t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                                t_alocation.activitie.add(not_alocated_activitie)
+                                print(t_alocation)
+                                print(t_alocation.activitie.all())
+                                t_alocation.activitie.add(activitie)
                                 if change:
                                     t_alocation.activitie.remove(t_activitie)
+                
+                not_alocated_activities = []
+                for activitie in activities:
+                    if not ambient.published_timetable.table.all().filter(activitie = activitie):
+                        not_alocated_activities.append(activitie)
+
+                swap = True    
+                while(swap):
+                    swap = False
+                    change = False
+                    for not_alocated_activitie in not_alocated_activities:
+                        highest_weight = 0
+                        chosen_sch = None
+                        if not not_alocated_activitie.tclass.prefered_schedules and not_alocated_activitie.tprofessor.prefered_schedules:   
+                            for schedule_c in not_alocated_activitie.tprofessor.prefered_schedules:
+                                line = schedule_c.line
+                                column = schedule_c.column
+                                weight = 0        
+                                count_conflit = 0
+                                conflit = None
+                                p_weight = 0
+                                for i in range(not_alocated_activitie.activities_qtd):
+                                    if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(line=line, column=column+i):
+                                        
+                                        for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
+                                            for actv in alocation.activitie.all():
+                                                if((actv.tprofessor == not_alocated_activitie.tprofessor or actv.tclass == not_alocated_activitie.tclass or actv.tclassroom == not_alocated_activitie.tclassroom) and actv != conflit):
+                                                    count_conflit += 1
+                                                    conflit = actv
+                                                    if count_conflit > 1:
+                                                        break
+
+                                        if (conflit == None):
+                                            weight += 1
+                                        elif(count_conflit < 2):
+                                            p_weight = 0
+                                            p_ambient_sch = 0
+                                            for j in range(not_alocated_activitie.activities_qtd):
+                                                if not_alocated_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                                    if not ambient.published_timetable.table.all().get(line = column+j, column = line).activitie:
+                                                        p_ambient_sch = activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                                        p_weight += 1
+                                                        if not_alocated_activitie.tprofessor.prefered_schedules.all().filter(id = p_ambient_sch.id):
+                                                            p_weight += 1
+
+                                            t_weight = 0
+                                            t_ambient_sch = 0
+                                            t_activitie = ambient.published_timetable.table.all().get(line = column+i, column = line).activitie
+                                            for j in range(t_activitie.activities_qtd):
+                                                if t_activitie.tclass.prefered_schedules.all().filter(line=line, column=column+j):
+                                                    t_ambient_sch = t_activitie.tclass.prefered_schedules.all().get(line=line, column=column+j)
+                                                    t_weight += 1
+                                                    if t_activitie.tprofessor.prefered_schedules.all().filter(id = t_ambient_sch.id):
+                                                        t_weight += 1
+
+                                            if p_weight > t_weight:
+                                                swap = True
+                                                weight = p_weight
+                                                chosen_sch = schedule_c
+                                                change = True
+                                            else:
+                                                weight = 0
+                                                break
+                                        else:
+                                            weight = 0
+                                            break
+                                    else:
+                                        weight = 0
+                                        break
+                                    
+
+                                if weight > highest_weight:
+                                        chosen_sch = schedule_c
+                                        highest_weight = weight
+                                        t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                                        if weight > p_weight:
+                                            change = False
+                        
+                            if highest_weight and chosen_sch:
+                                for i in range(not_alocated_activitie.activities_qtd):
+                                    t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
+                                    t_alocation.activitie.add(not_alocated_activitie)
+                                    if change:
+                                        t_alocation.activitie.remove(t_activitie)
+                            
+                            else:
+                                ambient.published_timetable.not_alocated.add(activitie)
                         else:
-                            ambient.published_timetable.not_alocated.add(activitie)
+                            return redirect(f'/ambient/{ambientid}')
             return redirect(f'/ambient/{ambientid}')
         else:
             return redirect('home')
