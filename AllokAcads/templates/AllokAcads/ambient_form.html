@@ -74,7 +74,8 @@
                                         {% for schedule in schedules %}
                                             {% if schedule.line == day and schedule.column == period %}
                                                 <label class="schedule-checkbox">
-                                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}">
+                                                    <input type="checkbox" name="available_schedules" value="{{ schedule.id }}" 
+                                                    {% if schedule in member_schedules %} checked {% endif %}>
                                                     <span class="checkmark"></span>
                                                 </label>
                                             {% endif %}
@@ -107,7 +108,7 @@
                     {% for subject in subjects %}
                     <div class="subject-card">
                         <label class="subject-checkbox">
-                            <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}">
+                            <input type="checkbox" name="prefered_subjects" value="{{ subject.id }}" {%if subject.id in prefered_subjects %}checked{%endif%}>
                             <span class="subject-checkmark"></span>
                             <div class="subject-info">
                                 <span class="subject-name">{{ subject.name }}</span>
@@ -115,8 +116,15 @@
                         </label>
                         <div class="preference-level">
                             <select name="option_{{ subject.id }}" id="option_{{ subject.id }}" class="preference-select">
-                                <option selected value="100">Opção Primária</option>
-                                <option value="50">Opção Secundária</option>
+                                <option value="100"
+                                {% for prefered_subject, weight in subjects_and_weight %}
+                                        {% if subject.id == prefered_subject and weight == 100 %}selected{% endif %}
+                                {% endfor %} >Opção Primária
+                                </option>
+                                <option value="50"
+                                {% for prefered_subject, weight in subjects_and_weight %}
+                                        {% if subject.id == prefered_subject and weight == 50 %}selected{% endif %}
+                                {% endfor %}>Opção Secundária</option>
                             </select>
                         </div>
                     </div>

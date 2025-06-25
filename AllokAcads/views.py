@@ -245,6 +245,7 @@ def ambient_form(request, ambientid):
         if ambient.members.filter(user = user): 
             member = ambient.members.filter(user=user).first()
             schedules = ambient.available_schedules.all()
+            member_schedules = member.prefered_schedules.all()
             classrooms = ambient.classrooms.all()
             classes = ambient.classes.all()
             subjects = ambient.subjects.all()
@@ -254,6 +255,9 @@ def ambient_form(request, ambientid):
             username = user.name
             columns_range = range(ambient.days_in_a_cicle)
             periods_range = range(ambient.periods_in_a_day)
+            prefered_subjects = list(member.prefered_subjects.values_list('subject', flat=True))
+            subject_preference = list(member.prefered_subjects.values_list('subject_weight', flat=True))
+            subjects_and_weight = list(zip(prefered_subjects, subject_preference))
 
             return render(request, "AllokAcads/ambient_form.html", {
                 'ambient': ambient,
@@ -270,6 +274,9 @@ def ambient_form(request, ambientid):
                 'activities': activities,
                 'columns_range': columns_range,
                 'periods_range': periods_range,
+                'member_schedules': member_schedules,
+                'prefered_subjects': prefered_subjects,
+                'subjects_and_weight': subjects_and_weight,
             })
         else:
             return redirect('home')
@@ -401,10 +408,12 @@ def ambient_form_validate(request, ambientid):
         if ambient[0].members.filter(user = user) and member[0].is_professor:   
             available_schedules = request.POST.getlist('available_schedules')
             prefered_subjects = request.POST.getlist('prefered_subjects')
+            member[0].prefered_schedules.clear()
             if available_schedules:
                 for available_schedule in available_schedules:
                     schedule = Schedule_Preference.objects.get(id = available_schedule)
                     member[0].prefered_schedules.add(schedule)
+            member[0].prefered_subjects.all().delete()
             for prefered_subject in prefered_subjects:
                 subject = Subject.objects.get(id = prefered_subject)
                 subject_weight = int(request.POST.get(f"option_{prefered_subject}"))
@@ -531,13 +540,19 @@ def ambient_edit_subjects(request, subjectid, ambientid):
         member = ambient.members.filter(user = user)
         if ambient.members.filter(user = user) and member[0].admin_type.can_register_resources:  
             subject = Subject.objects.get(id = subjectid)
-            ideal_classrooms = subject.ideal_classrooms.values_list('classroom', flat=True)
-            favorite_professors = subject.favorite_professors.values_list('professor', flat=True)
-            relevant_formations = subject.relevant_formations.values_list('formation', flat=True)
+            ideal_classrooms = list(subject.ideal_classrooms.values_list('classroom', flat=True))
+            classroom_weights = list(subject.ideal_classrooms.values_list('classroom_weight', flat=True))
+            classrooms_and_weights = list(zip(ideal_classrooms, classroom_weights))
+            favorite_professors = list(subject.favorite_professors.values_list('professor', flat=True))
+            professor_weights = list(subject.favorite_professors.values_list('professor_weight', flat=True))
+            professors_and_weights = list(zip(favorite_professors, professor_weights))
+            relevant_formations = list(subject.relevant_formations.values_list('formation', flat=True))
+            formations_weights = list(subject.relevant_formations.values_list('formation_weight', flat=True))
+            formations_and_weights = list(zip(relevant_formations, formations_weights))
             classrooms = ambient.classrooms.all().order_by('name')
             professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
             formations = ambient.formations.all().order_by('name')
-            return render(request, "AllokAcads/ambient_edit_subjects.html", {'subject': subject, 'ambient': ambient, 'subjectid': subjectid, 'user': user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid, 'ideal_classrooms': list(ideal_classrooms), 'favorite_professors': list(favorite_professors), 'relevant_formations': list(relevant_formations)})
+            return render(request, "AllokAcads/ambient_edit_subjects.html", {'subject': subject, 'ambient': ambient, 'subjectid': subjectid, 'user': user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid, 'ideal_classrooms': ideal_classrooms, 'classrooms_and_weights': classrooms_and_weights, 'favorite_professors': favorite_professors, 'professors_and_weights': professors_and_weights, 'relevant_formations': relevant_formations, 'formations_and_weights': formations_and_weights})
         else:
             return redirect('home')
     else:
@@ -560,8 +575,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
                 if name:
                     subject.name = name
 
-                if classroom_ids:
-                    subject.ideal_classrooms.clear()
+                    subject.ideal_classrooms.all().delete()
                     for classroom_id in classroom_ids:
                         classroom = Classroom.objects.get(id = classroom_id)
                         classroom_weight = request.POST.get(f"classroom_weight_{classroom_id}")
@@ -569,8 +583,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
                         classroom_preference.save()
                         subject.ideal_classrooms.add(classroom_preference)
             
-                if professor_ids:
-                    subject.favorite_professors.clear()
+                    subject.favorite_professors.all().delete()
                     for professor_id in professor_ids:
                         professor = Member.objects.get(id = professor_id)
                         professor_weight = request.POST.get(f"professor_weight_{professor_id}")
@@ -578,8 +591,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
                         professor_preference.save()
                         subject.favorite_professors.add(professor_preference)
                 
-                if formation_ids:
-                    subject.relevant_formations.clear()
+                    subject.relevant_formations.all().delete()
                     for formation_id in formation_ids:
                         formation = Formation.objects.get(id = formation_id)
                         formation_weight = request.POST.get(f"formation_weight_{formation_id}")
@@ -622,12 +634,19 @@ def ambient_edit_classes(request, classid, ambientid):
             classrooms = ambient.classrooms.all().order_by('name')
             professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
             subjects = ambient.subjects.all().order_by('name')
-            ideal_classrooms = tclass.ideal_classrooms.values_list('classroom', flat=True)
-            favorite_professors = tclass.favorite_professors.values_list('professor', flat=True)
-            necessary_subjects = tclass.necessary_subjects.values_list('subject', flat=True)
+            prefered_schedules = list(tclass.prefered_schedules.all())
+            ideal_classrooms = list(tclass.ideal_classrooms.values_list('classroom', flat=True))
+            classroom_weights = list(tclass.ideal_classrooms.values_list('classroom_weight', flat=True))
+            classrooms_and_weights = list(zip(ideal_classrooms, classroom_weights))
+            favorite_professors = list(tclass.favorite_professors.values_list('professor', flat=True))
+            professor_weights = list(tclass.favorite_professors.values_list('professor_weight', flat=True))
+            professors_and_weights = list(zip(favorite_professors, professor_weights))
+            necessary_subjects = list(tclass.necessary_subjects.values_list('subject', flat=True))
+            subjects_periods = list(tclass.necessary_subjects.values_list('periods', flat=True))
+            subjects_and_periods = list(zip(necessary_subjects, subjects_periods))
             columns = ambient.periods_in_a_day
             username = user.name
-            return render(request, "AllokAcads/ambient_edit_class.html", {'tclass' : tclass, 'ambient': ambient, 'classid': classid, 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns, 'ideal_classrooms': list(ideal_classrooms), 'favorite_professors': list(favorite_professors), 'necessary_subjects': list(necessary_subjects)})
+            return render(request, "AllokAcads/ambient_edit_class.html", {'tclass' : tclass, 'ambient': ambient, 'classid': classid, 'user': user, 'userid': userid, 'username': username, 'classrooms': classrooms, 'professors': professors, 'subjects': subjects, 'schedules': schedules, 'columns': columns, 'ideal_classrooms': ideal_classrooms, 'classrooms_and_weights': classrooms_and_weights, 'favorite_professors': favorite_professors, 'professors_and_weights': professors_and_weights, 'necessary_subjects': necessary_subjects, 'subjects_and_periods': subjects_and_periods, 'prefered_schedules': prefered_schedules})
         else:
             return redirect('home')
     else:
@@ -660,7 +679,7 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                         tclass.prefered_schedules.add(schedule)
                 
                 if classroom_ids:
-                    tclass.ideal_classrooms.clear()
+                    tclass.ideal_classrooms.all().delete()
                     for classroom_id in classroom_ids:
                         classroom = Classroom.objects.get(id = classroom_id)
                         classroom_weight = request.POST.get(f"classroom_weight_{classroom_id}")
@@ -669,7 +688,7 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                         tclass.ideal_classrooms.add(classroom_preference)
                 
                 if professor_ids:
-                    tclass.favorite_professors.clear()
+                    tclass.favorite_professors.all().delete()
                     for professor_id in professor_ids:
                         professor = Member.objects.get(id = professor_id)
                         professor_weight = request.POST.get(f"professor_weight_{professor_id}")
@@ -677,7 +696,7 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                         professor_preference.save()
                         tclass.favorite_professors.add(professor_preference)
                 
-                tclass.necessary_subjects.clear()
+                tclass.necessary_subjects.all().delete()
                 if subject_ids:
                     for subject_id in subject_ids:
                         subject = Subject.objects.get(id = subject_id)
@@ -1234,8 +1253,11 @@ def ambient_profile_edit(request, ambientid):
         if ambient[0].members.filter(user = user):
             member = ambient[0].members.all().filter(user = user)
             formations = ambient[0].formations.all()
-            relevant_formations = member[0].formations.values_list('formation', flat=True)
-            return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user, 'formations' : formations, 'userid': userid, 'member': member[0], 'relevant_formations': list(relevant_formations)})
+            relevant_formations = list(member[0].formations.values_list('formation', flat=True))
+            formations_professional = list(member[0].formations.values_list('professional_experience_time', flat=True))
+            formations_didatic = list(member[0].formations.values_list('didactic_experience_time', flat=True))
+            formations_and_professional_and_didatic = list(zip(relevant_formations, formations_professional, formations_didatic))
+            return render(request, "AllokAcads/ambient_profile_edit.html", {'ambient': ambient[0], 'user': user, 'formations' : formations, 'userid': userid, 'member': member[0], 'relevant_formations': relevant_formations, 'formations_and_professional_and_didatic': formations_and_professional_and_didatic})
         else:
             return redirect('home')
     else:
@@ -1256,6 +1278,7 @@ def ambient_profile_edit_validate(request, ambientid):
             if registration:
                 member.registration = registration
             if formations:
+                member.formations.all().delete()
                 for formation in formations:
                     formation = Formation.objects.get(id = formation)
                     didatic_experience_time = request.POST.get(f"didatic_experience_time_{formation.id}")
