@@ -43,6 +43,8 @@
                 <input type="text" id="name" name="name" placeholder="Ex: IFSP - Campus São José dos Campos" required>
                 <span class="error-message" id="nameError"></span>
             </div>
+            
+            
 
             <div class="form-group">
                 <label for="description">Descrição</label>
@@ -50,6 +52,12 @@
                 <span class="form-hint">Opcional. Uma breve descrição do ambiente.</span>
             </div>
         </div>
+
+        <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" placeholder="********" required>
+                <span class="error-message" id="nameError"></span>
+            </div>
         
         <div class="form-actions">
             <a href="{% url 'home' %}" class="cancel-button">Cancelar</a>

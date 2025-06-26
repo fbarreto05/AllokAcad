@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 {% load static %}
 
-{% block title %}AllokAcad | Tipos de Administrador{% endblock %}
+{% block title %}AllokAcad | Tipos de Gestor{% endblock %}
 
 {% block body_class %}page-with-sidebar ambient-admtypes-page{% endblock %}
 
@@ -15,7 +15,7 @@
 
 {% block content %}
 <div class="header">
-    <h1>Tipos de Administrador</h1>
+    <h1>Tipos de Gestor</h1>
     <div class="header-info">
         <span class="admtypes-count">{{ admtypes|length }} tipo{{ admtypes|length|pluralize:"s" }}</span>
         <div class="action-buttons">
@@ -51,7 +51,7 @@
                         </div>
                         <div class="admtype-details">
                             <h3 class="admtype-name">{{ admtype.name }}</h3>
-                            <p class="admtype-description">Tipo de administrador do sistema</p>
+                            <p class="admtype-description">Tipo de gestor do sistema</p>
                         </div>
                     </div>
                     <div class="admtype-actions">
@@ -82,8 +82,8 @@
                     <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h4a2 2 0 0 1 2 2v1.28c.6.35 1 .98 1 1.72 0 .74-.4 1.39-1 1.73V15a2 2 0 0 1-2 2h-4v1.27c.6.35 1 .98 1 1.73a2 2 0 1 1-4 0c0-.74.4-1.39 1-1.73V17H7a2 2 0 0 1-2-2v-1.28c-.6-.35-1-.98-1-1.72 0-.74.4-1.39 1-1.73V9a2 2 0 0 1 2-2h4V5.73c-.6-.35-1-.98-1-1.73a2 2 0 0 1 2-2Z"></path>
                 </svg>
             </div>
-            <h2>Nenhum tipo de administrador</h2>
-            <p>Você ainda não criou nenhum tipo de administrador para este ambiente.</p>
+            <h2>Nenhum tipo de gestor</h2>
+            <p>Você ainda não criou nenhum tipo de gestor para este ambiente.</p>
             <a href="{% url 'ambient_create_admtypes' ambient.ambientid %}" class="create-first-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>

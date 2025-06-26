@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 {% load static %}
 
-{% block title %}AllokAcad | Nova Matéria{% endblock %}
+{% block title %}AllokAcad | Novo Componente Currilar{% endblock %}
 
 {% block body_class %}page-with-sidebar ambient-create-subjects-page{% endblock %}
 
@@ -15,14 +15,14 @@
 
 {% block content %}
 <div class="header">
-    <h1>Nova Matéria</h1>
+    <h1>Novo Componente Currilar</h1>
     <div class="action-buttons">
         <a href="{% url 'ambient_subjects' ambient.ambientid %}" class="cancel-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 12H5"></path>
                 <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
-            Voltar às matérias
+            Voltar aos Componentes Currilares
         </a>
     </div>
 </div>
@@ -35,9 +35,9 @@
             <h2>Informações Básicas</h2>
             
             <div class="form-group">
-                <label for="name">Nome da Matéria</label>
+                <label for="name">Nome do Componente Currilar</label>
                 <input type="text" id="name" name="name" placeholder="Ex: Matemática, História, Programação..." required>
-                <span class="form-hint">Digite o nome da matéria que será lecionada.</span>
+                <span class="form-hint">Digite o nome do componente currilar que será lecionado.</span>
             </div>
         </div>
 
@@ -45,7 +45,7 @@
             <h2>Salas Ideais</h2>
             {% if classrooms %}
                 <div class="form-group">
-                    <label>Selecione as salas preferenciais para esta matéria</label>
+                    <label>Selecione as salas preferenciais para este componente currilar</label>
                     <div class="items-list">
                         {% for classroom in classrooms %}
                             <div class="item-with-weight">
@@ -73,7 +73,7 @@
             <h2>Professores Favoritos</h2>
             {% if professors %}
                 <div class="form-group">
-                    <label>Selecione os professores preferenciais para esta matéria</label>
+                    <label>Selecione os professores preferenciais para este componente currilar</label>
                     <div class="items-list">
                         {% for professor in professors %}
                             <div class="item-with-weight">
@@ -101,7 +101,7 @@
             <h2>Formações Relevantes</h2>
             {% if formations %}
                 <div class="form-group">
-                    <label>Selecione as formações relevantes para esta matéria</label>
+                    <label>Selecione as formações relevantes para este componente currilar</label>
                     <div class="items-list">
                         {% for formation in formations %}
                             <div class="item-with-weight">
@@ -132,7 +132,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                Criar Matéria
+                Criar Componente Currilar
             </button>
         </div>
     </form>

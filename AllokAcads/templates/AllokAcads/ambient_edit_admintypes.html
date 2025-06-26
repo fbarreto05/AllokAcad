@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 {% load static %}
 
-{% block title %}AllokAcad | Editar Tipo de Administrador{% endblock %}
+{% block title %}AllokAcad | Editar Tipo de Gestor{% endblock %}
 
 {% block body_class %}page-with-sidebar ambient-edit-admintypes-page{% endblock %}
 
@@ -11,7 +11,7 @@
 
 {% block content %}
 <div class="header">
-    <h1>Editar Tipo de Administrador</h1>
+    <h1>Editar Tipo de Gestor</h1>
     <div class="action-buttons">
         <a href="{% url 'ambient_admtypes' ambient.ambientid %}" class="cancel-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -28,14 +28,14 @@
         {% csrf_token %}
         
         <div class="form-group">
-            <label for="name">Nome do Tipo de Administrador</label>
+            <label for="name">Nome do Tipo de Gestor</label>
             <input type="text" id="name" name="name" value="{{ admtp.name }}" placeholder="Ex: Coordenador, Supervisor, Gestor..." required>
-            <span class="form-hint">Atualize o nome que identifica este tipo de administrador.</span>
+            <span class="form-hint">Atualize o nome que identifica este tipo de gestor.</span>
         </div>
 
         <div class="permissions-section">
-            <h2>Permissões do Administrador</h2>
-            <p class="section-description">Defina quais ações este tipo de administrador poderá realizar no sistema.</p>
+            <h2>Permissões do Gestor</h2>
+            <p class="section-description">Defina quais ações este tipo de gestor poderá realizar no sistema.</p>
             
             <div class="permissions-grid">
                 <div class="permission-item">

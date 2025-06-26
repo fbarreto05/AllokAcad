@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 {% load static %}
 
-{% block title %}AllokAcad | Criar Tipo de Administrador{% endblock %}
+{% block title %}AllokAcad | Criar Tipo de Gestor{% endblock %}
 
 {% block body_class %}page-with-sidebar ambient-create-admtypes-page{% endblock %}
 
@@ -11,7 +11,7 @@
 
 {% block content %}
 <div class="header">
-    <h1>Criar Tipo de Administrador</h1>
+    <h1>Criar Tipo de Gestor</h1>
     <div class="action-buttons">
         <a href="{% url 'ambient_admtypes' ambient.ambientid %}" class="cancel-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -31,15 +31,15 @@
             <h2>Informações Básicas</h2>
             
             <div class="form-group">
-                <label for="name">Nome do Tipo de Administrador</label>
+                <label for="name">Nome do Tipo de Gestor</label>
                 <input type="text" id="name" name="name" placeholder="Ex: Coordenador, Supervisor, Gestor..." required>
-                <span class="form-hint">Digite um nome que identifique este tipo de administrador.</span>
+                <span class="form-hint">Digite um nome que identifique este tipo de gestor.</span>
             </div>
         </div>
 
         <div class="form-section">
-            <h2>Permissões do Administrador</h2>
-            <p class="section-description">Defina quais ações este tipo de administrador poderá realizar no sistema.</p>
+            <h2>Permissões do Gestor</h2>
+            <p class="section-description">Defina quais ações este tipo de gestor poderá realizar no sistema.</p>
             
             <div class="permissions-grid">
                 <div class="permission-item">
@@ -149,7 +149,7 @@
                     <line x1="12" y1="8" x2="12" y2="16"></line>
                     <line x1="8" y1="12" x2="16" y2="12"></line>
                 </svg>
-                Criar Tipo de Administrador
+                Criar Tipo de Gestor
             </button>
         </div>
     </form>

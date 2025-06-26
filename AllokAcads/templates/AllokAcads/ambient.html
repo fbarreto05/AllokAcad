@@ -157,7 +157,7 @@
                     </div>
                     <div class="stat-info">
                         <span class="stat-value">{{ subjects|length }}</span>
-                        <span class="stat-label">Matérias</span>
+                        <span class="stat-label">Componentes Currilares</span>
                     </div>
                 </div>
             </div>
@@ -177,7 +177,7 @@
                                 </svg>
                             </div>
                             <div class="professor-action-text">
-                                <h4>Formulário de Preferências</h4>
+                                <h4>Formulário de Preferências de Atividade (FPA)</h4>
                                 <p>Preencha suas preferências de horários e salas para otimizar sua alocação.</p>
                             </div>
                         </div>
@@ -197,7 +197,7 @@
             <div class="info-card schedule-card">
                 <div class="info-header">
                     <h3>Grade de Horários</h3>
-                    <span class="schedule-badge">{{ table|length }} alocações</span>
+                    <span class="schedule-badge">{{ table|length }} espaços | {{ activities|length}} atividades</span>
                 </div>
                 <div class="info-body">
                     <div class="schedule-table-container">
@@ -205,18 +205,18 @@
                             <thead>
                                 <tr>
                                     <th class="period-header">Horário</th>
-                                    {% for day in "12345"|make_list %}
-                                        <th class="day-header">Dia {{ day }}</th>
+                                    {% for day in columns_range %}
+                                        <th class="day-header">Dia {{ day|add:"1" }}</th>
                                     {% endfor %}
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for period in "12345678"|make_list %}
+                                {% for period in periods_range %}
                                 <tr>
                                     <td class="period-cell">
-                                        <div class="period-number">{{ period }}º</div>
+                                        <div class="period-number">{{ period|add:"1" }}º</div>
                                     </td>
-                                    {% for day in "12345"|make_list %}
+                                    {% for day in columns_range %}
                                     <td class="schedule-cell">
                                         {% for alocation in table %}
                                             {% if alocation.line|add:"1"|stringformat:"s" == period and alocation.column|add:"1"|stringformat:"s" == day %}

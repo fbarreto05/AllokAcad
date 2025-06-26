@@ -50,13 +50,6 @@
 <div class="header">
     <h1>Meus Ambientes</h1>
     <div class="action-buttons home-action-buttons">
-        <a href="{% url 'create_ambient' %}" class="create-button home-create-button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Criar Ambiente
-        </a>
         <a href="#" class="join-button home-join-button" id="join-ambient-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
@@ -75,8 +68,14 @@
         <form action="{% url 'enter_ambient' %}" method="post">
             {% csrf_token %}
             <div class="form-group">
-                <label for="ambient_identificator">Identificador do Ambiente</label>
-                <input type="text" id="ambient_identificator" name="ambient_identificator" placeholder="Digite o código do ambiente" required>
+                <label for="ambient_identificator">Ambiente:</label>
+                <select id="ambient_identificator" name="ambient_identificator"  required>
+                    <option selected>Sua instituição de ensino: </option>
+                    {% for tambient in system_ambients %}
+                        <option value={{tambient.ambientid}}>{{tambient.name}}</option>
+                    {% endfor %}
+                </select>
+                <br>
             </div>
             <button type="submit" class="submit-button">Entrar</button>
         </form>
@@ -107,9 +106,7 @@
             <line x1="12" y1="8" x2="12" y2="16"></line>
             <line x1="8" y1="12" x2="16" y2="12"></line>
         </svg>
-        <p>Você ainda não possui ambientes</p>
-        <a href="{% url 'create_ambient' %}" class="create-first-ambient">Criar meu primeiro ambiente</a>
-    </div>
+   </div>
     {% endfor %}
 
 </div>

@@ -41,6 +41,15 @@
                             <span class="error-message" id="nameError"></span>
                         </div>
 
+                        <label for="ambientid">Sua instituição de ensino:</label>
+                        <select id="ambientid" name="ambientid">
+                            <option selected>Sua instituição de ensino: </option>
+                            {% for tambient in ambients %}
+                                <option value={{tambient.ambientid}}>{{tambient.name}}</option>
+                            {% endfor %}
+                            <br>
+                        </select>
+
                         <div class="form-group">
                             <label for="email">E-mail</label>
                             <input type="email" id="email" name="email" placeholder="Seu e-mail">

@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (subjectCounter) {
-            subjectCounter.textContent = `${selectedSubjects} matérias selecionadas`;
+            subjectCounter.textContent = `${selectedSubjects} componentes curriculares selecionadas`;
         }
         
         return { selectedSchedules, selectedSubjects };
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (selectedSchedules === 0 && selectedSubjects === 0) {
                 e.preventDefault();
-                showNotification('Por favor, selecione pelo menos um horário ou uma matéria.', 'warning');
+                showNotification('Por favor, selecione pelo menos um horário ou um componente curricular.', 'warning');
                 return false;
             }
             

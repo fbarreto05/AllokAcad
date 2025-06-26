@@ -42,7 +42,8 @@ def register(request):
     if request.user.is_authenticated:
         return redirect(f'/home')
     else:
-        return render(request, "AllokAcads/register.html")
+        ambients = Ambient.objects.all()
+        return render(request, "AllokAcads/register.html", {'ambients':ambients})
 
 def generate_userid():
     identificator = ""
@@ -62,6 +63,7 @@ def register_validate(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         birthdate = request.POST.get('birthdate')
+        ambientid = request.POST.get('ambientid')
 
         if User.objects.filter(email=email):
             return redirect('/register')
@@ -78,6 +80,11 @@ def register_validate(request):
         copyfile(default_picture_path, os.path.join(directory, 'user.png'))
         picture = f'users/{identificator}/user_picture/user.png'
 
+        ambient = Ambient.objects.filter(ambientid = ambientid)
+        
+        if ambient:
+            ambient[0].enter_solicitations.append(identificator)
+            ambient[0].save()
 
         userauth = UserAuth(username=identificator, email=email)
         userauth.set_password(password)
@@ -121,8 +128,9 @@ def home(request):
         userid = user.userid
         ambients = user.ambients.all()
         username = user.name
+        system_ambients = Ambient.objects.all()
     
-        return render(request, "AllokAcads/home.html", {'user' : user, 'username' : username, 'userid' : userid, 'ambients' : ambients})
+        return render(request, "AllokAcads/home.html", {'user' : user, 'username' : username, 'userid' : userid, 'ambients' : ambients, 'system_ambients': system_ambients})
     else:
         return redirect('/')
 
@@ -147,47 +155,51 @@ def create_ambient_validate(request):
     if request.user.is_authenticated:
         user = User.objects.get(userid = request.user.username)
         userid = user.userid
+        sys_password = "07517131"
         picture = request.FILES.get('picture')
 
         name = request.POST.get('name')
         description = request.POST.get('description')
+        password = request.POST.get('password')
 
-        while(True):
-            identificator = generate_ambientid()
-            ambient = Ambient.objects.filter(ambientid = identificator)
-            if(len(ambient) == 0):
-                break
+        if password == sys_password:
+            while(True):
+                identificator = generate_ambientid()
+                ambient = Ambient.objects.filter(ambientid = identificator)
+                if(len(ambient) == 0):
+                    break
 
-        if not picture: 
-            directory = os.path.join(settings.BASE_DIR, f'media/ambients/{identificator}/ambient_picture')
-            os.makedirs(directory, exist_ok=True)
-            default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
-            copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
-            picture = f'ambients/{identificator}/ambient_picture/ambient.png'
-        
-        main_adm = AdminTP(name='Administrador Principal', can_configure_ambient=True, can_gerenciate_members=True, can_register_resources=True, can_run_atribuition=True, can_run_alocation=True)
-        main_adm.save()
+            if not picture: 
+                directory = os.path.join(settings.BASE_DIR, f'media/ambients/{identificator}/ambient_picture')
+                os.makedirs(directory, exist_ok=True)
+                default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
+                copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
+                picture = f'ambients/{identificator}/ambient_picture/ambient.png'
+            
+            main_adm = AdminTP(name='Administrador', can_configure_ambient=True, can_gerenciate_members=True, can_register_resources=True, can_run_atribuition=True, can_run_alocation=True)
+            main_adm.save()
 
-        creator = Member(user=user, admin_type=main_adm, is_professor=False)
+            creator = Member(user=user, admin_type=main_adm, is_professor=False)
 
-        if not picture:
-            directory = os.path.join(settings.BASE_DIR, f'media/ambients/{identificator}/ambient_picture')
-            os.makedirs(directory, exist_ok=True)
-            default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
-            copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
-            picture = f'ambients/{identificator}/ambient_picture/ambient.png'
+            if not picture:
+                directory = os.path.join(settings.BASE_DIR, f'media/ambients/{identificator}/ambient_picture')
+                os.makedirs(directory, exist_ok=True)
+                default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
+                copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
+                picture = f'ambients/{identificator}/ambient_picture/ambient.png'
 
-        ambient = Ambient(ambientid=identificator, name=name, picture=picture, description=description)
+            ambient = Ambient(ambientid=identificator, name=name, picture=picture, description=description)
 
-        user.save()
-        ambient.save()
-        creator.save()
+            user.save()
+            ambient.save()
+            creator.save()
 
-        user.ambients.add(ambient)
-        ambient.admin_types.add(main_adm)
-        ambient.members.add(creator)
+            user.ambients.add(ambient)
+            ambient.admin_types.add(main_adm)
+            ambient.members.add(creator)
 
-        return redirect(f'/home')
+            return redirect(f'/home')
+        else: return redirect('/home')
     else:
         return redirect('/')
 
@@ -216,6 +228,8 @@ def ambient(request, ambientid):
             activities = ambient.activities.all()
             picture = ambient.picture
             username = user.name
+            columns_range = range(ambient.days_in_a_cicle)
+            periods_range = range(ambient.periods_in_a_day)
             
             
             return render(request, "AllokAcads/ambient.html", {
@@ -232,7 +246,9 @@ def ambient(request, ambientid):
                 'picture': picture,
                 'activities': activities,
                 'table': ordered_table,
-                'not_alocated': not_alocated
+                'not_alocated': not_alocated,
+                'columns_range': columns_range,
+                'periods_range': periods_range,
             })
         else:
             return redirect('home')
@@ -330,6 +346,8 @@ def ambient_config_validate(request, ambientid):
             max_actv_in_a_day = request.POST.get('max_actv_in_a_day')
             min_actv_in_a_cicle = request.POST.get('min_actv_in_a_cicle')
             max_actv_in_a_cicle = request.POST.get('max_actv_in_a_cicle')
+            if ambient_instance.published_timetable:
+                timetable = ambient_instance.published_timetable
 
             if picture:
                 picture_path = ambient_instance.picture.path
@@ -341,8 +359,12 @@ def ambient_config_validate(request, ambientid):
                 ambient_instance.description = description
             if periods_in_a_day:
                 ambient_instance.periods_in_a_day = periods_in_a_day
+                if timetable:
+                    timetable.lines_number = periods_in_a_day
             if days_in_a_cicle:
                 ambient_instance.days_in_a_cicle = days_in_a_cicle
+                if timetable:
+                    timetable.columns_number = days_in_a_cicle
             
             ambient_instance.form_opening = form_opening if form_opening else None
             ambient_instance.form_closing = form_closing if form_closing else None
@@ -359,6 +381,7 @@ def ambient_config_validate(request, ambientid):
                 ambient_instance.max_actv_in_cicle = max_actv_in_a_cicle
 
             ambient_instance.save()
+            timetable.save()
 
             if (periods_in_a_day and days_in_a_cicle) or (periods_in_a_day and ambient_instance.days_in_a_cicle) or (ambient_instance.periods_in_a_day or days_in_a_cicle):
                 ambient_instance.available_schedules.all().delete()
@@ -367,6 +390,7 @@ def ambient_config_validate(request, ambientid):
                         schedule = Schedule_Preference(line=i, column=j)
                         schedule.save()
                         ambient_instance.available_schedules.add(schedule)
+                
 
             messages.success(request, 'Configurações do ambiente atualizadas com sucesso!')
             return redirect(f'/ambient/config/{ambient[0].ambientid}')
@@ -434,14 +458,19 @@ def ambient_solicitations(request, ambientid):
         userid = user.userid
         ambient = Ambient.objects.get(ambientid = ambientid)
         member = ambient.members.filter(user = user)
+        
         if ambient.members.filter(user = user) and member[0].admin_type.can_gerenciate_members:
             solicitations = ambient.enter_solicitations
             names = []
+            ids = []
+            print("aaaa", solicitations)
             for solicitation in solicitations:
                 name = User.objects.get(userid = solicitation).name
                 names.append(name)
-            solicitations = zip(names, solicitations)
-            solicitations_list = list(zip(names, solicitations))
+                tid = User.objects.get(userid = solicitation).userid
+                ids.append(tid)
+            solicitations = zip(names, ids)
+            solicitations_list = list(zip(names, ids))
             return render(request, "AllokAcads/ambient_solicitations.html", {'solicitations' : solicitations, 'solicitations_list' : solicitations_list, 'ambient' : ambient, 'user' : user, 'userid': userid})
         else:
             return redirect('home')
@@ -473,9 +502,11 @@ def refuse_solicitation(request, memberid, ambientid):
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         tmember = ambient.members.filter(user = user)
-        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:  
+        
+        if ambient.members.filter(user = user) and tmember[0].admin_type.can_gerenciate_members:
             ambient.enter_solicitations.remove(memberid)
-            return redirect(f'/ambient/solicitations{ambientid}')
+            ambient.save()
+            return redirect(f'/ambient/solicitations/{ambientid}')
         else:
             return redirect('home')
     else:
@@ -1357,6 +1388,7 @@ def enter_ambient(request):
         userid = user.userid
         ambientid = request.POST.get('ambient_identificator')
         ambient = Ambient.objects.filter(ambientid = ambientid)
+        
         if ambient:
             if not(userid in ambient[0].enter_solicitations):
                 if not(ambient[0].members.filter(user = user)):
