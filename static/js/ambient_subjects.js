@@ -197,14 +197,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 
                 const subjectName = this.closest('.subject-card')
-                    ?.querySelector('.subject-name')?.textContent || 'esta matéria';
+                    ?.querySelector('.subject-name')?.textContent || 'este componente currilar';
                 
                 const deleteUrl = this.href;
                 
                 showConfirmModal(
                     'Confirmar Exclusão',
-                    `Tem certeza que deseja excluir a matéria "${subjectName}"?`,
-                    'Esta ação não pode ser desfeita. Todos os dados relacionados a esta matéria serão permanentemente removidos.',
+                    `Tem certeza que deseja excluir o componente currilar "${subjectName}"?`,
+                    'Esta ação não pode ser desfeita. Todos os dados relacionados a este componente currilar serão permanentemente removidos.',
                     'error',
                     () => {
                         window.location.href = deleteUrl;
