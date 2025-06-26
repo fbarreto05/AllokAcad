@@ -190,9 +190,25 @@
 
     .form-section {
         padding: 1rem;
-    }
-
-    .create-formations-container {
+    }    .create-formations-container {
         margin: 0 0.5rem;
     }
+}
+
+.form-group input[type="text"].error {
+    border-color: #e63946 !important;
+    background-color: rgba(230, 57, 70, 0.05) !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+}
+
+.form-group input[type="text"].error:focus {
+    border-color: #e63946 !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+}
+
+.error-message {
+    color: #e63946;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: none;
 }

@@ -29,8 +29,6 @@
 
 <div class="edit-classes-container">
     <form class="edit-classes-form" action="{% url 'ambient_edit_classes_validate' tclass.id ambient.ambientid %}" method="post" enctype="multipart/form-data">
-    <!-- Do fernando tava assim: -->
-    <!-- <form action="{% url 'ambient_edit_classes_validate' classid ambient.ambientid %}" method="post" enctype="multipart/form-data"> -->
 
         {% csrf_token %}
         

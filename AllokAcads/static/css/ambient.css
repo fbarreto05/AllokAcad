@@ -672,6 +672,128 @@
     flex-shrink: 0;
 }
 
+.instructions-section {
+    margin-bottom: 24px;
+}
+
+.instruction-box {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid;
+}
+
+.instruction-box.warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.instruction-box h4 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.instruction-box p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.prerequisites {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    margin-top: 12px;
+    border-left: 4px solid #007bff;
+}
+
+.prerequisites h5 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.requirements-list {
+    margin: 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.requirements-list li {
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: #495057;
+    position: relative;
+}
+
+.requirements-list li::before {
+    content: "•";
+    color: #28a745;
+    font-weight: bold;
+    position: absolute;
+    left: -15px;
+}
+
+.warning-text {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #856404;
+}
+
+.info-text {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #0c5460;
+}
+
+.admin-action {
+    margin-bottom: 24px;
+}
+
+.admin-action-details h4 {
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.admin-action-details > p {
+    color: #666;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
+.secondary-button {
+    background-color: #6c757d !important;
+    color: white !important;
+    border-color: #6c757d !important;
+}
+
+.secondary-button:hover {
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
+}
+
+.primary-button {
+    background-color: #007bff !important;
+    color: white !important;
+    border-color: #007bff !important;
+}
+
+.primary-button:hover {
+    background-color: #0056b3 !important;
+    border-color: #004085 !important;
+}
+
 @media (max-width: 768px) {
     .schedule-table-container {
         margin: 0 -16px;
