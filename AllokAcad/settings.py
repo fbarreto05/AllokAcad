@@ -1,3 +1,4 @@
+# settings.py
 """
 Django settings for AllokAcad project.
 
@@ -24,11 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-f*jsfs)j#d(y+@=4-w%nipy#_nikw@wgi1j+xvgey1l%vm5tal'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['3.23.126.5', '3.128.174.142', 'allokacad.xyz']
-
-# Application definition
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'allokacad.xyz']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -37,9 +36,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
+    'django_plotly_dash',
     'AllokAcads',
     'dashboard',
-    'django_plotly_dash',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +49,9 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_plotly_dash.middleware.BaseMiddleware',
+    'django_plotly_dash.middleware.ExternalRedirectionMiddleware',
 ]
 
 ROOT_URLCONF = 'AllokAcad.urls'
@@ -71,8 +74,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'AllokAcad.wsgi.application'
 
-
-# Database
+# DATABASE CONFIGURATION
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
@@ -86,30 +88,20 @@ DATABASES = {
     }
 }
 
-
-# Password validation
+# PASSWORD VALIDATION
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# Internationalization
+# INTERNATIONALIZATION AND TIME ZONES
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
 
 TIME_ZONE = 'UTC'
 
@@ -117,20 +109,37 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
+# STATIC & MEDIA FILES CONFIGURATION
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-FILE_UPLOAD_PERMISSIONS = 0o664
-FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o775
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'django_plotly_dash.finders.DashAssetFinder',
+    'django_plotly_dash.finders.DashComponentFinder',
+    'django_plotly_dash.finders.DashAppDirectoryFinder',
+]
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+PLOTLY_COMPONENTS = [
+    'dpd_components',
+    'dash_bootstrap_components',
+    'plotly',
+    'dash',
+]
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+ASGI_APPLICATION = 'AllokAcad.asgi.application'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
