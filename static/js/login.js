@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
-    const identifierInput = document.getElementById('email');
+    const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const identifierError = document.getElementById('identifierError');
     const passwordError = document.getElementById('passwordError');
