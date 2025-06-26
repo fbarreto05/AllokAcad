@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let hasError = false;
         
         if (!emailInput.value.trim()) {
-            showError(identifierError, 'Por favor, insira seu e-mail');
+            showError(identifierError, 'Por favor, insira seu email');
             emailInput.classList.add('error');
             hasError = true;
         }
