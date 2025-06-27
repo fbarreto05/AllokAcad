@@ -41,8 +41,8 @@
                     <form id="loginForm" action="{% url 'login_validate' %}" method="post">
                         {% csrf_token %}
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="text" id="email" placeholder="Seu email">
+                            <label for="email">E-mail</label>
+                            <input type="text" id="email" placeholder="Seu e-mail">
                             <span class="error-message" id="identifierError"></span>
                         </div>
                         

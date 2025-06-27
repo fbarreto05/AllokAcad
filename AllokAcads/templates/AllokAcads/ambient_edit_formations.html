@@ -9,6 +9,10 @@
 <link rel="stylesheet" href="{% static 'css/ambient_edit_formations.css' %}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/ambient_edit_formations.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="header">
     <h1>Editar Formação</h1>
@@ -33,6 +37,7 @@
             <div class="form-group">
                 <label for="name">Nome da Formação</label>
                 <input type="text" id="name" name="name" value="{{ formation.name }}" placeholder="Ex: Mestrado em Educação, Graduação em Matemática..." required>
+                <span class="error-message" id="nameError"></span>
                 <span class="form-hint">Atualize o nome da formação acadêmica ou certificação.</span>
             </div>
         </div>
