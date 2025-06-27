@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.querySelector('form');
     const nameInput = document.getElementById('name');
+    const ambientSelect = document.getElementById('ambientid');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const birthdateInput = document.getElementById('birthdate');
     const nameError = document.getElementById('nameError');
+    const ambientError = document.getElementById('ambientError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');    function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
     }
@@ -42,11 +44,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 successElement.remove();
             }
         }, 3000);
-    }
-
-    nameInput.addEventListener('input', () => {
+    }    nameInput.addEventListener('input', () => {
         clearError(nameError);
         nameInput.classList.remove('error');
+    });
+
+    ambientSelect.addEventListener('change', () => {
+        clearError(ambientError);
+        ambientSelect.classList.remove('error');
     });
 
     emailInput.addEventListener('input', () => {
@@ -66,8 +71,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     registerForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        clearError(nameError);
+          clearError(nameError);
+        clearError(ambientError);
         clearError(emailError);
         clearError(passwordError);
         clearError(birthdateError);
@@ -80,6 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (nameInput.value.trim().length < 5) {
             showError(nameError, 'O nome deve ter pelo menos 5 caracteres');
             nameInput.classList.add('error');
+            hasError = true;
+        }
+        
+        if (!ambientSelect.value || ambientSelect.value === '') {
+            showError(ambientError, 'Por favor, selecione sua instituição de ensino');
+            ambientSelect.classList.add('error');
             hasError = true;
         }
         
