@@ -134,7 +134,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: formData
-            });            if (response.redirected || response.url.includes('/?new_user=')) {
+            });
+
+            if (response.status === 400) {
+                const errorData = await response.json();
+                if (errorData.error === 'email_exists') {
+                    showError(emailError, errorData.message);
+                    emailInput.classList.add('error');
+                } else {
+                    showError(nameError, 'Erro ao criar conta. Tente novamente.');
+                }
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+                return;
+            }
+
+            if (response.redirected || response.url.includes('/?new_user=')) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
                 
                 setTimeout(() => {

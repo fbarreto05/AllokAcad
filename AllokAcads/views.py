@@ -65,8 +65,9 @@ def register_validate(request):
         birthdate = request.POST.get('birthdate')
         ambientid = request.POST.get('ambientid')
 
-        if User.objects.filter(email=email):
-            return redirect('/register')
+        if User.objects.filter(email=email).exists():
+            from django.http import JsonResponse
+            return JsonResponse({'error': 'email_exists', 'message': 'Este e-mail já está cadastrado no sistema.'}, status=400)
         
         while(True):
             identificator = generate_userid()
