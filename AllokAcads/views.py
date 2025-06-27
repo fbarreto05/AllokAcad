@@ -2859,6 +2859,7 @@ def run_alocation(request, ambientid):
                 while(swap):
                     swap = False
                     for activitie in activities:
+                        
                         highest_weight = 0
                         chosen_sch = None
                         for schedule_c in activitie.tclass.prefered_schedules.all():
