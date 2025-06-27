@@ -2736,11 +2736,11 @@ def run_atribuition(request, ambientid):
                         if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
                             tsubjects_professor2 = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                         if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                            if candidate.formations.get(formation = formation).formation_degree == 'Graduado':
+                            if candidate.formations.get(formation = formation.formation).formation_degree == 'Graduado':
                                 degree = 25
-                            elif candidate.formations.get(formation = formation).formation_degree == 'Mestre':
+                            elif candidate.formations.get(formation = formation.formation).formation_degree == 'Mestre':
                                 degree = 50
-                            elif candidate.formations.get(formation = formation).formation_degree == 'Doutor':
+                            elif candidate.formations.get(formation = formation.formation).formation_degree == 'Doutor':
                                 degree = 100
                             degree = a_formation.formation_weight * degree
                             if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
