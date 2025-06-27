@@ -96,7 +96,6 @@ urlpatterns = [
     path('ambient/run_alocation/<str:ambientid>', views.run_alocation, name='run_alocation'),
     
     path('dashboard/', include('dashboard.urls')),
-    path('django_plotly_dash/', include('django_plotly_dash.urls')),
     
     path('home/exit', views.exit, name='exit'),
     ]

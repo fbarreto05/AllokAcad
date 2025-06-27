@@ -109,8 +109,11 @@ class calculateProfessor():
         return 100
 
     @staticmethod
-    def get_ambient_list():
-        return Ambient.objects.all()
+    def get_user_ambient_list(user=None):
+        if user is not None:
+            return list(user.ambients.all())
+        return []
+        
     
     @staticmethod
     def get_professor_average_periods_list(ambient_id = None):
@@ -134,5 +137,4 @@ class calculateProfessor():
             
             result = data.values_list('number_of_periods', flat = True)
             np.median(list(result))
-        
-    
+

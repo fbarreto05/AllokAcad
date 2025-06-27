@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'AllokAcads',
     'dashboard',
-    'django_plotly_dash',
 ]
 
 MIDDLEWARE = [
