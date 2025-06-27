@@ -228,8 +228,12 @@ def ambient(request, ambientid):
             activities = ambient.activities.all()
             picture = ambient.picture
             username = user.name
-            columns_range = range(ambient.days_in_a_cicle)
-            periods_range = range(ambient.periods_in_a_day)
+            columns_range = 0
+            periods_range = 0
+            if ambient.days_in_a_cicle:
+                columns_range = range(ambient.days_in_a_cicle)
+            if ambient.periods_in_a_day:
+                periods_range = range(ambient.periods_in_a_day)
             
             
             return render(request, "AllokAcads/ambient.html", {
@@ -346,6 +350,7 @@ def ambient_config_validate(request, ambientid):
             max_actv_in_a_day = request.POST.get('max_actv_in_a_day')
             min_actv_in_a_cicle = request.POST.get('min_actv_in_a_cicle')
             max_actv_in_a_cicle = request.POST.get('max_actv_in_a_cicle')
+            timetable = None
             if ambient_instance.published_timetable:
                 timetable = ambient_instance.published_timetable
 
@@ -381,7 +386,8 @@ def ambient_config_validate(request, ambientid):
                 ambient_instance.max_actv_in_cicle = max_actv_in_a_cicle
 
             ambient_instance.save()
-            timetable.save()
+            if ambient_instance.published_timetable:
+                timetable.save()
 
             if (periods_in_a_day and days_in_a_cicle) or (periods_in_a_day and ambient_instance.days_in_a_cicle) or (ambient_instance.periods_in_a_day or days_in_a_cicle):
                 ambient_instance.available_schedules.all().delete()
@@ -557,7 +563,7 @@ def ambient_create_subjects(request, ambientid):
         member = ambient[0].members.filter(user = user)
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
             classrooms = ambient[0].classrooms.all().order_by('name')
-            professors = ambient[0].members.all().filter(is_professor = True).order_by('name')
+            professors = ambient[0].members.all().filter(is_professor = True).order_by('user__name')
             formations = ambient[0].formations.all().order_by('name')
             return render(request, "AllokAcads/ambient_create_subjects.html", {'ambient' : ambient[0], 'user' : user, 'classrooms' : classrooms, 'professors' : professors, 'formations' : formations, 'userid': userid})
         else:
@@ -1122,7 +1128,7 @@ def ambient_create_classes(request, ambientid):
         if ambient[0].members.filter(user = user) and member[0].admin_type.can_register_resources:  
             schedules = ambient[0].available_schedules.all()
             classrooms = ambient[0].classrooms.all().order_by('name')
-            professors = ambient[0].members.all().filter(is_professor = True).order_by('name')
+            professors = ambient[0].members.all().filter(is_professor = True).order_by('user__name')
             subjects = ambient[0].subjects.all().order_by('name')
             columns = ambient[0].periods_in_a_day
             username = user.name
@@ -2819,6 +2825,7 @@ def run_atribuition(request, ambientid):
 
 def run_alocation(request, ambientid):
     if request.user.is_authenticated:
+        
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         member = ambient.members.filter(user = user)
@@ -2833,6 +2840,7 @@ def run_alocation(request, ambientid):
                     alocation.save()
                     ambient.published_timetable.table.add(alocation)
                     ambient.save()
+                    
                 activities = ambient.activities.all()
                 swap = True
                 while(swap):
@@ -2849,12 +2857,13 @@ def run_alocation(request, ambientid):
                             p_weight = 0
                             for i in range(activitie.activities_qtd):
                                 if activitie.tclass.prefered_schedules.all().filter(line=line, column=column+i):
-
+                                    
                                     for alocation in ambient.published_timetable.table.all().filter(line = column+i, column = line):
                                         for actv in alocation.activitie.all():
                                             if((actv.tprofessor == activitie.tprofessor or actv.tclass == activitie.tclass or actv.tclassroom == activitie.tclassroom) and actv != conflit):
                                                 count_conflit += 1
                                                 conflit = actv
+                                                
                                                 if count_conflit > 1:
                                                     break
 
@@ -2863,6 +2872,7 @@ def run_alocation(request, ambientid):
                                         weight += 1
                                         if activitie.tprofessor.prefered_schedules.all().filter(id = ambient_sch.id):
                                             weight += 1
+                                            
 
                                     elif (count_conflit < 2):
                                         p_weight = 0
@@ -2909,10 +2919,7 @@ def run_alocation(request, ambientid):
                             
                         if highest_weight and chosen_sch:
                             for i in range(activitie.activities_qtd):
-                                print(highest_weight, chosen_sch, chosen_sch.column+i, chosen_sch.line)
                                 t_alocation = ambient.published_timetable.table.all().get(line = chosen_sch.column+i, column = chosen_sch.line)
-                                print(t_alocation)
-                                print(t_alocation.activitie.all())
                                 t_alocation.activitie.add(activitie)
                                 if change:
                                     t_alocation.activitie.remove(t_activitie)

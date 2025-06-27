@@ -219,7 +219,7 @@
                                     {% for day in columns_range %}
                                     <td class="schedule-cell">
                                         {% for alocation in table %}
-                                            {% if alocation.line|add:"1"|stringformat:"s" == period and alocation.column|add:"1"|stringformat:"s" == day %}
+                                            {% if alocation.line == period and alocation.column == day %}
                                                 {% for activitie in alocation.activitie.all %}
                                                 <div class="activity-block">
                                                     <div class="activity-header">
