@@ -342,12 +342,15 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <a href="{% url 'run_atribuition' ambient.ambientid %}" class="action-button primary-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                </svg>
-                                Rodar atribuição
-                            </a>
+                            <div class="admin-action-button-container">
+                                <button type="button" class="action-button primary-button" id="run-atribuition-btn" data-url="{% url 'run_atribuition' ambient.ambientid %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polygon points="10,8 16,12 10,16 10,8"></polygon>
+                                    </svg>
+                                    Rodar Atribuição
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                         
@@ -365,19 +368,22 @@
                                         <li>✅ <strong>Horários disponíveis</strong> cadastrados no sistema</li>
                                         <li>✅ <strong>Estrutura de horários</strong> definida (períodos, dias da semana)</li>
                                         <li>✅ <strong>Restrições de horários</strong> dos professores configuradas</li>
+                                        <li>✅ <strong>Preferências de horários</strong> das turmas preenchidas</li>
                                     </ul>
                                     <p class="info-text">ℹ️ <strong>Dica:</strong> Se houver erros, verifique se todos os professores têm horários disponíveis definidos.</p>
                                 </div>
                             </div>
-                            <a href="{% url 'run_alocation' ambient.ambientid %}" class="action-button secondary-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                Rodar alocação
-                            </a>
+                            <div class="admin-action-button-container">
+                                <button type="button" class="action-button secondary-button" id="run-alocation-btn" data-url="{% url 'run_alocation' ambient.ambientid %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    Rodar Alocação
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -388,6 +394,7 @@
         </div>
     </div>
 </div>
+
 {% endblock content %}
 
 {% block extra_js %}

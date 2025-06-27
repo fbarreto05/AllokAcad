@@ -9,9 +9,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const ambientError = document.getElementById('ambientError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');
+
+    function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
+    }
+    const togglePassword = document.querySelector('.toggle-password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
+
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.style.display = 'block';
+                eyeOffIcon.style.display = 'none';
+            } else {
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'block';
+            }
+            
+            passwordInput.focus();
+        });
     }
 
     function clearError(element) {
@@ -44,7 +66,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 successElement.remove();
             }
         }, 3000);
-    }    nameInput.addEventListener('input', () => {
+    }
+
+    nameInput.addEventListener('input', () => {
         clearError(nameError);
         nameInput.classList.remove('error');
     });
@@ -71,12 +95,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     registerForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-          clearError(nameError);
+        
+        clearError(nameError);
         clearError(ambientError);
         clearError(emailError);
         clearError(passwordError);
         clearError(birthdateError);
-          let hasError = false;
+        
+        let hasError = false;
         
         if (!nameInput.value.trim()) {
             showError(nameError, 'Por favor, insira seu nome completo');
@@ -119,7 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
             birthdateInput.classList.add('error');
             hasError = true;
         }
-          if (hasError) return;
+        
+        if (hasError) return;
 
         const submitButton = document.querySelector('.register-button');
         const originalText = submitButton.innerHTML;
