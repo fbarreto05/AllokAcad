@@ -1,35 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.querySelector('form');
     const nameInput = document.getElementById('name');
+    const ambientSelect = document.getElementById('ambientid');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const birthdateInput = document.getElementById('birthdate');
     const nameError = document.getElementById('nameError');
+    const ambientError = document.getElementById('ambientError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');
-    const togglePassword = document.querySelector('.toggle-password');
-    const eyeIcon = document.querySelector('.eye-icon');
-    const eyeOffIcon = document.querySelector('.eye-off-icon');
-
-    if (togglePassword) {
-        togglePassword.addEventListener('click', function() {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            if (type === 'password') {
-                eyeIcon.style.display = 'block';
-                eyeOffIcon.style.display = 'none';
-            } else {
-                eyeIcon.style.display = 'none';
-                eyeOffIcon.style.display = 'block';
-            }
-            
-            passwordInput.focus();
-        });
-    }
-
-    function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
     }
@@ -64,11 +44,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 successElement.remove();
             }
         }, 3000);
-    }
-
-    nameInput.addEventListener('input', () => {
+    }    nameInput.addEventListener('input', () => {
         clearError(nameError);
         nameInput.classList.remove('error');
+    });
+
+    ambientSelect.addEventListener('change', () => {
+        clearError(ambientError);
+        ambientSelect.classList.remove('error');
     });
 
     emailInput.addEventListener('input', () => {
@@ -88,8 +71,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     registerForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        clearError(nameError);
+          clearError(nameError);
+        clearError(ambientError);
         clearError(emailError);
         clearError(passwordError);
         clearError(birthdateError);
@@ -102,6 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (nameInput.value.trim().length < 5) {
             showError(nameError, 'O nome deve ter pelo menos 5 caracteres');
             nameInput.classList.add('error');
+            hasError = true;
+        }
+        
+        if (!ambientSelect.value || ambientSelect.value === '') {
+            showError(ambientError, 'Por favor, selecione sua instituição de ensino');
+            ambientSelect.classList.add('error');
             hasError = true;
         }
         
@@ -145,7 +134,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: formData
-            });            if (response.redirected || response.url.includes('/?new_user=')) {
+            });
+
+            if (response.status === 400) {
+                const errorData = await response.json();
+                if (errorData.error === 'email_exists') {
+                    showError(emailError, errorData.message);
+                    emailInput.classList.add('error');
+                } else {
+                    showError(nameError, 'Erro ao criar conta. Tente novamente.');
+                }
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+                return;
+            }
+
+            if (response.redirected || response.url.includes('/?new_user=')) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
                 
                 setTimeout(() => {

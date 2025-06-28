@@ -1712,6 +1712,7 @@ def check_conflitant_schedules_professor(professor, activitie):
 
 def run_atribuition(request, ambientid):   
     if request.user.is_authenticated:
+        
         user = User.objects.get(userid = request.user.username)
         ambient = Ambient.objects.get(ambientid = ambientid)
         member = ambient.members.filter(user = user)
@@ -1749,7 +1750,7 @@ def run_atribuition(request, ambientid):
                         weight = room.classroom_weight + subject_room.classroom_weight
                     else:
                         weight = room.classroom_weight
-                    if weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
+                    if weight >= highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
                         highest_weight = weight
                         chosen_room = room.classroom  
                 for room in subjects_rooms:
@@ -1758,7 +1759,9 @@ def run_atribuition(request, ambientid):
                     if weight >= highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
                         highest_weight = weight
                         chosen_room = room.classroom
-                if(highest_weight > 0 and chosen_room != None):
+                
+                if(highest_weight >= 0 and chosen_room != None):
+                    
                     activitie.tclassroom = chosen_room
                     activitie.classroom_weight = highest_weight
                     activitie.save()
@@ -1780,51 +1783,31 @@ def run_atribuition(request, ambientid):
                 activities = ambient.activities.all()
                 for activitie in activities:
                     rooms = ambient.classrooms.all()
-                    if activitie.tclassroom.num_uses > average_occupation:
-                        classrooms_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight")
-                        subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight")
-                        second_classrooms_rooms = classrooms_rooms.exclude(classroom=activitie.tclassroom)
-                        second_subjects_rooms = subjects_rooms.exclude(classroom=activitie.tclassroom)
-                        highest_weight = 0
-                        chosen_room = None
-                        for room in second_classrooms_rooms:
-                            conflitant_classroom = check_conflitant_schedules_classroom(room.classroom, activitie)
-                            if second_subjects_rooms.filter(classroom__name = room.classroom.name).exists():
-                                subject_room = second_subjects_rooms.get(classroom__name = room.classroom.name)
-                                weight = room.classroom_weight + subject_room.classroom_weight
-                            else:
-                                weight = room.classroom_weight
-                            if weight > highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                                highest_weight = weight
-                                chosen_room = room.classroom
-                        for room in second_subjects_rooms:
-                            conflitant_classroom = check_conflitant_schedules_classroom(room.classroom, activitie)
-                            weight = room.classroom_weight
-                            if weight >= highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                                highest_weight = weight
-                                chosen_room = room.classroom
-                        if(highest_weight > 0 and chosen_room != None):
-                            classroom_save = activitie.tclassroom
-                            classroom_save.num_uses -= activitie.activities_qtd
-                            activitie.tclassroom = chosen_room
-                            activitie.classroom_weight = highest_weight
-                            chosen_room.num_uses += activitie.activities_qtd
-                            chosen_room.save()
-                            classroom_save.save()
-                            activitie.save()
-                            if isinstance(conflitant_classroom, Activitie):
-                                conflitant_classroom1 = conflitant_classroom.tclassroom
-                                conflitant_classroom.tprofessor = None
-                                conflitant_classroom1 -= conflitant_classroom.activities_qtd
-                                conflitant_classroom.save()
-                                conflitant_classroom1.save()
-                        elif activitie.classroom_weight < 100:
+                    if activitie.tclassroom: 
+                        if activitie.tclassroom.num_uses > average_occupation:
+                            classrooms_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight")
+                            subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight")
+                            second_classrooms_rooms = classrooms_rooms.exclude(classroom=activitie.tclassroom)
+                            second_subjects_rooms = subjects_rooms.exclude(classroom=activitie.tclassroom)
+                            highest_weight = 0
                             chosen_room = None
-                            similar_rooms = Classroom.objects.filter(classroom_type = activitie.tclassroom.classroom_type)
-                            for room in similar_rooms:
-                                if activitie.tclassroom.num_uses - room.num_uses >= 2 and room.classroom_capacity >= activitie.tclass.number_of_students:
-                                    chosen_room = room
-                            if chosen_room:
+                            for room in second_classrooms_rooms:
+                                conflitant_classroom = check_conflitant_schedules_classroom(room.classroom, activitie)
+                                if second_subjects_rooms.filter(classroom__name = room.classroom.name).exists():
+                                    subject_room = second_subjects_rooms.get(classroom__name = room.classroom.name)
+                                    weight = room.classroom_weight + subject_room.classroom_weight
+                                else:
+                                    weight = room.classroom_weight
+                                if weight > highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
+                                    highest_weight = weight
+                                    chosen_room = room.classroom
+                            for room in second_subjects_rooms:
+                                conflitant_classroom = check_conflitant_schedules_classroom(room.classroom, activitie)
+                                weight = room.classroom_weight
+                                if weight >= highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses >= 2 and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
+                                    highest_weight = weight
+                                    chosen_room = room.classroom
+                            if(highest_weight > 0 and chosen_room != None):
                                 classroom_save = activitie.tclassroom
                                 classroom_save.num_uses -= activitie.activities_qtd
                                 activitie.tclassroom = chosen_room
@@ -1839,6 +1822,42 @@ def run_atribuition(request, ambientid):
                                     conflitant_classroom1 -= conflitant_classroom.activities_qtd
                                     conflitant_classroom.save()
                                     conflitant_classroom1.save()
+                            elif activitie.classroom_weight < 100:
+                                chosen_room = None
+                                similar_rooms = Classroom.objects.filter(classroom_type = activitie.tclassroom.classroom_type)
+                                for room in similar_rooms:
+                                    if activitie.tclassroom.num_uses - room.num_uses >= 2 and room.classroom_capacity >= activitie.tclass.number_of_students:
+                                        chosen_room = room
+                                if chosen_room:
+                                    classroom_save = activitie.tclassroom
+                                    classroom_save.num_uses -= activitie.activities_qtd
+                                    activitie.tclassroom = chosen_room
+                                    activitie.classroom_weight = highest_weight
+                                    chosen_room.num_uses += activitie.activities_qtd
+                                    chosen_room.save()
+                                    classroom_save.save()
+                                    activitie.save()
+                                    if isinstance(conflitant_classroom, Activitie):
+                                        conflitant_classroom1 = conflitant_classroom.tclassroom
+                                        conflitant_classroom.tprofessor = None
+                                        conflitant_classroom1 -= conflitant_classroom.activities_qtd
+                                        conflitant_classroom.save()
+                                        conflitant_classroom1.save()
+                    else:
+                        random_rooms = ambient.classrooms.all().order_by('num_uses')
+                        for random_room in random_rooms:
+                            conflitant_classroom = check_conflitant_schedules_classroom(random_room, activitie)
+                            activitie.tclassroom = random_room
+                            activitie.classroom_weight = highest_weight
+                            activitie.save()
+                            random_room.num_uses += activitie.activities_qtd
+                            random_room.save()
+                            if isinstance(conflitant_classroom, Activitie):
+                                conflitant_classroom1 = conflitant_classroom.tclassroom
+                                conflitant_classroom.tprofessor = None
+                                conflitant_classroom1 -= conflitant_classroom.activities_qtd
+                                conflitant_classroom.save()
+                                conflitant_classroom1.save()
 
             #inicio da atribuição de professores
             activities = ambient.activities.all()
@@ -2721,9 +2740,10 @@ def run_atribuition(request, ambientid):
                 tsubjects_professor1 = 0
                 tclassrooms_professor2 = 0
                 tsubjects_professor2 = 0
-                for a_formation in formations:
-                    candidates = ambient.members.filter(is_professor = True, formations__formation = a_formation.formation)
+                for formation in formations:
+                    candidates = ambient.members.filter(is_professor = True, formations__formation = formation.formation)
                     for candidate in candidates:
+                        formations_1 = candidate.formations.all()
                         conflitant_schedules = check_conflitant_schedules_professor(candidate, not_atribuited_activitie)
                         if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
                             subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
@@ -2738,13 +2758,16 @@ def run_atribuition(request, ambientid):
                         if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
                             tsubjects_professor2 = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
                         if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                            if candidate.formations.get(formation = formation.formation).formation_degree == 'Graduado':
-                                degree = 25
-                            elif candidate.formations.get(formation = formation.formation).formation_degree == 'Mestre':
-                                degree = 50
-                            elif candidate.formations.get(formation = formation.formation).formation_degree == 'Doutor':
-                                degree = 100
-                            degree = a_formation.formation_weight * degree
+                            degree = 0
+                            for a_formation in formations_1:
+                                if a_formation.formation == formation:
+                                    if a_formation.formation_degree == 'Graduado':
+                                        degree = 25
+                                    elif a_formation.formation_degree == 'Mestre':
+                                        degree = 50
+                                    elif a_formation.formation_degree == 'Doutor':
+                                        degree = 100
+                            degree = formation.formation_weight * degree
                             if (tclassrooms_professor1 + tsubjects_professor1 > tclassrooms_professor2 + tsubjects_professor2) or ((tclassrooms_professor2 < 100 and tsubjects_professor2 < 100) and (tclassrooms_professor1 == 100 or tsubjects_professor1 == 100)):
                                 if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
                                     highest_weight = weight
@@ -2755,35 +2778,37 @@ def run_atribuition(request, ambientid):
                                         highest_formation = degree
                                         chosen_professor = candidate
                                 elif degree == highest_formation:
-                                    if candidate.formation.professional_experience_time > highest_professional_time:
-                                        if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                            highest_professional_time = candidate.formation.professional_experience_time
-                                            chosen_professor = candidate
-                                    elif candidate.formation.professional_experience_time == highest_professional_time:
-                                        if candidate.formation.didatic_experience_time > highest_didatic_time:
-                                            if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                                highest_didatic_time = candidate.formation.professional_didatic_time
-                                                chosen_professor = candidate
-                                        elif didatic_experience_1_count == didatic_experience_2_count:
-                                            if candidate.time_in_campus > chosen_professor.tprofessor.time_in_campus:
+                                    for a_formation in formations_1:
+                                        if a_formation.formation == formation:
+                                            if a_formation.professional_experience_time > highest_professional_time:
                                                 if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                                    highest_didatic_time = candidate.formation.professional_didatic_time
+                                                    highest_professional_time = a_formation.professional_experience_time
                                                     chosen_professor = candidate
-                                            elif candidate.time_in_campus == chosen_professor.tprofessor.time_in_campus:
-                                                if candidate.time_in_institution > chosen_professor.tprofessor.time_in_institution:
+                                            elif a_formation.professional_experience_time == highest_professional_time:
+                                                if a_formation.didatic_experience_time > highest_didatic_time:
                                                     if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                                        highest_didatic_time = candidate.formation.professional_didatic_time
+                                                        highest_didatic_time = a_formation.professional_didatic_time
                                                         chosen_professor = candidate
-                                                elif candidate.time_in_institution == chosen_professor.tprofessor.time_in_institution:
-                                                    if datetime.date.today() - candidate.user.birthdate > datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
+                                                elif didatic_experience_1_count == didatic_experience_2_count:
+                                                    if candidate.time_in_campus > chosen_professor.tprofessor.time_in_campus:
                                                         if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                                            highest_didatic_time = candidate.formation.professional_didatic_time
+                                                            highest_didatic_time = a_formation.professional_didatic_time
                                                             chosen_professor = candidate
-                                                    elif datetime.date.today() - candidate.user.birthdate == datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
-                                                        if formation_1_count > formation_2_count:
+                                                    elif candidate.time_in_campus == chosen_professor.tprofessor.time_in_campus:
+                                                        if candidate.time_in_institution > chosen_professor.tprofessor.time_in_institution:
                                                             if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
-                                                                highest_didatic_time = candidate.formation.professional_didatic_time
+                                                                highest_didatic_time = a_formation.professional_didatic_time
                                                                 chosen_professor = candidate
+                                                        elif candidate.time_in_institution == chosen_professor.tprofessor.time_in_institution:
+                                                            if datetime.date.today() - candidate.user.birthdate > datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
+                                                                if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
+                                                                    highest_didatic_time = a_formation.professional_didatic_time
+                                                                    chosen_professor = candidate
+                                                            elif datetime.date.today() - candidate.user.birthdate == datetime.date.today() - chosen_professor.tprofessor.user.birthdate:
+                                                                if formation_1_count > formation_2_count:
+                                                                    if subject_preference != 0 and class_preference != 0 and conflitant_schedules:
+                                                                        highest_didatic_time = a_formation.professional_didatic_time
+                                                                        chosen_professor = candidate
                                     
                 if chosen_professor:
                     not_atribuited_activitie.tprofessor = chosen_professor
