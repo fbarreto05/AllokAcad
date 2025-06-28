@@ -167,41 +167,4 @@ document.addEventListener('DOMContentLoaded', function () {
     window.updatePieChart = function(pieData) {
         renderPieChart(pieData);
     }
-
-    function updateDashboardUI(data) {
-        if (data.indicators) {
-            document.getElementById('metric-avg-interval').querySelector('.metric-value').textContent = data.indicators.average_class_interval ?? '--';
-            document.getElementById('metric-avg-classes').querySelector('.metric-value').textContent = data.indicators.average_classes ?? '--';
-            document.getElementById('metric-num-professors').querySelector('.metric-value').textContent = data.indicators.number_of_professors ?? '--';
-            document.getElementById('metric-timetable-quality').querySelector('.metric-value').textContent = data.indicators.timetable_quality ?? '--';
-        }
-        if (data.bar_graph_data) {
-            if (window.updateBarChart) window.updateBarChart(data.bar_graph_data);
-        }
-        if (data.scatter_graph_data) {
-            window.updateScatterChart(data.scatter_graph_data);
-        }
-        if (data.pie_graph_data) {
-            window.updatePieChart(data.pie_graph_data);
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', function() {
-        const ambientSelect = document.getElementById('ambient-select');
-        const updateButton = document.getElementById('update-button');
-        function fetchAndUpdateDashboard() {
-            const ambientId = ambientSelect.value;
-            fetch(`/update_dashboard_data?ambient=${ambientId}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateDashboardUI(data);
-                });
-        }
-        if (updateButton) {
-            updateButton.addEventListener('click', fetchAndUpdateDashboard);
-        }
-        if (ambientSelect) {
-            ambientSelect.addEventListener('change', fetchAndUpdateDashboard);
-        }
-    });
 });
