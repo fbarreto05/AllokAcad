@@ -173,71 +173,66 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const heatmapDataScript = document.getElementById('professor-heatmap-data');
-    let heatmapData = [];
-    if (heatmapDataScript) {
-        try {
-           
-            heatmapData = JSON.parse(heatmapDataScript.textContent);
-        } catch (e) {
-            heatmapData = [];
+    function renderPieChart(pieData) {
+        const ctx = document.getElementById('professorPieChart').getContext('2d');
+        if (window.professorPieChartInstance) {
+            window.professorPieChartInstance.destroy();
         }
-    }
+        let labels = [];
+        let data = [];
+        if (Array.isArray(pieData)) {
+           
+            labels = pieData.map(item => item.label);
+            data = pieData.map(item => item.value);
+        } else if (pieData && Array.isArray(pieData.labels) && Array.isArray(pieData.values)) {
     
-    const dias = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
-    const periodos = [1,2,3,4,5,6]; 
-    if (document.getElementById('professorHeatmap')) {
-        const ctxHeatmap = document.getElementById('professorHeatmap').getContext('2d');
-        new Chart(ctxHeatmap, {
-            type: 'matrix',
+            labels = pieData.labels;
+            data = pieData.values;
+        }
+        const backgroundColors = [
+            '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#ec407a', '#ff7043', '#26a69a', '#d4e157', '#8d6e63', '#789262'
+        ];
+        window.professorPieChartInstance = new Chart(ctx, {
+            type: 'pie',
             data: {
+                labels: labels,
                 datasets: [{
-                    label: 'Aulas por Dia/Período',
-                    data: heatmapData,
-                    backgroundColor: function(ctx) {
-                        const value = ctx.dataset.data[ctx.dataIndex].v;
-                        if (value === 0) return '#e0e0e0';
-                        if (value === 1) return '#90caf9';
-                        if (value === 2) return '#42a5f5';
-                        if (value === 3) return '#1976d2';
-                        return '#0d47a1';
-                    },
-                    width: ({chart}) => (chart.chartArea || {}).width / dias.length - 2,
-                    height: ({chart}) => (chart.chartArea || {}).height / periodos.length - 2,
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: '#fff',
+                    borderWidth: 2
                 }]
             },
             options: {
-                responsive: false,
+                responsive: true,
                 plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'Heatmap de Horários' },
+                    legend: { position: 'bottom' },
+                    title: { display: true, text: 'Eficiência Acumulada dos Professores' },
                     tooltip: {
                         callbacks: {
-                            title: (items) => {
-                                const item = items[0];
-                                return dias[item.raw.x] + ' - Período ' + periodos[item.raw.y];
-                            },
-                            label: (item) => `Aulas: ${item.raw.v}`
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                return `${label}: ${value}`;
+                            }
                         }
-                    }
-                },
-                scales: {
-                    x: {
-                        type: 'category',
-                        labels: dias,
-                        offset: true,
-                        grid: { display: false },
-                        title: { display: true, text: 'Dia da Semana' }
-                    },
-                    y: {
-                        type: 'category',
-                        labels: periodos,
-                        offset: true,
-                        grid: { display: false },
-                        title: { display: true, text: 'Período' }
                     }
                 }
             }
         });
+    }
+
+    const professorPieDataScript = document.getElementById('professor-pie-data');
+    if (professorPieDataScript) {
+        try {
+            const pieData = JSON.parse(professorPieDataScript.textContent);
+            renderPieChart(pieData);
+        } catch (e) {
+            console.error('Erro ao carregar dados do gráfico de pizza:', e);
+        }
+    }
+
+    window.updatePieChart = function(pieData) {
+        renderPieChart(pieData);
     }
 });

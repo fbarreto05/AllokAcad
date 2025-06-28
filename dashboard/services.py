@@ -137,4 +137,34 @@ class calculateProfessor():
             
             result = data.values_list('number_of_periods', flat = True)
             np.median(list(result))
+    @staticmethod
+    def get_professor_day_efficiency_list(ambient_id=None):
+        
+        data = ProfessorStatistics.objects.all()
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        result = []
+        for stat in data.select_related('professor__user'):
+            nome = stat.professor.user.name if hasattr(stat.professor, 'user') else str(stat.professor)
+            result.append({'professor': nome, 'day_efficiency': stat.day_efficiency})
+        return result
+    
+    @staticmethod
+    def get_professor_accumulated_efficiency(ambient_id=None):
+        data = ProfessorStatistics.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = (
+            data.values('professor__user__name')
+            .annotate(total_efficiency=Sum('day_efficiency'))
+            .order_by('professor__user__name')
+        )
+        
+        labels = [item['professor__user__name'] for item in result]
+        values = [item['total_efficiency'] for item in result]
+        
+        return {'labels': labels, 'values': values}
+
 
