@@ -52,6 +52,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     element.classList.remove('loading');
                 }
             });
+            if (newData.scatterData) {
+                window.updateScatterChart(newData.scatterData);
+            }
+            if (newData.pieData) {
+                window.updatePieChart(newData.pieData);
+            }
 
         } catch (error) {
             console.error('Erro ao atualizar dashboard:', error);
@@ -67,3 +73,4 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 });
+
