@@ -1774,7 +1774,9 @@ def run_atribuition(request, ambientid):
                 average_occupation = 0
                 for room in rooms:
                     average_occupation += room.num_uses   
-                average_occupation = average_occupation/len(rooms)   
+                average_occupation = 0
+                if(len(rooms)):
+                    average_occupation = average_occupation/len(rooms)   
                 activities = ambient.activities.all()
                 for activitie in activities:
                     rooms = ambient.classrooms.all()
