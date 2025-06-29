@@ -83,27 +83,37 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderProfessorBarChart(professorData, medianValue, showMedianLine = true) {
-        if (!professorData) return;
+        if (!professorData || professorData.length === 0) return;
         lastProfessorData = professorData;
         lastMedianValue = medianValue;
         const ctx = document.getElementById('professorBarChart').getContext('2d');
         if (window.professorBarChartInstance) {
             window.professorBarChartInstance.destroy();
         }
-        const labels = professorData.map(item => item.professor__user__name);
-        const data = professorData.map(item => item.periods_list);
-      
+
+        const getProfessor = item => item.professor__user__name || item.professor || item.nome_professor || 'Indefinido';
+        const getSubject = item => item.subject__name || item.subject || item.nome_materia || 'Indefinido';
+
+        const professors = [...new Set(professorData.map(getProfessor))];
+        const subjects = [...new Set(professorData.map(getSubject))];
+
+        const dataMap = {};
+        professorData.forEach(item => {
+            const subject = getSubject(item);
+            const professor = getProfessor(item);
+            if (!dataMap[subject]) dataMap[subject] = {};
+            dataMap[subject][professor] = item.total_classes;
+        });
+
+        const datasets = subjects.map((subject, idx) => ({
+            label: subject,
+            data: professors.map(prof => dataMap[subject][prof] || 0),
+            backgroundColor: `hsl(${(idx * 60) % 360}, 60%, 60%)`,
+            borderColor: `hsl(${(idx * 60) % 360}, 60%, 40%)`,
+            borderWidth: 1,
+            stack: 'aulas'
+        }));
         let annotationConfig = {};
-        if (typeof medianValue === 'undefined') {
-            const professorMedianDataScript = document.getElementById('professor-median-data');
-            if (professorMedianDataScript) {
-                try {
-                    medianValue = JSON.parse(professorMedianDataScript.textContent);
-                } catch (e) {
-                    medianValue = null;
-                }
-            }
-        }
         if (showMedianLine && medianValue !== null && medianValue !== undefined) {
             annotationConfig = {
                 annotation: {
@@ -127,28 +137,38 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
         }
-        
         window.professorBarChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Média de Aulas por Professor',
-                    data: data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
+                labels: professors,
+                datasets: datasets
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'Média de Aulas por Professor' },
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Aulas por Professor' },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                const subject = context.dataset.label;
+                                const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                                return `${subject}: ${value}`;
+                            },
+                            footer: function(context) {
+                          
+                                const total = context.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                                return `Total: ${total}`;
+                            }
+                        }
+                    },
                     ...annotationConfig
                 },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { stacked: true },
+                    y: { beginAtZero: true, stacked: true }
                 }
             }
         });

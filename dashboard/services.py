@@ -1,39 +1,58 @@
 from AllokAcads.models import Ambient
-from dashboard.models import ProfessorStatistics
-from django.db.models import Sum, Avg, Min, Max
+from dashboard.models import ProfessorDaySubject, ProfessorStatistics, Semester
+from django.db.models import Sum, Avg, Min, Max, Count
 from collections import defaultdict
 import numpy as np
 
 class calculateProfessor():
     @staticmethod
-    def statistics(ambient_id):
-        try: 
-            ambient = Ambient.objects.get(id = ambient_id)
-        
-        except Ambient.DoesNotExist:
-            print("Error: Timetable doesn't exist")
-            return
-
-        if not ambient.published_timetable:
-            return
-        
-        ProfessorStatistics.objects.filter(ambient=ambient).delete()
+    def statistics_semester(semester_id):
+        try:
+            semester = Semester.objects.get(id=semester_id)
+            ambient = semester.ambient
+            timetable = semester.timetable
             
-        allocations = ambient.published_timetable.table.prefetch_related('activitie__tprofessor')
+        except Semester.DoesNotExist:
+            return
         
-        professor_schedule = defaultdict(lambda: defaultdict(list))
+        if timetable is None:
+            return
+        
+        ProfessorDaySubject.objects.filter(semester = semester).delete()
+        ProfessorStatistics.objects.filter(semester = semester).delete()
+        
+        allocations = timetable.table.prefetch_related('activitie', 'activitie__tsubject', 'activitie__tprofessor')
+        
+        allocations_data_professor_day_subject = []
         
         for allocation in allocations:
-            day = allocation.line
-            period = allocation.column
-            
             for activity in allocation.activitie.all():
-                if activity.tprofessor: 
-                    professor = activity.tprofessor
-                    professor_schedule[professor][day].append(period)
+                if activity.tprofessor and activity.tsubject:
+                    
+                    allocation_data_professor = ProfessorDaySubject(
+                        ambient=ambient,
+                        professor=activity.tprofessor,
+                        subject=activity.tsubject,
+                        semester=semester,
+                        day=allocation.column,
+                        period=allocation.line,
+                    )
+                    allocations_data_professor_day_subject.append(allocation_data_professor)
+        
+        ProfessorDaySubject.objects.bulk_create(allocations_data_professor_day_subject)
+
+        professor_day_periods = defaultdict(lambda: defaultdict(list))
+        
+        for allocation in allocations_data_professor_day_subject:
+            professor = allocation.professor
+            day = allocation.day
+            professor_day_periods[professor][day].append(allocation.period)
+        
+        statistics = []
+        
+        for professor, days in professor_day_periods.items():
+            for day, periods in days.items():
                 
-        for professor, schedule in professor_schedule.items():
-            for day, periods in schedule.items():
                 number_of_periods = len(periods) 
                 first_period = min(periods)
                 last_period = max(periods)
@@ -46,20 +65,62 @@ class calculateProfessor():
                 else: 
                     day_efficiency = 0
                     
-                ProfessorStatistics.objects.update_or_create(
-                    ambient = ambient,
-                    professor = professor,
-                    semester = 'vazio',
-                    day = day, 
-                    defaults = {
-                    'periods_on_campus': periods_on_campus,
-                    'periods_interval': periods_interval,
-                    'number_of_periods': number_of_periods,
-                    'day_efficiency': day_efficiency,
-                    'trips_to_campus': 1
-                    }
+                statistics.append(
+                    ProfessorStatistics(
+                        ambient=ambient,
+                        professor=professor,
+                        semester=semester,
+                        day=day, 
+                        periods_on_campus=periods_on_campus,
+                        periods_interval=periods_interval,
+                        number_of_periods=number_of_periods,
+                        day_efficiency=day_efficiency
+                    )
                 )
                 
+        ProfessorStatistics.objects.bulk_create(statistics)   
+        
+    
+    @staticmethod
+    def update_statistics_semester(ambient_id):
+        try:
+            ambient = Ambient.objects.get(id=ambient_id)
+            
+        except Ambient.DoesNotExist:
+            return None
+       
+        current_semester, created = Semester.objects.get_or_create(
+                ambient=ambient,
+                is_active=True,
+                defaults={
+                    'name': ambient.name,
+                    'timetable': ambient.published_timetable
+                })
+        
+        if not created:
+            if current_semester.timetable != ambient.published_timetable:
+                current_semester.timetable = ambient.published_timetable
+                current_semester.save()
+        
+        calculateProfessor.statistics_semester(current_semester.id)
+    
+    
+    @staticmethod
+    def get_total_professor_classes(ambient_id=None):
+        data = ProfessorDaySubject.objects.all()
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = (
+            data.values('professor__user__name', 'subject__name')
+            .annotate(
+                total_classes=Count('id'),  
+                total_periods=Sum('period') )
+            .order_by('professor__user__name', 'subject__name')
+        )
+        return list(result)
+
+
     @staticmethod
     def filter_by_ambient_and_semester(semester, ambient_id = None):
         pass 
@@ -156,15 +217,8 @@ class calculateProfessor():
         if ambient_id:
             data = data.filter(ambient=ambient_id)
         
-        result = (
-            data.values('professor__user__name')
-            .annotate(total_efficiency=Sum('day_efficiency'))
-            .order_by('professor__user__name')
-        )
+        result = data.values('professor__user__name').annotate(total_efficiency=Sum('day_efficiency')).order_by('professor__user__name')
+    
         
-        labels = [item['professor__user__name'] for item in result]
-        values = [item['total_efficiency'] for item in result]
-        
-        return {'labels': labels, 'values': values}
-
+        return list(result)
 

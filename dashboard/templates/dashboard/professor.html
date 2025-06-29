@@ -53,9 +53,14 @@
             
             <div class="dashboard-controls">
                 <div class="control-group">
-                    <select name="ambient" id="ambient-select" aria-label="Selecionar ambiente para filtrar dados">
+                    <select name="ambient" id="ambient-select">
                         {% for ambient in ambients %}
                             <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="semester" id="semester">
+                        {% for semester in semesters %}
+                            <option value="{{ semester.id }}" {% if selected_ambient and ambient.id == selected_semester.id %}selected{% endif %}>{{ ambient.name }}</option>
                         {% endfor %}
                     </select>
                     <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard">
@@ -78,8 +83,8 @@
                     <label for="toggle-median-line">Exibir linha da mediana</label>
                 </div>
                 <canvas id="professorBarChart"></canvas>
-                {% if professor_average_periods_list %}
-                    {{ professor_average_periods_list|json_script:"professor-bar-data" }}
+                {% if bar_graph_data %}
+                    {{ bar_graph_data|json_script:"professor-bar-data" }}
                 {% else %}
                     <script id="professor-bar-data" type="application/json">[]</script>
                 {% endif %}
@@ -106,57 +111,5 @@
 
 {% block scripts %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@4.1.0/dist/chartjs-chart-matrix.min.js"></script>
     <script src="{% static 'js/professor_dashboard.js' %}"></script>
-    <script>
-    function renderScatterChart(scatterData) {
-        const ctx = document.getElementById('professorScatterChart').getContext('2d');
-        if (window.professorScatterChartInstance) {
-            window.professorScatterChartInstance.destroy();
-        }
-        const data = {
-            datasets: [{
-                label: 'Eficiência do Dia',
-                data: scatterData.map(item => ({x: item.professor, y: item.day_efficiency})),
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-            }]
-        };
-        window.professorScatterChartInstance = new Chart(ctx, {
-            type: 'scatter',
-            data: data,
-            options: {
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.raw.x}: ${context.raw.y.toFixed(2)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        type: 'category',
-                        title: { display: true, text: 'Professor' },
-                        ticks: { autoSkip: false }
-                    },
-                    y: {
-                        title: { display: true, text: 'Eficiência do Dia' },
-                        min: 0, max: 1
-                    }
-                }
-            }
-        });
-    }
-    // Inicialização ao carregar a página
-    document.addEventListener('DOMContentLoaded', function() {
-        const scatterData = JSON.parse(document.getElementById('professor-scatter-data').textContent);
-        renderScatterChart(scatterData);
-    });
-    // Atualização dinâmica via AJAX (exemplo, adapte conforme seu JS principal)
-    window.updateScatterChart = function(scatterData) {
-        renderScatterChart(scatterData);
-    }
-    </script>
 {% endblock %}
