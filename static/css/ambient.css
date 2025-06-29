@@ -254,6 +254,7 @@
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
     margin-top: 20px;
+    margin-bottom: 30px;
 }
 
 .stat-card {
@@ -430,4 +431,563 @@
 .activity-item svg {
     color: #4361ee;
     flex-shrink: 0;
+}
+
+.schedule-card .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.schedule-badge, .unallocated-badge {
+    background: linear-gradient(135deg, #4361ee 0%, #6c7df7 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.schedule-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: white;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 800px;
+}
+
+.schedule-table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #495057;
+    font-weight: 600;
+    padding: 16px 12px;
+    text-align: center;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.period-header {
+    background: linear-gradient(135deg, #4361ee 0%, #6c7df7 100%);
+    color: white;
+    min-width: 120px;
+}
+
+.day-header {
+    min-width: 180px;
+}
+
+.schedule-table td {
+    border: 1px solid #dee2e6;
+    vertical-align: top;
+    height: 80px;
+    position: relative;
+}
+
+.period-cell {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    text-align: center;
+    padding: 16px 8px;
+    font-weight: 700;
+    min-width: 120px;
+    vertical-align: middle;
+    font-size: 1.1rem;
+    color: #4361ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.schedule-cell {
+    padding: 8px;
+    background: #fafbfc;
+    transition: background-color 0.2s ease;
+}
+
+.schedule-cell:hover {
+    background: #f1f3f4;
+}
+
+.activity-block {
+    background: linear-gradient(135deg, #4361ee 0%, #6c7df7 100%);
+    border-radius: 6px;
+    padding: 8px;
+    color: white;
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+    box-shadow: 0 2px 4px rgba(67, 97, 238, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.activity-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.activity-block:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+.subject-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.class-name {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+.activity-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    z-index: 1;
+}
+
+.professor-info, .classroom-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.professor-info svg, .classroom-info svg {
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.unallocated-card {
+    margin-top: 20px;
+}
+
+.unallocated-card .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.unallocated-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.unallocated-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+
+.unallocated-item {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.unallocated-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+    border-color: #f87171;
+}
+
+.unallocated-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.unallocated-subject {
+    font-weight: 600;
+    color: #dc2626;
+    font-size: 0.9rem;
+}
+
+.unallocated-class {
+    background: #dc2626;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.unallocated-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.unallocated-professor, .unallocated-classroom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #7f1d1d;
+}
+
+.unallocated-professor svg, .unallocated-classroom svg {
+    color: #dc2626;
+    flex-shrink: 0;
+}
+
+.instructions-section {
+    margin-bottom: 24px;
+}
+
+.instruction-box {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid;
+}
+
+.instruction-box.warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.instruction-box h4 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.instruction-box p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.prerequisites {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    margin-top: 12px;
+    border-left: 4px solid #007bff;
+}
+
+.prerequisites h5 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.requirements-list {
+    margin: 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.requirements-list li {
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: #495057;
+    position: relative;
+}
+
+.requirements-list li::before {
+    content: "•";
+    color: #28a745;
+    font-weight: bold;
+    position: absolute;
+    left: -15px;
+}
+
+.warning-text {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #856404;
+}
+
+.info-text {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #0c5460;
+}
+
+.admin-action {
+    margin-bottom: 24px;
+}
+
+.admin-action-details h4 {
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.admin-action-details > p {
+    color: #666;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
+.secondary-button {
+    background-color: #6c757d !important;
+    color: white !important;
+    border-color: #6c757d !important;
+}
+
+.secondary-button:hover {
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
+}
+
+.primary-button {
+    background-color: #007bff !important;
+    color: white !important;
+    border-color: #007bff !important;
+}
+
+.primary-button:hover {
+    background-color: #0056b3 !important;
+    border-color: #004085 !important;
+}
+
+@media (max-width: 768px) {
+    .schedule-table-container {
+        margin: 0 -16px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    
+    .schedule-table {
+        font-size: 0.75rem;
+        min-width: 700px;
+    }
+    
+    .schedule-table th, .schedule-table td {
+        padding: 8px 6px;
+    }
+    
+    .activity-block {
+        padding: 6px;
+        font-size: 0.75rem;
+    }
+      .period-cell {
+        padding: 8px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .unallocated-list {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .schedule-table {
+        min-width: 600px;
+        font-size: 0.7rem;
+    }
+    
+    .day-header {
+        min-width: 120px;
+    }
+    
+    .period-header {
+        min-width: 80px;
+    }
+    
+    .activity-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    
+    .class-name {
+        margin-left: 0;
+        align-self: flex-end;
+    }
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+    margin-bottom: 30px; 
+}
+
+.professor-action-section {
+    margin-bottom: 30px;
+}
+
+.professor-action-card {
+    background: linear-gradient(135deg, #4361ee 0%, #6c7df7 100%);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.professor-action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.professor-action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+}
+
+.professor-action-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.professor-action-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+.professor-action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.professor-action-text {
+    color: white;
+}
+
+.professor-action-text h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: white;
+}
+
+.professor-action-text p {
+    font-size: 0.95rem;
+    margin: 0;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+.professor-action-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #4361ee;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.professor-action-button:hover {
+    background: white;
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #3651d5;
+}
+
+.professor-action-button svg {
+    transition: transform 0.2s ease;
+}
+
+.professor-action-button:hover svg {
+    transform: translateX(2px);
+}
+
+@media (max-width: 768px) {
+    .professor-action-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+    
+    .professor-action-info {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .professor-action-button {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+.schedule-card {
+    margin-top: 0;
 }
