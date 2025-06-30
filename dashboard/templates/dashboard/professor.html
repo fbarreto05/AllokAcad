@@ -53,12 +53,17 @@
             
             <div class="dashboard-controls">
                 <div class="control-group">
-                    <select name="ambient" id="ambient-select" aria-label="Selecionar ambiente para filtrar dados">
+                    <select name="semester" id="semester-select">
+                        {% for semester in semesters %}
+                            <option value="{{ semester.id }}" {% if selected_semester and semester.id == selected_semester.id %}selected{% endif %}>{{ semester.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="ambient" id="ambient-select">
                         {% for ambient in ambients %}
                             <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
                         {% endfor %}
                     </select>
-                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard">
+                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard no semester selecionado">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
                             <path d="M21 3v5h-5"/>
@@ -73,90 +78,54 @@
         
         <main class="charts-grid">
             <div class="chart-container" role="img" aria-label="Gráfico de barras dos professores" style="position: relative;">
-                <div class="median-toggle-box">
-                    <input type="checkbox" id="toggle-median-line" checked>
-                    <label for="toggle-median-line">Exibir linha da mediana</label>
-                </div>
                 <canvas id="professorBarChart"></canvas>
-                {% if professor_average_periods_list %}
-                    {{ professor_average_periods_list|json_script:"professor-bar-data" }}
+                {% if bar_graph_data %}
+                    {{ bar_graph_data|json_script:"professor-bar-data" }}
                 {% else %}
                     <script id="professor-bar-data" type="application/json">[]</script>
                 {% endif %}
                 <script id="professor-median-data" type="application/json">{{ professor_median_periods|default:'null' }}</script>
             </div>
             
+            <div class="chart-container" role="img" aria-label="Gráfico polar de distribuição de aulas por dia da semana">
+                <div class="polar-dropdown-box">
+                    <label for="polar-professor-select">Professor:</label>
+                    <select id="polar-professor-select">
+                        {% for professor in bar_graph_data|dictsort:'professor__user__name' %}
+                            <option value="{{ professor.professor__user__name }}">{{ professor.professor__user__name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <canvas id="polarChart"></canvas>
+                {% if polar_graph_data %}
+                    {{ polar_graph_data|json_script:"polar-graph-data" }}
+                {% else %}
+                    <script id="polar-graph-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            
             <div class="chart-container" role="img" aria-label="Gráfico de dispersão da eficiência diária dos professores">
-                <canvas id="professorScatterChart"></canvas>
-                <script id="professor-scatter-data" type="application/json">{{ scatter_graph_data|safe }}</script>
+                <canvas id="scatterChart"></canvas>
+                {% if scatter_graph_data %}
+                    {{ scatter_graph_data|json_script:"professor-scatter-data" }}
+                {% else %}
+                    <script id="professor-scatter-data" type="application/json">[]</script>
+                {% endif %}
             </div>
             
-            <div class="chart-container" role="img" aria-label="Gráfico de pizza da eficiência acumulada dos professores">
-                <canvas id="professorPieChart"></canvas>
-                <script id="professor-pie-data" type="application/json">{{ pie_graph_data|safe }}</script>
+            <div class="chart-container" role="img" aria-label="Gráfico de linha das métricas dos professores">
+                <canvas id="professorLineChart"></canvas>
+                {% if line_graph_data %}
+                    {{ line_graph_data|json_script:"professor-line-data" }}
+                {% else %}
+                    <script id="professor-line-data" type="application/json">[]</script>
+                {% endif %}
             </div>
-            
-            <div class="chart-container" role="img" aria-label="Dados adicionais">
-                 <canvas id=""></canvas>
-            </div>
-
         </main>
     </div>
 {% endblock %}
 
 {% block scripts %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@4.1.0/dist/chartjs-chart-matrix.min.js"></script>
     <script src="{% static 'js/professor_dashboard.js' %}"></script>
-    <script>
-    function renderScatterChart(scatterData) {
-        const ctx = document.getElementById('professorScatterChart').getContext('2d');
-        if (window.professorScatterChartInstance) {
-            window.professorScatterChartInstance.destroy();
-        }
-        const data = {
-            datasets: [{
-                label: 'Eficiência do Dia',
-                data: scatterData.map(item => ({x: item.professor, y: item.day_efficiency})),
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-            }]
-        };
-        window.professorScatterChartInstance = new Chart(ctx, {
-            type: 'scatter',
-            data: data,
-            options: {
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.raw.x}: ${context.raw.y.toFixed(2)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        type: 'category',
-                        title: { display: true, text: 'Professor' },
-                        ticks: { autoSkip: false }
-                    },
-                    y: {
-                        title: { display: true, text: 'Eficiência do Dia' },
-                        min: 0, max: 1
-                    }
-                }
-            }
-        });
-    }
-    // Inicialização ao carregar a página
-    document.addEventListener('DOMContentLoaded', function() {
-        const scatterData = JSON.parse(document.getElementById('professor-scatter-data').textContent);
-        renderScatterChart(scatterData);
-    });
-    // Atualização dinâmica via AJAX (exemplo, adapte conforme seu JS principal)
-    window.updateScatterChart = function(scatterData) {
-        renderScatterChart(scatterData);
-    }
-    </script>
 {% endblock %}

@@ -81,71 +81,202 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     }
-
-    function renderProfessorBarChart(professorData, medianValue, showMedianLine = true) {
-        if (!professorData) return;
+    function renderProfessorBarChart(professorData) {
+        if (!professorData || professorData.length === 0) return;
         lastProfessorData = professorData;
-        lastMedianValue = medianValue;
         const ctx = document.getElementById('professorBarChart').getContext('2d');
         if (window.professorBarChartInstance) {
             window.professorBarChartInstance.destroy();
         }
-        const labels = professorData.map(item => item.professor__user__name);
-        const data = professorData.map(item => item.periods_list);
-      
-        let annotationConfig = {};
-        if (typeof medianValue === 'undefined') {
-            const professorMedianDataScript = document.getElementById('professor-median-data');
-            if (professorMedianDataScript) {
-                try {
-                    medianValue = JSON.parse(professorMedianDataScript.textContent);
-                } catch (e) {
-                    medianValue = null;
-                }
-            }
-        }
-        if (showMedianLine && medianValue !== null && medianValue !== undefined) {
-            annotationConfig = {
-                annotation: {
-                    annotations: {
-                        medianLine: {
-                            type: 'line',
-                            yMin: medianValue,
-                            yMax: medianValue,
-                            borderColor: 'red',
-                            borderWidth: 2,
-                            label: {
-                                content: 'Mediana',
-                                enabled: true,
-                                position: 'end',
-                                color: 'red',
-                                backgroundColor: 'white',
-                                font: { weight: 'bold' }
-                            }
-                        }
-                    }
-                }
-            };
-        }
-        
+
+        const getProfessor = item => item.professor__user__name || item.professor || item.nome_professor || 'Indefinido';
+        const getSubject = item => item.subject__name || item.subject || item.nome_materia || 'Indefinido';
+
+        const professors = [...new Set(professorData.map(getProfessor))];
+        const subjects = [...new Set(professorData.map(getSubject))];
+
+        const dataMap = {};
+        professorData.forEach(item => {
+            const subject = getSubject(item);
+            const professor = getProfessor(item);
+            if (!dataMap[subject]) dataMap[subject] = {};
+            dataMap[subject][professor] = item.total_classes;
+        });
+
+        const datasets = subjects.map((subject, idx) => ({
+            label: subject,
+            data: professors.map(prof => dataMap[subject][prof] || 0),
+            backgroundColor: `hsl(${(idx * 60) % 360}, 60%, 60%)`,
+            borderColor: `hsl(${(idx * 60) % 360}, 60%, 40%)`,
+            borderWidth: 1,
+            stack: 'aulas'
+        }));
+
         window.professorBarChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: professors,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Aulas por Professor' },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                const subject = context.dataset.label;
+                                const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                                return `${subject}: ${value}`;
+                            },
+                            footer: function(context) {
+                                const total = context.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                                return `Total: ${total}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        ticks: {
+                            stepSize: 5,
+                            callback: function(value) { return Number.isInteger(value) ? value : null; }
+                        },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+    const professorBarDataScript = document.getElementById('professor-bar-data');
+    if (professorBarDataScript) {
+        try {
+            const professorData = JSON.parse(professorBarDataScript.textContent);
+            lastProfessorData = professorData;
+            renderProfessorBarChart(professorData);
+        } catch (e) {
+            console.error('Erro ao carregar dados do gráfico de professores:', e);
+        }
+    }
+
+    function renderPolarChart(polarData, selectedProfessor) {
+        const ctx = document.getElementById('polarChart').getContext('2d');
+        if (window.polarChartInstance) {
+            window.polarChartInstance.destroy();
+        }
+        const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const filtered = Array.isArray(polarData) ? polarData.filter(item => {
+            const name = item.professor__user__name || item.professor || item.nome_professor;
+            return name === selectedProfessor;
+        }) : [];
+        const dataByDay = Array(7).fill(0);
+        filtered.forEach(item => {
+            if (item.day >= 0 && item.day < 7) {
+                dataByDay[item.day] = item.total_classes || item.total_periods || 0;
+            }
+        });
+        window.polarChartInstance = new Chart(ctx, {
+            type: 'polarArea',
+            data: {
+                labels: weekDays,
                 datasets: [{
-                    label: 'Média de Aulas por Professor',
-                    data: data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
+                    label: 'Aulas por Dia',
+                    data: dataByDay,
+                    backgroundColor: [
+                        '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#ec407a', '#ff7043', '#26a69a'
+                    ]
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'Média de Aulas por Professor' },
-                    ...annotationConfig
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Distribuição de Aulas por Dia da Semana' }
+                }
+            }
+        });
+    }
+
+    const polarDataScript = document.getElementById('polar-graph-data');
+    const polarProfessorSelect = document.getElementById('polar-professor-select');
+    let polarData = [];
+    if (polarDataScript) {
+        try {
+            polarData = JSON.parse(polarDataScript.textContent);
+            console.log('polarData:', polarData);
+            if (polarProfessorSelect) {
+                console.log('Professores disponíveis:', Array.from(polarProfessorSelect.options).map(o => o.value));
+                console.log('Professor selecionado:', polarProfessorSelect.value);
+            }
+            if (polarProfessorSelect && Array.isArray(polarData) && polarData.length > 0) {
+                renderPolarChart(polarData, polarProfessorSelect.value);
+                polarProfessorSelect.addEventListener('change', function() {
+                    renderPolarChart(polarData, this.value);
+                });
+            }
+        } catch (e) {
+            console.error('Erro ao carregar dados do gráfico polar:', e);
+        }
+    }
+
+    function renderProfessorLineChart(lineData) {
+        const ctx = document.getElementById('professorLineChart').getContext('2d');
+        if (window.professorLineChartInstance) {
+            window.professorLineChartInstance.destroy();
+        }
+        if (!Array.isArray(lineData) || lineData.length === 0) return;
+        const labels = lineData.map(item => item.semester__name);
+        const datasets = [
+            {
+                label: 'Períodos no Campus',
+                data: lineData.map(item => item.avg_periods_on_campus),
+                borderColor: '#42a5f5',
+                backgroundColor: 'rgba(66,165,245,0.1)',
+                fill: false,
+                tension: 0.2
+            },
+            {
+                label: 'Intervalos de Períodos',
+                data: lineData.map(item => item.avg_periods_interval),
+                borderColor: '#66bb6a',
+                backgroundColor: 'rgba(102,187,106,0.1)',
+                fill: false,
+                tension: 0.2
+            },
+            {
+                label: 'Nº de Períodos',
+                data: lineData.map(item => item.avg_number_of_periods),
+                borderColor: '#ffa726',
+                backgroundColor: 'rgba(255,167,38,0.1)',
+                fill: false,
+                tension: 0.2
+            },
+            {
+                label: 'Eficiência Diária',
+                data: lineData.map(item => item.avg_day_efficiency),
+                borderColor: '#ab47bc',
+                backgroundColor: 'rgba(171,71,188,0.1)',
+                fill: false,
+                tension: 0.2
+            }
+        ];
+        window.professorLineChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Evolução das Métricas dos Professores por Semestre' }
                 },
                 scales: {
                     y: { beginAtZero: true }
@@ -153,86 +284,114 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
- 
-    const professorBarDataScript = document.getElementById('professor-bar-data');
-    const professorMedianDataScript = document.getElementById('professor-median-data');
-
-    if (professorBarDataScript) {
+    
+    const professorLineDataScript = document.getElementById('professor-line-data');
+    if (professorLineDataScript) {
         try {
-            const professorData = JSON.parse(professorBarDataScript.textContent);
-            let medianValue = null;
-            if (professorMedianDataScript) {
-                medianValue = JSON.parse(professorMedianDataScript.textContent);
-            }
-            lastProfessorData = professorData;
-            lastMedianValue = medianValue;
-            renderProfessorBarChart(professorData, medianValue, toggleMedianLine ? toggleMedianLine.checked : true);
+            const lineData = JSON.parse(professorLineDataScript.textContent);
+            renderProfessorLineChart(lineData);
         } catch (e) {
-            console.error('Erro ao carregar dados do gráfico de professores:', e);
+            console.error('Erro ao carregar dados do gráfico de linha:', e);
         }
     }
-
-    function renderPieChart(pieData) {
-        const ctx = document.getElementById('professorPieChart').getContext('2d');
-        if (window.professorPieChartInstance) {
-            window.professorPieChartInstance.destroy();
-        }
-        let labels = [];
-        let data = [];
-        if (Array.isArray(pieData)) {
-           
-            labels = pieData.map(item => item.label);
-            data = pieData.map(item => item.value);
-        } else if (pieData && Array.isArray(pieData.labels) && Array.isArray(pieData.values)) {
     
-            labels = pieData.labels;
-            data = pieData.values;
+    function renderProfessorEfficiencyChart(professorData) {
+        const ctx = document.getElementById('scatterChart').getContext('2d');
+
+        if (window.scatterChartInstance) {
+            window.scatterChartInstance.destroy();
         }
-        const backgroundColors = [
-            '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#ec407a', '#ff7043', '#26a69a', '#d4e157', '#8d6e63', '#789262'
-        ];
-        window.professorPieChartInstance = new Chart(ctx, {
-            type: 'pie',
+
+        const dataPoints = professorData.map(item => ({
+            x: item.total_classes,
+            y: item.avg_day_efficiency, 
+            professor: item.professor__user__name || 'Exemplo' 
+        
+        }));
+
+        window.scatterChartInstance = new Chart(ctx, {
+            type: 'scatter',
             data: {
-                labels: labels,
                 datasets: [{
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: '#fff',
-                    borderWidth: 2
+                    label: 'Eficiência por Professor', 
+                    data: dataPoints,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 6,
+                    pointHoverRadius: 9
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom' },
-                    title: { display: true, text: 'Eficiência Acumulada dos Professores' },
+                    legend: {
+                        display: false 
+                    },
+                    title: {
+                        display: true,
+                        text: 'Eficiência Média vs. Total de Aulas por Professor', 
+                        font: {
+                            size: 18
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                return `${label}: ${value}`;
+                                
+                                const rawData = context.raw;
+                                const professorName = rawData.professor;
+                                const totalClasses = rawData.x;
+                                const avgEfficiency = rawData.y;
+
+                               
+                                return `${professorName}: ${totalClasses} aulas, ${avgEfficiency.toFixed(2)}% de eficiência`;
                             }
                         }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Total de Aulas Ministradas', 
+                            font: {
+                                size: 14
+                            }
+                        },
+                        ticks: {
+                            stepSize: 5,
+                            callback: function(value) {
+                                return Number.isInteger(value) ? value : null;
+                            }
+                        },
+                        min: 0
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Eficiência Média (%)', 
+                            font: {
+                                size: 14
+                            }
+                        },
+                        min: 0,
                     }
                 }
             }
         });
     }
-
-    const professorPieDataScript = document.getElementById('professor-pie-data');
-    if (professorPieDataScript) {
+    
+    const professorScatterDataScript = document.getElementById('professor-scatter-data');
+    if (professorScatterDataScript) {
         try {
-            const pieData = JSON.parse(professorPieDataScript.textContent);
-            renderPieChart(pieData);
+            const scatterData = JSON.parse(professorScatterDataScript.textContent);
+            renderProfessorEfficiencyChart(scatterData);
         } catch (e) {
-            console.error('Erro ao carregar dados do gráfico de pizza:', e);
+            console.error('Erro ao carregar dados do gráfico de dispersão:', e);
         }
-    }
-
-    window.updatePieChart = function(pieData) {
-        renderPieChart(pieData);
     }
 });
