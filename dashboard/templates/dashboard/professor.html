@@ -58,6 +58,7 @@
                             <option value="{{ semester.id }}" {% if selected_semester and semester.id == selected_semester.id %}selected{% endif %}>{{ semester.name }}</option>
                         {% endfor %}
                     </select>
+                
                     <select name="ambient" id="ambient-select">
                         {% for ambient in ambients %}
                             <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>

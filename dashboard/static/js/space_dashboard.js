@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const url = new URL('/dashboard/api/update-space-dashboard-data/', window.location.origin);
-
         if (ambientId) {
             url.searchParams.append('ambient', ambientId);
         }
@@ -38,32 +37,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(url);
-
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
             const newData = await response.json();
-
+            const indicatorsData = newData.indicators || {};
             const updates = [
                 { 
                     selector: '#metric-total-spaces .metric-value', 
-                    value: newData.indicators?.total_spaces || '--' 
+                    value: indicatorsData.total_periods !== undefined ? indicatorsData.total_periods : '--' 
                 },
                 { 
                     selector: '#metric-occupied-spaces .metric-value', 
-                    value: newData.indicators?.occupied_spaces || '--' 
+                    value: indicatorsData.occupied_spaces !== undefined ? indicatorsData.occupied_spaces : '--' 
                 },
                 { 
                     selector: '#metric-occupation-rate .metric-value', 
-                    value: newData.indicators?.occupation_rate ? `${newData.indicators.occupation_rate}%` : '--' 
+                    value: indicatorsData.occupation_rate !== undefined ? `${indicatorsData.occupation_rate}%` : '--' 
                 },
                 { 
                     selector: '#metric-space-efficiency .metric-value', 
-                    value: newData.indicators?.space_efficiency ? `${newData.indicators.space_efficiency}%` : '85%' 
+                    value: indicatorsData.space_efficiency !== undefined ? `${indicatorsData.space_efficiency}%` : '--' 
                 }
             ];
-
             updates.forEach(update => {
                 const element = document.querySelector(update.selector);
                 if (element) {
@@ -71,12 +67,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     element.classList.remove('loading');
                 }
             });
-
             showUpdateFeedback('success', 'Dashboard atualizado com sucesso!');
-
         } catch (error) {
             console.error('Erro ao atualizar dashboard:', error);
-            
             indicators.forEach(selector => {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -85,7 +78,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     element.classList.add('error');
                 }
             });
-
             showUpdateFeedback('error', 'Erro ao atualizar dashboard. Tente novamente.');
         }
     }
@@ -95,7 +87,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (existingFeedback) {
             existingFeedback.remove();
         }
-
         const feedback = document.createElement('div');
         feedback.className = `update-feedback update-feedback--${type}`;
         feedback.textContent = message;
@@ -115,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 : 'background: #ef4444; color: white;'
             }
         `;
-
         if (!document.querySelector('#feedback-styles')) {
             const style = document.createElement('style');
             style.id = 'feedback-styles';
@@ -131,9 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             document.head.appendChild(style);
         }
-
         document.body.appendChild(feedback);
-
         setTimeout(() => {
             feedback.style.animation = 'slideOutRight 0.3s ease';
             setTimeout(() => {

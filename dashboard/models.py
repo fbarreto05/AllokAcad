@@ -5,7 +5,7 @@ class ProfessorDaySubject(models.Model):
     professor = models.ForeignKey('AllokAcads.Member', on_delete = models.CASCADE)
     subject = models.ForeignKey('AllokAcads.Subject', on_delete = models.CASCADE)
     semester = models.ForeignKey('Semester', on_delete = models.CASCADE)
-     
+    
     day = models.IntegerField()
     period = models.IntegerField()
     
@@ -28,10 +28,34 @@ class ProfessorStatistics(models.Model):
     
     class Meta: 
         unique_together = ('ambient', 'professor', 'semester', 'day')
+
+class SpaceDaySubject(models.Model):
+    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
+    classroom = models.ForeignKey('AllokAcads.Classroom', on_delete = models.CASCADE)
+    tclass = models.ForeignKey('AllokAcads.Class', on_delete = models.CASCADE)
+    subject = models.ForeignKey('AllokAcads.Subject', on_delete = models.CASCADE)
+    semester = models.ForeignKey('Semester', on_delete = models.CASCADE)
+    
+    day = models.IntegerField()
+    period = models.IntegerField()
+    
+    classroom_number_of_students = models.IntegerField(default = 0)
+    class_number_of_students = models.IntegerField(default = 0)
+    
+    create_at = models.DateField(auto_now_add = True)    
+    
+    class Meta: 
+        unique_together = ('ambient', 'classroom', 'semester', 'day', 'period')
+
 class SpaceStatistics(models.Model): 
-    #ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE)
-    #classroom = models.ForeignKey('AllokAcads.Classroom', on_delete = models.CASCADE)
-    semester = models.CharField(max_length = 100)
+    ambient = models.ForeignKey('AllokAcads.Ambient', on_delete = models.CASCADE, null=True)
+    classroom = models.ForeignKey('AllokAcads.Classroom', on_delete = models.CASCADE, null=True)
+    semester = models.ForeignKey('Semester', on_delete = models.CASCADE, null=True)
+    
+    total_periods_available = models.IntegerField(default=0)
+    total_periods_use = models.IntegerField(default=0)
+    number_of_spaces = models.IntegerField(default=0)
+    use_time_rate = models.FloatField(default=0.0)
     
     create_at = models.DateField(auto_now_add = True)
     

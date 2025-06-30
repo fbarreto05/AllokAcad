@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.polarChartInstance) {
             window.polarChartInstance.destroy();
         }
-        const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
         const filtered = Array.isArray(polarData) ? polarData.filter(item => {
             const name = item.professor__user__name || item.professor || item.nome_professor;
             return name === selectedProfessor;

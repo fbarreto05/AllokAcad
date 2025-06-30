@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .services import calculateProfessor
+from .services import calculateProfessor, calculateSpace
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from AllokAcads.models import User
@@ -17,18 +17,22 @@ def professor_dashboard_view(request):
         for ambient in user_ambients:
             calculateProfessor.update_statistics_semester(ambient.id)
         
-        firt_ambient = user_ambients[0] if user_ambients else None
+        if user_ambients:
+            first_ambient = user_ambients[0]
         
-        if firt_ambient:
-            ambient_semeters = calculateProfessor.get_semester_list(ambient_id = firt_ambient.id)
-            average_class_interval = calculateProfessor.average_periods_interval(ambient_id = firt_ambient.id)
-            average_classes = calculateProfessor.average_periods(ambient_id = firt_ambient.id)
-            number_of_professors = calculateProfessor.number_professors(ambient_id = firt_ambient.id)
-            timetable_quality = calculateProfessor.get_timetable_quality(ambient_id = firt_ambient.id)
-            bar_graph_data = calculateProfessor.get_total_professor_classes(ambient_id = firt_ambient.id)
-            polar_graph_data = calculateProfessor.get_classes_by_day(ambient_id = firt_ambient.id)
-            scatter_graph_data = calculateProfessor.get_professor_efficiency_and_classes_list(ambient_id = firt_ambient.id)
-            line_graph_data = calculateProfessor.get_professor_metrics_evolution(ambient_id = firt_ambient.id)
+        else:
+            first_ambient = None
+        
+        if first_ambient:
+            ambient_semeters = calculateProfessor.get_semester_list(ambient_id = first_ambient.id)
+            average_class_interval = calculateProfessor.average_periods_interval(ambient_id = first_ambient.id)
+            average_classes = calculateProfessor.average_periods(ambient_id = first_ambient.id)
+            number_of_professors = calculateProfessor.number_professors(ambient_id = first_ambient.id)
+            timetable_quality = calculateProfessor.get_timetable_quality(ambient_id = first_ambient.id)
+            bar_graph_data = calculateProfessor.get_total_professor_classes(ambient_id = first_ambient.id)
+            polar_graph_data = calculateProfessor.get_classes_by_day(ambient_id = first_ambient.id)
+            scatter_graph_data = calculateProfessor.get_professor_efficiency_and_classes_list(ambient_id = first_ambient.id)
+            line_graph_data = calculateProfessor.get_professor_metrics_evolution(ambient_id = first_ambient.id)
         
         else:
             ambient_semeters = []
@@ -36,7 +40,7 @@ def professor_dashboard_view(request):
             average_classes = None
             number_of_professors = None
             timetable_quality = None
-            firt_ambient = None
+            first_ambient = None
             bar_graph_data = []
             polar_graph_data = []
             scatter_graph_data = []
@@ -50,7 +54,7 @@ def professor_dashboard_view(request):
             'timetable_quality': timetable_quality,
             'ambients': user_ambients,
             'semesters': ambient_semeters,
-            'selected_ambient': firt_ambient,
+            'selected_ambient': first_ambient,
             'user': user,
             'bar_graph_data': bar_graph_data,
             'polar_graph_data': polar_graph_data, 
@@ -61,8 +65,9 @@ def professor_dashboard_view(request):
     else:
         return redirect('/')
 
-def update_dashboard_data(request):
+def update_professor_dashboard_data(request):
     ambient_id = request.GET.get('ambient', None)
+    semeter_id = request.GET.get('semester', None)
     
     if request.user.is_authenticated:
         user = User.objects.filter(userid=request.user.username).first()
@@ -108,7 +113,87 @@ def update_dashboard_data(request):
 
 def space_dashboard_view(request):
     if request.user.is_authenticated:
-        user = User.objects.filter(userid = request.user.username)
-        return render(request, 'dashboard/space.html', {'user' : user[0]}) 
+        user = User.objects.filter(userid=request.user.username).first()
+        
+        if user:   
+            user_ambients = calculateProfessor.get_user_ambient_list(user)
+        
+        else:
+            user_ambients = []
+        
+        for ambient in user_ambients:
+            calculateSpace.update_statistics_semester(ambient.id)
+        
+        if user_ambients:
+            first_ambient = user_ambients[0]
+        
+        else:
+            first_ambient = None
+            
+       
+        if first_ambient:
+            ambient_semeters = calculateProfessor.get_semester_list(ambient_id = first_ambient.id)
+            total_periods = calculateSpace.get_total_periods_spaces(ambient_id = first_ambient.id)
+            occupied_spaces = calculateSpace.get_occupied_spaces(ambient_id = first_ambient.id)
+            occupation_rate = calculateSpace.get_occupation_rate(ambient_id = first_ambient.id)
+            space_efficiency = calculateSpace.get_space_efficiency(ambient_id = first_ambient.id)
+        
+        else:
+            ambient_semeters = []
+            total_periods = None
+            occupied_spaces = None
+            occupation_rate = None
+            space_efficiency = None
+            first_ambient = None
+            
+        context = {
+            'total_periods': total_periods,
+            'occupied_spaces': occupied_spaces,     
+            'occupation_rate': occupation_rate,
+            'space_efficiency': space_efficiency,
+            'user': user,
+            'ambients': user_ambients,
+            'semesters': ambient_semeters,
+        }
+        return render(request, 'dashboard/space.html', context)
     else:
         return redirect('/')
+
+def update_space_dashboard_data(request):
+    ambient_id = request.GET.get('ambient', None)
+    
+    if request.user.is_authenticated:
+        user = User.objects.filter(userid=request.user.username).first()
+    else:
+        user = None
+        
+    if user:
+        user_ambients = calculateProfessor.get_user_ambient_list(user)
+    else:
+        user_ambients = []
+        
+    selected_ambient = None
+    
+    if ambient_id:
+        for ambient in user_ambients:
+            if str(ambient.id) == str(ambient_id):
+                selected_ambient = ambient
+                break
+            
+    calculateSpace.update_statistics_semester(ambient_id = selected_ambient.id)
+    total_periods = calculateSpace.get_total_periods_spaces(ambient_id=selected_ambient.id)
+    occupied_spaces = calculateSpace.get_occupied_spaces(ambient_id=selected_ambient.id)
+    uccupation_rate = calculateSpace.get_occupation_rate(ambient_id=selected_ambient.id)
+    space_efficiency = calculateSpace.get_space_efficiency(ambient_id=selected_ambient.id)
+
+    data = {
+        'indicators': { 
+            'total_periods': total_periods,
+            'occupied_spaces': occupied_spaces,     
+            'uccupation_rate': uccupation_rate,
+            'space_efficiency': space_efficiency,
+        }
+    }    
+    
+  
+    return JsonResponse(data)

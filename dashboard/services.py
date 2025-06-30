@@ -1,5 +1,5 @@
 from AllokAcads.models import Ambient
-from dashboard.models import ProfessorDaySubject, ProfessorStatistics, Semester
+from dashboard.models import ProfessorDaySubject, ProfessorStatistics, Semester, SpaceDaySubject, SpaceStatistics
 from django.db.models import Sum, Avg, Min, Max, Count
 from collections import defaultdict
 import numpy as np
@@ -273,9 +273,147 @@ class calculateProfessor():
         if ambient_id:
             data = data.filter(ambient=ambient_id)
         
-        result = data.values('professor__user__name').annotate(
-            avg_day_efficiency=Avg('day_efficiency'),
-            total_classes=Sum('number_of_periods')
-        ).order_by('professor__user__name')
+        result = data.values('professor__user__name').annotate(avg_day_efficiency=Avg('day_efficiency'), total_classes=Sum('number_of_periods')).order_by('professor__user__name')
         
         return list(result)
+    
+    
+class calculateSpace():
+    @staticmethod
+    def statistics_semester(semester_id):
+        try:
+            semester = Semester.objects.get(id=semester_id)
+            ambient = semester.ambient
+            timetable = semester.timetable
+            
+        except Semester.DoesNotExist:
+            return
+        
+        if timetable is None:
+            return
+        
+        SpaceDaySubject.objects.filter(semester=semester).delete()
+        SpaceStatistics.objects.filter(semester=semester).delete()
+        
+        allocations = timetable.table.prefetch_related('activitie', 'activitie__tsubject', 'activitie__tclassroom', 'activitie__tclass')
+        allocations_data_space_day_subject = []
+        
+        for allocation in allocations:
+            for activity in allocation.activitie.all():
+                if activity.tclassroom and activity.tsubject and activity.tclass:
+                    allocation_data_space = SpaceDaySubject(
+                        ambient=ambient,
+                        classroom=activity.tclassroom,
+                        tclass=activity.tclass,
+                        subject=activity.tsubject,
+                        semester=semester,
+                        day=allocation.column,
+                        period=allocation.line,
+                        classroom_number_of_students=activity.tclassroom.classroom_capacity,
+                        class_number_of_students=activity.tclass.number_of_students,
+                    )
+                    allocations_data_space_day_subject.append(allocation_data_space)
+                    
+        SpaceDaySubject.objects.bulk_create(allocations_data_space_day_subject)
+        
+        space_data = defaultdict(lambda: defaultdict(list))
+        
+        for allocation in allocations_data_space_day_subject:
+            classroom = allocation.classroom
+            day = allocation.day
+            space_data[classroom][day].append(allocation.period)
+            
+        statistics = []
+        
+        for classroom, days in space_data.items():
+            total_periods_available = 0
+            total_periods_use = 0
+            for day, periods in days.items():
+                
+                number_of_periods = len(periods)
+                first_period = min(periods)
+                last_period = max(periods)  
+                
+                periods_available = (last_period - first_period) + 1
+                periods_use = number_of_periods
+                total_periods_available += periods_available
+                total_periods_use += periods_use
+            
+            if total_periods_available > 0:
+                use_time_rate = total_periods_use / total_periods_available
+     
+            statistics.append(
+                SpaceStatistics(
+                    ambient=ambient,
+                    classroom=classroom,
+                    semester=semester,
+                    total_periods_available=total_periods_available,
+                    total_periods_use=total_periods_use,
+                    use_time_rate=use_time_rate,
+                )
+            ) 
+            
+        SpaceStatistics.objects.bulk_create(statistics)
+
+    @staticmethod
+    def update_statistics_semester(ambient_id):
+        try:
+            ambient = Ambient.objects.get(id=ambient_id) 
+            
+        except Ambient.DoesNotExist:
+            return None
+        
+        current_semester = Semester.objects.filter(ambient=ambient, is_active=True).order_by('-create_at').first()
+        
+        if not current_semester:
+            current_semester = Semester.objects.create(
+                ambient=ambient,
+                name=ambient.name,
+                timetable=ambient.published_timetable,
+                is_active=True
+            )
+            
+        elif current_semester.timetable != ambient.published_timetable:
+            current_semester.timetable = ambient.published_timetable
+            current_semester.save()
+            
+        calculateSpace.statistics_semester(current_semester.id)
+    
+    @staticmethod
+    def get_total_periods_spaces(ambient_id=None):
+        if ambient_id:
+            total = SpaceStatistics.objects.filter(ambient_id=ambient_id).aggregate(total=Sum('total_periods_available'))['total']
+            return total 
+        
+        return 0
+
+    @staticmethod
+    def get_occupied_spaces(ambient_id=None):
+        if ambient_id:
+            occupied = SpaceStatistics.objects.filter(ambient_id=ambient_id, total_periods_use__gt=0).count()
+            return occupied
+        
+        return 0
+
+    @staticmethod
+    def get_occupation_rate(ambient_id=None):
+        if ambient_id:
+            stats = SpaceStatistics.objects.filter(ambient_id=ambient_id)
+            total_available = stats.aggregate(total=Sum('total_periods_available'))['total'] or 0
+            total_use = stats.aggregate(total=Sum('total_periods_use'))['total'] or 0
+            
+            if total_available > 0:
+                return round((total_use / total_available) * 100, 2)
+            
+        return 0
+
+    @staticmethod
+    def get_space_efficiency(ambient_id=None):
+        if ambient_id:
+            stats = SpaceStatistics.objects.filter(ambient_id=ambient_id)
+            avg_efficiency = stats.aggregate(avg=Avg('use_time_rate'))['avg']
+            
+            if avg_efficiency is not None:
+                return round(avg_efficiency * 100, 2)
+            
+        return 0

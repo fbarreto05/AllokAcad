@@ -31,7 +31,6 @@
                 <h1>Dashboard dos Espaços</h1>
                 <p>Análise completa de métricas dos espaços no semestre selecionado</p>
             </div>
-            
             <div class="metrics-grid">
                 <div class="metric-card" id="metric-total-spaces">
                     <div class="metric-value" aria-live="polite">{{ total_spaces|default:"--" }}</div>
@@ -46,26 +45,23 @@
                     <div class="metric-label">Taxa de Ocupação</div>
                 </div>
                 <div class="metric-card" id="metric-space-efficiency">
-                    <div class="metric-value" aria-live="polite">{{ space_efficiency|default:"85" }}%</div>
+                    <div class="metric-value" aria-live="polite">{{ space_efficiency|default:"--" }}%</div>
                     <div class="metric-label">Eficiência dos Espaços</div>
                 </div>
             </div>
-            
             <div class="dashboard-controls">
                 <div class="control-group">
-                    <select name="ambient" id="ambient-select" aria-label="Selecionar ambiente para filtrar dados">
-                        <option value="">Todos os Ambientes</option>
-                        {% for ambient in ambients %}
-                            <option value="{{ ambient.id }}">{{ ambient.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <select name="semester" id="semester-select" aria-label="Selecionar semestre">
-                        <option value="">Todos os Semestres</option>
+                    <select name="semester" id="semester-select">
                         {% for semester in semesters %}
-                            <option value="{{ semester.id }}">{{ semester.name }}</option>
+                            <option value="{{ semester.id }}" {% if selected_semester and semester.id == selected_semester.id %}selected{% endif %}>{{ semester.name }}</option>
                         {% endfor %}
                     </select>
-                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard">
+                    <select name="ambient" id="ambient-select">
+                        {% for ambient in ambients %}
+                            <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard no semestre selecionado">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
                             <path d="M21 3v5h-5"/>
@@ -77,93 +73,37 @@
                 </div>
             </div>
         </header>
-        
         <main class="charts-grid">
-            <div class="chart-container" role="img" aria-label="Gráfico de ocupação por tipo de espaço">
+            <div class="chart-container" role="img" aria-label="Gráfico de ocupação por tipo de espaço" style="position: relative;">
+                <canvas id="spaceOccupationChart"></canvas>
                 {% if space_occupation_data %}
-                    {% comment %}<!-- aqui vai ser integrado o grafico plotly -->{% endcomment %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        <p>Gráfico de ocupação por tipo de espaço será exibido aqui</p>
-                    </div>
+                    {{ space_occupation_data|json_script:"space-occupation-data" }}
                 {% else %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        <p>Selecione um ambiente para visualizar a ocupação por tipo de espaço</p>
-                    </div>
+                    <script id="space-occupation-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            
             <div class="chart-container" role="img" aria-label="Análise de utilização por horário">
+                <canvas id="hourlyUsageChart"></canvas>
                 {% if hourly_usage_data %}
-                    {% comment %}<!-- aqui vai ser integrado o grafico plotly -->{% endcomment %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path d="M18 20V10"/>
-                            <path d="M12 20V4"/>
-                            <path d="M6 20v-6"/>
-                        </svg>
-                        <p>Análise de utilização por horário será exibida aqui</p>
-                    </div>
+                    {{ hourly_usage_data|json_script:"hourly-usage-data" }}
                 {% else %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path d="M18 20V10"/>
-                            <path d="M12 20V4"/>
-                            <path d="M6 20v-6"/>
-                        </svg>
-                        <p>Configure os filtros para exibir a análise de utilização por horário</p>
-                    </div>
+                    <script id="hourly-usage-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            
             <div class="chart-container" role="img" aria-label="Análise de capacidade vs demanda">
+                <canvas id="capacityDemandChart"></canvas>
                 {% if capacity_demand_data %}
-                    {% comment %}<!-- aqui vai ser integrado o grafico plotly -->{% endcomment %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="8,12 12,16 16,8"/>
-                        </svg>
-                        <p>Análise de capacidade vs demanda será exibida aqui</p>
-                    </div>
+                    {{ capacity_demand_data|json_script:"capacity-demand-data" }}
                 {% else %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="8,12 12,16 16,8"/>
-                        </svg>
-                        <p>Dados de capacidade vs demanda aparecerão conforme os filtros aplicados</p>
-                    </div>
+                    <script id="capacity-demand-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            
             <div class="chart-container" role="img" aria-label="Métricas de eficiência dos espaços">
+                <canvas id="efficiencyChart"></canvas>
                 {% if efficiency_data %}
-                    {% comment %}<!-- aqui vai ser integrado o grafico plotly -->{% endcomment %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                        </svg>
-                        <p>Métricas de eficiência dos espaços serão exibidas aqui</p>
-                    </div>
+                    {{ efficiency_data|json_script:"efficiency-data" }}
                 {% else %}
-                    <div class="chart-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                        </svg>
-                        <p>Aplique filtros para visualizar as métricas de eficiência dos espaços</p>
-                    </div>
+                    <script id="efficiency-data" type="application/json">[]</script>
                 {% endif %}
             </div>
         </main>
@@ -171,5 +111,6 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{% static 'js/space_dashboard.js' %}"></script>
 {% endblock %}
