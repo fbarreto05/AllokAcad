@@ -2824,35 +2824,36 @@ def run_atribuition(request, ambientid):
                         conflitant_professor.save()
 
             #garante que as atividades restantes sejam atribuídas a quem deve ser
-                not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-                for not_atribuited_activitie in not_atribuited_activities:
-                    candidates = ambient.members.all().filter(is_professor = True).order_by('num_uses')
-                    highest_weight = 0
-                    chosen_professor = None
-                    for candidate in candidates:
-                        conflitant_schedules = check_conflitant_schedules_professor(candidate, not_atribuited_activitie)
-                        subject_preference = 1
-                        class_preference = 1
-                        if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
-                            subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
-                        if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
-                            class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
-                        if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                            if subject_preference != 0 and class_preference != 0 and subject_preference + class_preference > highest_weight and conflitant_schedules:
-                                highest_weight = subject_preference + class_preference
-                                chosen_professor = candidate
-                    if chosen_professor and highest_weight:
-                        not_atribuited_activitie.tprofessor = chosen_professor
-                        not_atribuited_activitie.professor_weight = 0
-                        chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
-                        not_atribuited_activitie.save()
-                        chosen_professor.save()
-                        if isinstance(conflitant_schedules, Activitie):
-                            conflitant_professor = conflitant_schedules.tprofessor
-                            conflitant_schedules.tprofessor = None
-                            conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
-                            conflitant_schedules.save()
-                            conflitant_professor.save()
+            not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
+            
+            for not_atribuited_activitie in not_atribuited_activities:
+                candidates = ambient.members.all().filter(is_professor = True).order_by('num_uses')
+                highest_weight = 0
+                chosen_professor = None
+                for candidate in candidates:
+                    conflitant_schedules = check_conflitant_schedules_professor(candidate, not_atribuited_activitie)
+                    subject_preference = 1
+                    class_preference = 1
+                    if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
+                        subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
+                    if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
+                        class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
+                    if candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
+                        if subject_preference != 0 and class_preference != 0 and subject_preference + class_preference > highest_weight and conflitant_schedules:
+                            highest_weight = subject_preference + class_preference
+                            chosen_professor = candidate
+                if chosen_professor and highest_weight:
+                    not_atribuited_activitie.tprofessor = chosen_professor
+                    not_atribuited_activitie.professor_weight = 0
+                    chosen_professor.num_uses += activitie.tclass.necessary_subjects.get(subject = activitie.tsubject).periods
+                    not_atribuited_activitie.save()
+                    chosen_professor.save()
+                    if isinstance(conflitant_schedules, Activitie):
+                        conflitant_professor = conflitant_schedules.tprofessor
+                        conflitant_schedules.tprofessor = None
+                        conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
+                        conflitant_schedules.save()
+                        conflitant_professor.save()
                     
                 #atribui randomicamente (deve gerar erro, e tbm gerar erro se houverem atividades em branco)
 
