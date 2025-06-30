@@ -104,6 +104,32 @@ class calculateProfessor():
         
         calculateProfessor.statistics_semester(current_semester.id)
     
+    @staticmethod
+    def get_user_ambient_list(user=None):
+        if user is not None:
+            return list(user.ambients.all())
+        
+        return []
+      
+    @staticmethod  
+    def get_semester_list(ambient_id = None):
+        if ambient_id:
+            return Semester.objects.filter(ambient = ambient_id).order_by('-create_at')
+        
+        return []
+    
+    @staticmethod
+    def get_classes_by_day(ambient_id = None, semester_id = None):
+        data = ProfessorDaySubject.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient = ambient_id)
+        if semester_id:
+            data = data.filter(semester = semester_id)
+            
+        result = data.values('professor__user__name', 'day').annotate(total_classes=Count('id')).order_by('professor__user__name', 'day')
+        
+        return list(result)
     
     @staticmethod
     def get_total_professor_classes(ambient_id=None):
@@ -111,13 +137,8 @@ class calculateProfessor():
         if ambient_id:
             data = data.filter(ambient=ambient_id)
         
-        result = (
-            data.values('professor__user__name', 'subject__name')
-            .annotate(
-                total_classes=Count('id'),  
-                total_periods=Sum('period') )
-            .order_by('professor__user__name', 'subject__name')
-        )
+        result = data.values('professor__user__name', 'subject__name').annotate(total_classes=Count('id'),  total_periods=Sum('period')).order_by('professor__user__name', 'subject__name')
+        
         return list(result)
 
 
@@ -154,7 +175,12 @@ class calculateProfessor():
             data = data.filter(ambient = ambient_id)
         
         result = data.aggregate(average_periods = Avg('number_of_periods'))
-        return result['average_periods']
+        average = result['average_periods']
+        
+        if average: 
+            return round(average, 2)
+        
+        return None
 
     @staticmethod
     def number_professors(ambient_id = None): 
@@ -169,12 +195,7 @@ class calculateProfessor():
     def get_timetable_quality(ambient_id = None):
         return 100
 
-    @staticmethod
-    def get_user_ambient_list(user=None):
-        if user is not None:
-            return list(user.ambients.all())
-        return []
-        
+  
     
     @staticmethod
     def get_professor_average_periods_list(ambient_id = None):
@@ -198,17 +219,16 @@ class calculateProfessor():
             
             result = data.values_list('number_of_periods', flat = True)
             np.median(list(result))
+    
     @staticmethod
     def get_professor_day_efficiency_list(ambient_id=None):
-        
         data = ProfessorStatistics.objects.all()
+        
         if ambient_id:
             data = data.filter(ambient=ambient_id)
-        result = []
-        for stat in data.select_related('professor__user'):
-            nome = stat.professor.user.name if hasattr(stat.professor, 'user') else str(stat.professor)
-            result.append({'professor': nome, 'day_efficiency': stat.day_efficiency})
-        return result
+        
+        result = data.values(professor=('professor__user__name'),day_efficiency=('day_efficiency'))
+        return list(result)
     
     @staticmethod
     def get_professor_accumulated_efficiency(ambient_id=None):
@@ -222,3 +242,40 @@ class calculateProfessor():
         
         return list(result)
 
+    @staticmethod
+    def get_average_classes_evolution(ambient_id=None):
+        data = ProfessorStatistics.objects.all()
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        data = data.values('semester__name').annotate(avg_classes=Avg('number_of_periods')).order_by('semester__name')
+        return list(data)
+    
+    @staticmethod
+    def get_professor_metrics_evolution(ambient_id=None):
+        data = ProfessorStatistics.objects.all()
+
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        data = data.values('semester__name').annotate(
+            avg_periods_on_campus = Avg('periods_on_campus'),
+            avg_periods_interval = Avg('periods_interval'),
+            avg_number_of_periods = Avg('number_of_periods'),
+            avg_day_efficiency = Avg('day_efficiency')
+            
+        ).order_by('semester__name')
+        
+        return list(data)
+    
+    @staticmethod
+    def get_professor_efficiency_and_classes_list(ambient_id=None):
+        data = ProfessorStatistics.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = data.values('professor__user__name').annotate(
+            avg_day_efficiency=Avg('day_efficiency'),
+            total_classes=Sum('number_of_periods')
+        ).order_by('professor__user__name')
+        
+        return list(result)

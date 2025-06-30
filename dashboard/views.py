@@ -20,23 +20,27 @@ def professor_dashboard_view(request):
         firt_ambient = user_ambients[0] if user_ambients else None
         
         if firt_ambient:
+            ambient_semeters = calculateProfessor.get_semester_list(ambient_id = firt_ambient.id)
             average_class_interval = calculateProfessor.average_periods_interval(ambient_id = firt_ambient.id)
             average_classes = calculateProfessor.average_periods(ambient_id = firt_ambient.id)
             number_of_professors = calculateProfessor.number_professors(ambient_id = firt_ambient.id)
             timetable_quality = calculateProfessor.get_timetable_quality(ambient_id = firt_ambient.id)
             bar_graph_data = calculateProfessor.get_total_professor_classes(ambient_id = firt_ambient.id)
-            scatter_graph_data = calculateProfessor.get_professor_day_efficiency_list(ambient_id = firt_ambient.id)
-            pie_graph_data = calculateProfessor.get_professor_accumulated_efficiency(ambient_id = firt_ambient.id)
-            
+            polar_graph_data = calculateProfessor.get_classes_by_day(ambient_id = firt_ambient.id)
+            scatter_graph_data = calculateProfessor.get_professor_efficiency_and_classes_list(ambient_id = firt_ambient.id)
+            line_graph_data = calculateProfessor.get_professor_metrics_evolution(ambient_id = firt_ambient.id)
+        
         else:
+            ambient_semeters = []
             average_class_interval = None
             average_classes = None
             number_of_professors = None
             timetable_quality = None
             firt_ambient = None
             bar_graph_data = []
+            polar_graph_data = []
             scatter_graph_data = []
-            pie_graph_data = []
+            line_graph_data = []
             
             
         context = {
@@ -45,11 +49,13 @@ def professor_dashboard_view(request):
             'number_of_professors': number_of_professors,
             'timetable_quality': timetable_quality,
             'ambients': user_ambients,
+            'semesters': ambient_semeters,
             'selected_ambient': firt_ambient,
             'user': user,
             'bar_graph_data': bar_graph_data,
-            'scatter_graph_data': json.dumps(scatter_graph_data),
-            'pie_graph_data': json.dumps(pie_graph_data),
+            'polar_graph_data': polar_graph_data, 
+            'scatter_graph_data': scatter_graph_data, 
+            'line_graph_data': line_graph_data,
         }
         return render(request, 'dashboard/professor.html', context)
     else:
@@ -81,10 +87,10 @@ def update_dashboard_data(request):
     average_classes = calculateProfessor.average_periods(ambient_id = selected_ambient.id)
     number_of_professors = calculateProfessor.number_professors(ambient_id = selected_ambient.id)
     timetable_quality = calculateProfessor.get_timetable_quality(ambient_id = selected_ambient.id)
-    
     bar_graph_data = calculateProfessor.get_total_professor_classes(ambient_id = selected_ambient.id)
-    scatter_graph_data = calculateProfessor.get_professor_day_efficiency_list(ambient_id = selected_ambient.id)
-    pie_graph_data = calculateProfessor.get_professor_accumulated_efficiency(ambient_id = selected_ambient.id)
+    polar_graph_data = calculateProfessor.get_classes_by_day(ambient_id = selected_ambient.id)
+    scatter_graph_data = calculateProfessor.get_professor_efficiency_and_classes_list(ambient_id = selected_ambient.id)
+    line_graph_data = calculateProfessor.get_professor_metrics_evolution(ambient_id = selected_ambient.id)
     
     data = {
         'indicators': {
@@ -94,8 +100,9 @@ def update_dashboard_data(request):
             'timetable_quality': timetable_quality,
         },
         'bar_graph_data': bar_graph_data,
+        'polar_graph_data': polar_graph_data,  
         'scatter_graph_data': scatter_graph_data,
-        'pie_graph_data': pie_graph_data,
+        'line_graph_data': line_graph_data,
     }
     return JsonResponse(data)
 
