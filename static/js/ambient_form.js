@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (subjectCounter) {
-            subjectCounter.textContent = `${selectedSubjects} matérias selecionadas`;
+            subjectCounter.textContent = `${selectedSubjects} componentes curriculares selecionadas`;
         }
         
         return { selectedSchedules, selectedSubjects };
@@ -179,12 +179,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (selectedSchedules === 0 && selectedSubjects === 0) {
                 e.preventDefault();
-                showNotification('Por favor, selecione pelo menos um horário ou uma matéria.', 'warning');
+                showNotification('Por favor, selecione pelo menos um horário ou um componente curricular.', 'warning');
                 return false;
             }
             
             if (submitButton) {
-                submitButton.disabled = true;
+                submitButton.disabled = false;
                 submitButton.innerHTML = `
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
                         <path d="M21 12a9 9 0 11-6.219-8.56"/>
