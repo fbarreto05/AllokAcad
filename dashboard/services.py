@@ -193,7 +193,37 @@ class calculateProfessor():
 
     @staticmethod
     def get_timetable_quality(ambient_id = None):
-        return 100
+        if ambient_id is None:
+            return 0
+            
+        try:
+            stats = ProfessorStatistics.objects.filter(ambient_id=ambient_id)
+            
+            if not stats.exists():
+                return 0
+            
+            avg_efficiency = stats.aggregate(avg=Avg('day_efficiency'))['avg'] or 0
+            avg_intervals = stats.aggregate(avg=Avg('periods_interval'))['avg'] or 0
+            
+           
+            efficiency_score = min(avg_efficiency * 100, 100)  
+        
+            if avg_intervals <= 3:
+                interval_score = 100
+            elif avg_intervals <= 5:
+                interval_score = 75
+            elif avg_intervals <= 7:
+                interval_score = 50
+            else:
+                interval_score = 25
+            
+          
+            quality_score = (efficiency_score * 0.7) + (interval_score * 0.3)
+            
+            return round(quality_score, 1)
+            
+        except Exception:
+            return 100  # Valor padrão em caso de erro
 
   
     
@@ -256,13 +286,8 @@ class calculateProfessor():
 
         if ambient_id:
             data = data.filter(ambient=ambient_id)
-        data = data.values('semester__name').annotate(
-            avg_periods_on_campus = Avg('periods_on_campus'),
-            avg_periods_interval = Avg('periods_interval'),
-            avg_number_of_periods = Avg('number_of_periods'),
-            avg_day_efficiency = Avg('day_efficiency')
-            
-        ).order_by('semester__name')
+        
+        data = data.values('semester__name').annotate(avg_periods_on_campus = Avg('periods_on_campus'),avg_periods_interval = Avg('periods_interval'),avg_number_of_periods = Avg('number_of_periods'),avg_day_efficiency = Avg('day_efficiency')).order_by('semester__name')
         
         return list(data)
     
@@ -382,38 +407,90 @@ class calculateSpace():
     @staticmethod
     def get_total_periods_spaces(ambient_id=None):
         if ambient_id:
-            total = SpaceStatistics.objects.filter(ambient_id=ambient_id).aggregate(total=Sum('total_periods_available'))['total']
-            return total 
-        
+            total = SpaceStatistics.objects.filter(ambient_id=ambient_id).aggregate(total=Sum('total_periods_available'))
+            return total['total'] or 0
         return 0
+
+    @staticmethod
+    def get_total_spaces(ambient_id=None):
+        if ambient_id:
+            return SpaceStatistics.objects.filter(ambient_id=ambient_id).count()
+        
+        return SpaceStatistics.objects.count()
 
     @staticmethod
     def get_occupied_spaces(ambient_id=None):
         if ambient_id:
-            occupied = SpaceStatistics.objects.filter(ambient_id=ambient_id, total_periods_use__gt=0).count()
+            occupied = SpaceStatistics.objects.filter(ambient_id=ambient_id, total_periods_use__gt = 0).count()
             return occupied
-        
         return 0
 
     @staticmethod
-    def get_occupation_rate(ambient_id=None):
+    def get_occupation_rate(ambient_id=None):      
         if ambient_id:
-            stats = SpaceStatistics.objects.filter(ambient_id=ambient_id)
-            total_available = stats.aggregate(total=Sum('total_periods_available'))['total'] or 0
-            total_use = stats.aggregate(total=Sum('total_periods_use'))['total'] or 0
+            total_spaces = calculateSpace.get_total_spaces(ambient_id)
+            used_spaces = calculateSpace.get_occupied_spaces(ambient_id)
             
-            if total_available > 0:
-                return round((total_use / total_available) * 100, 2)
+            if total_spaces > 0:
+                return round((used_spaces / total_spaces) * 100, 2)
             
         return 0
 
     @staticmethod
     def get_space_efficiency(ambient_id=None):
         if ambient_id:
-            stats = SpaceStatistics.objects.filter(ambient_id=ambient_id)
+            stats = SpaceStatistics.objects.filter(ambient_id=ambient_id, total_periods_use__gt = 0)
+            
+            if not stats.exists():
+                return 0
+            
             avg_efficiency = stats.aggregate(avg=Avg('use_time_rate'))['avg']
             
             if avg_efficiency is not None:
                 return round(avg_efficiency * 100, 2)
             
         return 0
+    
+    @staticmethod
+    def get_total_space_classes(ambient_id=None):
+        data = SpaceDaySubject.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = data.values('classroom__name', 'subject__name').annotate(total_classes=Count('id'), total_periods=Sum('period')).order_by('classroom__name', 'subject__name')
+        
+        return list(result)
+    
+    @staticmethod
+    def get_spaces_classes_by_day(ambient_id=None):
+        data = SpaceDaySubject.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = data.values('classroom__name', 'day').annotate(total_classes=Count('id')).order_by('classroom__name', 'day')
+        
+        return list(result)
+    
+    @staticmethod
+    def get_space_efficiency_and_classes_list(ambient_id=None):
+        data = SpaceStatistics.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = data.values('classroom__name').annotate(avg_use_time_rate=Avg('use_time_rate'),total_classes=Sum('total_periods_use')).order_by('classroom__name')
+        
+        return list(result)
+    
+    @staticmethod
+    def get_space_metrics_evolution(ambient_id=None):
+        data = SpaceStatistics.objects.all()
+        
+        if ambient_id:
+            data = data.filter(ambient=ambient_id)
+        
+        result = data.values('semester__name').annotate(avg_total_periods_available=Avg('total_periods_available'),avg_total_periods_use=Avg('total_periods_use'),avg_use_time_rate=Avg('use_time_rate')).order_by('semester__name')
+        
+        return list(result)

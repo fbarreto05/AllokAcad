@@ -46,19 +46,13 @@
                     <div class="metric-label">Nº de Professores</div>
                 </div>
                 <div class="metric-card" id="metric-timetable-quality">
-                    <div class="metric-value" aria-live="polite">{{ timetable_quality|default:"--" }}</div>
+                    <div class="metric-value" aria-live="polite">{{ timetable_quality|default:"--" }}%</div>
                     <div class="metric-label">Qualidade da Alocação</div>
                 </div>
             </div>
             
             <div class="dashboard-controls">
                 <div class="control-group">
-                    <select name="semester" id="semester-select">
-                        {% for semester in semesters %}
-                            <option value="{{ semester.id }}" {% if selected_semester and semester.id == selected_semester.id %}selected{% endif %}>{{ semester.name }}</option>
-                        {% endfor %}
-                    </select>
-                
                     <select name="ambient" id="ambient-select">
                         {% for ambient in ambients %}
                             <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>

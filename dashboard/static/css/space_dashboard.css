@@ -306,6 +306,14 @@ select:focus {
     50% { opacity: 0.6; }
 }
 
+.polar-dropdown-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
 @media (max-width: 1024px) {
     .dashboard-container {
         padding: 0 var(--spacing-lg);

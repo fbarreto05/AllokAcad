@@ -46,16 +46,11 @@
                 </div>
                 <div class="metric-card" id="metric-space-efficiency">
                     <div class="metric-value" aria-live="polite">{{ space_efficiency|default:"--" }}%</div>
-                    <div class="metric-label">Eficiência dos Espaços</div>
+                    <div class="metric-label">Taxa de Utilização</div>
                 </div>
             </div>
             <div class="dashboard-controls">
                 <div class="control-group">
-                    <select name="semester" id="semester-select">
-                        {% for semester in semesters %}
-                            <option value="{{ semester.id }}" {% if selected_semester and semester.id == selected_semester.id %}selected{% endif %}>{{ semester.name }}</option>
-                        {% endfor %}
-                    </select>
                     <select name="ambient" id="ambient-select">
                         {% for ambient in ambients %}
                             <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
@@ -74,36 +69,36 @@
             </div>
         </header>
         <main class="charts-grid">
-            <div class="chart-container" role="img" aria-label="Gráfico de ocupação por tipo de espaço" style="position: relative;">
+            <div class="chart-container" role="img">
                 <canvas id="spaceOccupationChart"></canvas>
-                {% if space_occupation_data %}
-                    {{ space_occupation_data|json_script:"space-occupation-data" }}
+                {% if bar_graph_data %}
+                    <script id="space-bar-data" type="application/json">{{ bar_graph_data_json|safe }}</script>
                 {% else %}
-                    <script id="space-occupation-data" type="application/json">[]</script>
+                    <script id="space-bar-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            <div class="chart-container" role="img" aria-label="Análise de utilização por horário">
-                <canvas id="hourlyUsageChart"></canvas>
-                {% if hourly_usage_data %}
-                    {{ hourly_usage_data|json_script:"hourly-usage-data" }}
+            <div class="chart-container" role="img">
+                <canvas id="spacePolarChart"></canvas>
+                {% if polar_graph_data %}
+                    <script id="space-polar-data" type="application/json">{{ polar_graph_data_json|safe }}</script>
                 {% else %}
-                    <script id="hourly-usage-data" type="application/json">[]</script>
+                    <script id="space-polar-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            <div class="chart-container" role="img" aria-label="Análise de capacidade vs demanda">
+            <div class="chart-container" role="img">
                 <canvas id="capacityDemandChart"></canvas>
-                {% if capacity_demand_data %}
-                    {{ capacity_demand_data|json_script:"capacity-demand-data" }}
+                {% if scatter_graph_data %}
+                    <script id="space-scatter-data" type="application/json">{{ scatter_graph_data_json|safe }}</script>
                 {% else %}
-                    <script id="capacity-demand-data" type="application/json">[]</script>
+                    <script id="space-scatter-data" type="application/json">[]</script>
                 {% endif %}
             </div>
-            <div class="chart-container" role="img" aria-label="Métricas de eficiência dos espaços">
+            <div class="chart-container" role="img">
                 <canvas id="efficiencyChart"></canvas>
-                {% if efficiency_data %}
-                    {{ efficiency_data|json_script:"efficiency-data" }}
+                {% if line_graph_data %}
+                    <script id="space-line-data" type="application/json">{{ line_graph_data_json|safe }}</script>
                 {% else %}
-                    <script id="efficiency-data" type="application/json">[]</script>
+                    <script id="space-line-data" type="application/json">[]</script>
                 {% endif %}
             </div>
         </main>
