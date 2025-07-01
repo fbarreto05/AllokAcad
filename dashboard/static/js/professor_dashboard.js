@@ -30,12 +30,11 @@ document.addEventListener('DOMContentLoaded', function () {
             '#metric-num-professors .metric-value',
             '#metric-timetable-quality .metric-value'
         ];
-        
         indicators.forEach(selector => {
             const element = document.querySelector(selector);
             if (element) {
-                element.textContent = '...';
-                element.classList.add('loading');
+                element.textContent = '--';
+                element.classList.remove('loading', 'error');
             }
         });
 
@@ -68,6 +67,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 lastProfessorData = newData.bar_graph_data;
                 lastMedianValue = newData.median_professor_periods;
                 renderProfessorBarChart(lastProfessorData, lastMedianValue, toggleMedianLine ? toggleMedianLine.checked : true);
+            }
+            if (newData.polar_graph_data && typeof renderPolarChart === 'function') {
+                const polarProfessorSelect = document.getElementById('polar-professor-select');
+                if (polarProfessorSelect) {
+                    renderPolarChart(newData.polar_graph_data, polarProfessorSelect.value);
+                }
+            }
+            if (newData.line_graph_data && typeof renderProfessorLineChart === 'function') {
+                renderProfessorLineChart(newData.line_graph_data);
+            }
+            if (newData.scatter_graph_data && typeof renderProfessorEfficiencyChart === 'function') {
+                renderProfessorEfficiencyChart(newData.scatter_graph_data);
             }
         } catch (error) {
             console.error('Erro ao atualizar dashboard:', error);
@@ -120,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { position: 'top' },
                     title: { display: true, text: 'Aulas por Professor' },
@@ -130,11 +142,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             label: function(context) {
                                 const subject = context.dataset.label;
                                 const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
-                                return `${subject}: ${value}`;
+                                return `${subject}: ${Math.round(value)}`;
                             },
                             footer: function(context) {
                                 const total = context.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
-                                return `Total: ${total}`;
+                                return `Total: ${Math.round(total)}`;
                             }
                         }
                     }
@@ -170,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.polarChartInstance) {
             window.polarChartInstance.destroy();
         }
-        const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
         const filtered = Array.isArray(polarData) ? polarData.filter(item => {
             const name = item.professor__user__name || item.professor || item.nome_professor;
             return name === selectedProfessor;
@@ -178,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const dataByDay = Array(7).fill(0);
         filtered.forEach(item => {
             if (item.day >= 0 && item.day < 7) {
-                dataByDay[item.day] = item.total_classes || item.total_periods || 0;
+                dataByDay[item.day] = Math.round(item.total_classes || item.total_periods || 0);
             }
         });
         window.polarChartInstance = new Chart(ctx, {
@@ -197,7 +209,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 responsive: true,
                 plugins: {
                     legend: { position: 'top' },
-                    title: { display: true, text: 'Distribuição de Aulas por Dia da Semana' }
+                    title: { display: true, text: 'Distribuição de Aulas por Dia da Semana' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {                               
+                                const value = (typeof context.parsed === 'number') ? context.parsed : (typeof context.raw === 'number' ? context.raw : 0);
+                                return `${context.label}: ${value} aulas`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 2,
+                            callback: function(value) { return Number.isInteger(value) ? value : null; }
+                        }
+                    }
                 }
             }
         });
@@ -205,7 +234,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const polarDataScript = document.getElementById('polar-graph-data');
     const polarProfessorSelect = document.getElementById('polar-professor-select');
-    let polarData = [];
     if (polarDataScript) {
         try {
             polarData = JSON.parse(polarDataScript.textContent);
@@ -227,6 +255,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderProfessorLineChart(lineData) {
         const ctx = document.getElementById('professorLineChart').getContext('2d');
+        const parent = document.getElementById('professorLineChart').parentElement;
+        if (parent) {
+            document.getElementById('professorLineChart').width = parent.offsetWidth || 700;
+            document.getElementById('professorLineChart').height = parent.offsetHeight || 400;
+        }
         if (window.professorLineChartInstance) {
             window.professorLineChartInstance.destroy();
         }
@@ -297,6 +330,11 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function renderProfessorEfficiencyChart(professorData) {
         const ctx = document.getElementById('scatterChart').getContext('2d');
+        const parent = document.getElementById('scatterChart').parentElement;
+        if (parent) {
+            document.getElementById('scatterChart').width = parent.offsetWidth || 700;
+            document.getElementById('scatterChart').height = parent.offsetHeight || 400;
+        }
 
         if (window.scatterChartInstance) {
             window.scatterChartInstance.destroy();
@@ -313,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function () {
             type: 'scatter',
             data: {
                 datasets: [{
-                    label: 'Eficiência por Professor', 
+                    label: 'Eficiência', 
                     data: dataPoints,
                     backgroundColor: 'rgba(75, 192, 192, 0.6)',
                     borderColor: 'rgba(75, 192, 192, 1)',
@@ -331,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     title: {
                         display: true,
-                        text: 'Eficiência Média vs. Total de Aulas por Professor', 
+                        text: 'Eficiência Média X Total de Aulas por Professor', 
                         font: {
                             size: 18
                         }
@@ -357,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         position: 'bottom',
                         title: {
                             display: true,
-                            text: 'Total de Aulas Ministradas', 
+                            text: 'Total de Aulas', 
                             font: {
                                 size: 14
                             }
@@ -393,5 +431,11 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
             console.error('Erro ao carregar dados do gráfico de dispersão:', e);
         }
+    }
+
+    if (ambientSelect && ambientSelect.options.length > 0) {
+        const firstAmbientId = ambientSelect.options[0].value;
+        ambientSelect.value = firstAmbientId;
+        updateDashboardData(firstAmbientId);
     }
 });
