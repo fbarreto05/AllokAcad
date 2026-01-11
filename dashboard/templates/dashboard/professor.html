@@ -1,109 +1,126 @@
-{% extends 'base.html' %}
+{% extends '../base.html' %}
 {% load static %}
-{% load plotly_dash %}
+
+{% block dashboard_title %}Dashboard dos Professores{% endblock %}
 
 {% block styles %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/professor_dashboard.css' %}">
 {% endblock %}
 
 {% block content %}
+    <nav class="dashboard-nav" role="navigation" aria-label="Navegação entre dashboards">
+        <a href="{% url 'dashboard_app:professor_dashboard' %}" class="active" aria-current="page">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Professores
+        </a>
+        <a href="{% url 'dashboard_app:space_dashboard' %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+            </svg>
+            Espaços
+        </a>
+    </nav>
+
     <div class="dashboard-container">
         <header class="dashboard-header">
-            <div class="dashboard-name">
-                <h2>Dashboard dos professores</h2>
-                <p>Mostra métricas dos professores no semester selecionado</p>
+            <div class="dashboard-title">
+                <h1>Dashboard dos Professores</h1>
+                <p>Análise completa de métricas dos professores no semestre selecionado</p>
             </div>
-            <ul class="indicators">
-                <li class="indicator">{{ average_class_interval }}</li>
-                <li class="indicator">{{ average_trips }}</li>
-                <li class="indicator">{{ average_classes }}</li>
-                <li class="indicator">{{ number_of_professors }}</li>
-                <li class="indicator">{{ timetable_quality }}</li>
-            </ul>
-            <div class="header-filters-container">
-                <select name="ambient" id="ambient-select">
-                    <option value="">Ambiente</option>
-                    {% for ambient in ambients %}
-                        <option value="{{ ambient.id }}">{{ ambient.name }}</option>
-                    {% endfor %}
-                </select>
-                <select name="semester" id="semester-select">
-                    <option value="">Semestre</option>
-                    {% for semester in semesters %}
-                        <option value="{{ semester.id }}">{{ semester.name }}</option>
-                    {% endfor %}
-                </select>
+            
+            <div class="metrics-grid">
+                <div class="metric-card" id="metric-avg-interval">
+                    <div class="metric-value" aria-live="polite">{{ average_class_interval|default:"--" }}</div>
+                    <div class="metric-label">Intervalo Médio</div>
+                </div>
+                <div class="metric-card" id="metric-avg-classes">
+                    <div class="metric-value" aria-live="polite">{{ average_classes|default:"--" }}</div>
+                    <div class="metric-label">Média de Aulas/Dia</div>
+                </div>
+                <div class="metric-card" id="metric-num-professors">
+                    <div class="metric-value" aria-live="polite">{{ number_of_professors|default:"--" }}</div>
+                    <div class="metric-label">Nº de Professores</div>
+                </div>
+                <div class="metric-card" id="metric-timetable-quality">
+                    <div class="metric-value" aria-live="polite">{{ timetable_quality|default:"--" }}%</div>
+                    <div class="metric-label">Qualidade da Alocação</div>
+                </div>
+            </div>
+            
+            <div class="dashboard-controls">
+                <div class="control-group">
+                    <select name="ambient" id="ambient-select">
+                        {% for ambient in ambients %}
+                            <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard no semester selecionado">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                        Atualizar
+                    </button>
+                </div>
             </div>
         </header>
-        <main>
-            <ul class="graphics-container">
-                <li class="graphic">
-                    {% if dash_data_graph_bar.data %}
-                        {% plotly_app name="" initial_arguments="" %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-                <li class="graphic">
-                    {% if dash_data_graph_bar.data %}
-                        {% plotly_app name='' initial_arguments="" %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-                <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='' initial_arguments=dash_context %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-                <li class="graphic">
-                    {% if dash_context %}
-                        {% plotly_app name='' initial_arguments=dash_context %}
-                    {% else %}
-                        <div class="placeholder">
-                            <p>Selecione os filtros acima para exibir o gráfico.</p>
-                        </div>
-                    {% endif %}
-                </li>
-            </ul>
+        
+        <main class="charts-grid">
+            <div class="chart-container" role="img" aria-label="Gráfico de barras dos professores" style="position: relative;">
+                <canvas id="professorBarChart"></canvas>
+                {% if bar_graph_data %}
+                    {{ bar_graph_data|json_script:"professor-bar-data" }}
+                {% else %}
+                    <script id="professor-bar-data" type="application/json">[]</script>
+                {% endif %}
+                <script id="professor-median-data" type="application/json">{{ professor_median_periods|default:'null' }}</script>
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Gráfico polar de distribuição de aulas por dia da semana">
+                <div class="polar-dropdown-box">
+                    <label for="polar-professor-select">Professor:</label>
+                    <select id="polar-professor-select">
+                        {% for professor in bar_graph_data|dictsort:'professor__user__name' %}
+                            <option value="{{ professor.professor__user__name }}">{{ professor.professor__user__name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <canvas id="polarChart"></canvas>
+                {% if polar_graph_data %}
+                    {{ polar_graph_data|json_script:"polar-graph-data" }}
+                {% else %}
+                    <script id="polar-graph-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Gráfico de dispersão da eficiência diária dos professores">
+                <canvas id="scatterChart"></canvas>
+                {% if scatter_graph_data %}
+                    {{ scatter_graph_data|json_script:"professor-scatter-data" }}
+                {% else %}
+                    <script id="professor-scatter-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            
+            <div class="chart-container" role="img" aria-label="Gráfico de linha das métricas dos professores">
+                <canvas id="professorLineChart"></canvas>
+                {% if line_graph_data %}
+                    {{ line_graph_data|json_script:"professor-line-data" }}
+                {% else %}
+                    <script id="professor-line-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
         </main>
-        <footer>
-            <nav class="switch-dashboard">
-                <a href="?view=spaces" class="button-active">Espaços</a>
-                <a href="?view=professors" class="button">Professores</a>
-            </nav>
-        </footer>
     </div>
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ambientSelect = document.getElementById('ambient-select');
-            const semesterSelect = document.getElementById('semester-select');
-
-            function updateUrl() {
-                const ambientId = ambientSelect.value;
-                const semesterId = semesterSelect.value;
-
-                if (ambientId && semesterId) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('ambient', ambientId);
-                    url.searchParams.set('semester', semesterId);
-                    window.location.href = url.toString();
-                }
-            }
-            
-            ambientSelect.addEventListener('change', updateUrl);
-            semesterSelect.addEventListener('change', updateUrl);
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/professor_dashboard.js' %}"></script>
 {% endblock %}

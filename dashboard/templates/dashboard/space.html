@@ -1,68 +1,111 @@
+{% extends '../base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset='utf-8'>
-    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <title>Dashboard de Análise</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/space_dashboard.css' %}">
 
-</head>
-<body>
+{% block dashboard_title %}Dashboard dos Espaços{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/space_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+    <nav class="dashboard-nav" role="navigation" aria-label="Navegação entre dashboards">
+        <a href="{% url 'dashboard_app:professor_dashboard' %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Professores
+        </a>
+        <a href="{% url 'dashboard_app:space_dashboard' %}" class="active" aria-current="page">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+            </svg>
+            Espaços
+        </a>
+    </nav>
+
     <div class="dashboard-container">
         <header class="dashboard-header">
-            <div class="dashboard-name">
-                <h2>Dashboard dos espaços</h2>
-                <p>Mostra métricas dos espaços no semester selecionado</p>
+            <div class="dashboard-title">
+                <h1>Dashboard dos Espaços</h1>
+                <p>Análise completa de métricas dos espaços no semestre selecionado</p>
             </div>
-            <ul class="indicators">
-                <li class="indicator">1</li>
-                <li class="indicator">1</li>
-                <li class="indicator">1</li>
-                <li class="indicator">1</li>
-            </ul>
-            <div class="header-filters-container">
-                <select name="ambient" id="ambient-select">
-                    <option value="">Ambiente</option>
-
-                    {% for ambient in ambients %}
-                        <option value="{{ ambient.id }}">{{ ambient.name }}</option>
-                    {% endfor %}
-
-                </select>
-                <select name="semester" id="semester-select">
-                    <option>Semestre</option>
-
-                    {% for semester in semesters %}
-                        <option value="{{ semester.id }}">{{ semester.name }}</option>
-                    {% endfor %}
-
-                </select>
+            <div class="metrics-grid">
+                <div class="metric-card" id="metric-total-spaces">
+                    <div class="metric-value" aria-live="polite">{{ total_spaces|default:"--" }}</div>
+                    <div class="metric-label">Total de Espaços</div>
+                </div>
+                <div class="metric-card" id="metric-occupied-spaces">
+                    <div class="metric-value" aria-live="polite">{{ occupied_spaces|default:"--" }}</div>
+                    <div class="metric-label">Espaços Ocupados</div>
+                </div>
+                <div class="metric-card" id="metric-occupation-rate">
+                    <div class="metric-value" aria-live="polite">{{ occupation_rate|default:"--" }}%</div>
+                    <div class="metric-label">Taxa de Ocupação</div>
+                </div>
+                <div class="metric-card" id="metric-space-efficiency">
+                    <div class="metric-value" aria-live="polite">{{ space_efficiency|default:"--" }}%</div>
+                    <div class="metric-label">Taxa de Utilização</div>
+                </div>
+            </div>
+            <div class="dashboard-controls">
+                <div class="control-group">
+                    <select name="ambient" id="ambient-select">
+                        {% for ambient in ambients %}
+                            <option value="{{ ambient.id }}" {% if selected_ambient and ambient.id == selected_ambient.id %}selected{% endif %}>{{ ambient.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="update-button" id="update-button" aria-label="Atualizar dados do dashboard no semestre selecionado">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                        Atualizar
+                    </button>
+                </div>
             </div>
         </header>
-        <main>
-            <ul class="graphics-container">
-                <li class="graphic">
-                    2
-                </li>
-                <li class="graphic">
-                 2
-                </li>
-                <li class="graphic">
-                    2
-                </li>
-                <li class="graphic">
-                    2
-                </li>
-            </ul>
+        <main class="charts-grid">
+            <div class="chart-container" role="img">
+                <canvas id="spaceOccupationChart"></canvas>
+                {% if bar_graph_data %}
+                    <script id="space-bar-data" type="application/json">{{ bar_graph_data_json|safe }}</script>
+                {% else %}
+                    <script id="space-bar-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            <div class="chart-container" role="img">
+                <canvas id="spacePolarChart"></canvas>
+                {% if polar_graph_data %}
+                    <script id="space-polar-data" type="application/json">{{ polar_graph_data_json|safe }}</script>
+                {% else %}
+                    <script id="space-polar-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            <div class="chart-container" role="img">
+                <canvas id="capacityDemandChart"></canvas>
+                {% if scatter_graph_data %}
+                    <script id="space-scatter-data" type="application/json">{{ scatter_graph_data_json|safe }}</script>
+                {% else %}
+                    <script id="space-scatter-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
+            <div class="chart-container" role="img">
+                <canvas id="efficiencyChart"></canvas>
+                {% if line_graph_data %}
+                    <script id="space-line-data" type="application/json">{{ line_graph_data_json|safe }}</script>
+                {% else %}
+                    <script id="space-line-data" type="application/json">[]</script>
+                {% endif %}
+            </div>
         </main>
-        <footer>
-            <nav class="switch-dashboard">
-                <a href="?view = spaces" class="button-active">Espaços</a>
-                <a href="?view = professors" class="button">Professores</a>
-            </nav>
-        </footer>
     </div>
-</body>
-</html>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/space_dashboard.js' %}"></script>
+{% endblock %}

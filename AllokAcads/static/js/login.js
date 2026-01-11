@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
-    const identifierInput = document.getElementById('identifier');
+    const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const identifierError = document.getElementById('identifierError');
     const passwordError = document.getElementById('passwordError');
@@ -16,16 +16,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function clearError(element) {
         element.textContent = '';
         element.style.display = 'none';
+    }    
+    function removeLoginError() {
+        const existingLoginError = document.querySelector('.form-error');
+        if (existingLoginError) {
+            existingLoginError.remove();
+        }
     }
 
-    identifierInput.addEventListener('input', () => {
+    emailInput.addEventListener('input', () => {
         clearError(identifierError);
-        identifierInput.classList.remove('error');
+        emailInput.classList.remove('error');
+        removeLoginError();
     });
 
     passwordInput.addEventListener('input', () => {
         clearError(passwordError);
         passwordInput.classList.remove('error');
+        removeLoginError();
     });
 
     if (togglePassword) {
@@ -44,18 +52,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             passwordInput.focus();
         });
-    }
-
-    function validateForm() {
+    }    function validateForm() {
         let isValid = true;
 
-        if (!identifierInput.value.trim()) {
-            identifierError.textContent = 'O identificador é obrigatório';
-            identifierInput.classList.add('error');
+        if (!emailInput.value.trim()) {
+            identifierError.textContent = 'O email é obrigatório';
+            emailInput.classList.add('error');
             isValid = false;
         } else {
             identifierError.textContent = '';
-            identifierInput.classList.remove('error');
+            emailInput.classList.remove('error');
         }
 
         if (!passwordInput.value) {
@@ -67,29 +73,10 @@ document.addEventListener('DOMContentLoaded', function() {
             passwordInput.classList.remove('error');
         }
 
-        return isValid;
-    }
-
-    identifierInput.addEventListener('input', function() {
-        identifierError.textContent = '';
-        identifierInput.classList.remove('error');
-    });
-
-    passwordInput.addEventListener('input', function() {
-        passwordError.textContent = '';
-        passwordInput.classList.remove('error');
-    });
-
-    if (loginForm) {
-        loginForm.addEventListener('submit', function(e) {
-            if (!validateForm()) {
-                e.preventDefault(); 
-            }
-        });
-    }
-
-    if (window.location.href.includes('/') && document.referrer.includes('/')) {
-
+        return isValid;    }
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('error') === 'login_failed') {
         const errorElement = document.createElement('div');
         errorElement.className = 'form-error';
         errorElement.textContent = 'Identificador ou senha incorretos. Tente novamente.';
@@ -100,6 +87,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    const newUserId = urlParams.get('new_user');
+    if (newUserId === 'true') {
+        const userData = {
+            userid: urlParams.get('userid'),
+            name: urlParams.get('name'),
+            email: urlParams.get('email'),
+            birthdate: urlParams.get('birthdate')
+        };
+        showWelcomeModal(userData);
+    }
+
+    if (urlParams.has('error') || urlParams.has('new_user')) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -108,9 +111,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let hasError = false;
         
-        if (!identifierInput.value.trim()) {
-            showError(identifierError, 'Por favor, insira seu identificador');
-            identifierInput.classList.add('error');
+        if (!emailInput.value.trim()) {
+            showError(identifierError, 'Por favor, insira seu email');
+            emailInput.classList.add('error');
             hasError = true;
         }
         
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: new URLSearchParams({
-                    'id': identifierInput.value.trim(),
+                    'email': emailInput.value.trim(),
                     'password': passwordInput.value
                 })
             });
@@ -139,10 +142,101 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = response.url;
             } else {
                 window.location.href = '/';
-            }
-
-        } catch (error) {
+            }        } catch (error) {
             showError(identifierError, 'Erro ao conectar ao servidor. Tente novamente.');
-        }
-    });
+        }    });
+
+    function showWelcomeModal(userData) {
+        const modal = document.getElementById('welcomeModal');
+        const userIdElement = document.getElementById('welcomeUserId');
+        const userNameElement = document.getElementById('welcomeUserName');
+        const userEmailElement = document.getElementById('welcomeUserEmail');
+        const userBirthdateElement = document.getElementById('welcomeUserBirthdate');
+        
+        userIdElement.textContent = userData.userid;
+        userNameElement.textContent = userData.name || 'Não informado';
+        userEmailElement.textContent = userData.email || 'Não informado';
+        userBirthdateElement.textContent = userData.birthdate || 'Não informado';
+        
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        const copyBtn = document.getElementById('copyUserIdBtn');
+        copyBtn.addEventListener('click', function() {
+            copyToClipboard(userData.userid);
+        });
+        
+        const understoodBtn = document.getElementById('understoodBtn');
+        understoodBtn.addEventListener('click', function() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            const emailrInput = document.getElementById('email');
+            if (emailInput) {
+                emailInput.value = userData.email;
+                emailInput.focus();
+            }
+        });
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const copyBtn = document.getElementById('copyUserIdBtn');
+            const originalContent = copyBtn.innerHTML;
+            
+            copyBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="m9 11 3 3L22 4"></path>
+                </svg>
+                Copiado!
+            `;
+            copyBtn.style.background = '#10b981';
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalContent;
+                copyBtn.style.background = '#4361ee';
+            }, 2000);
+        }).catch(() => {
+            
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            showSimpleToast('ID copiado para a área de transferência!');
+        });
+    }
+
+    function showSimpleToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideInDown 0.3s ease-out;
+        `;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOutUp 0.3s ease-in forwards';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
 });

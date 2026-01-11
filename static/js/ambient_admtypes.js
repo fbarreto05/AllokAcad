@@ -197,14 +197,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 
                 const admtypeName = this.closest('.admtype-item')
-                    ?.querySelector('.admtype-name')?.textContent || 'este tipo de administrador';
+                    ?.querySelector('.admtype-name')?.textContent || 'este tipo de gestor';
                 
                 const deleteUrl = this.href;
                 
                 showConfirmModal(
                     'Confirmar Exclusão',
-                    `Tem certeza que deseja excluir o tipo de administrador "${admtypeName}"?`,
-                    'Esta ação não pode ser desfeita. Todos os dados relacionados a este tipo de administrador serão permanentemente removidos.',
+                    `Tem certeza que deseja excluir o tipo de gestor "${admtypeName}"?`,
+                    'Esta ação não pode ser desfeita. Todos os dados relacionados a este tipo de gestor serão permanentemente removidos.',
                     'error',
                     () => {
                         window.location.href = deleteUrl;

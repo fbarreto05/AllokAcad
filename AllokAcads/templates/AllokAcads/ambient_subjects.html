@@ -1,7 +1,7 @@
 {% extends "AllokAcads/base.html" %}
 {% load static %}
 
-{% block title %}AllokAcad | Matérias{% endblock %}
+{% block title %}AllokAcad | Componentes Currilares{% endblock %}
 
 {% block body_class %}page-with-sidebar ambient-subjects-page{% endblock %}
 
@@ -17,9 +17,9 @@
 <div class="header">
     <h1>
         {% if subjects|length == 1 %}
-            Matéria Cadastrada
+            Componente Currilar Cadastrado
         {% else %}
-            Matérias Cadastradas
+            Componente Currilar Cadastrados
         {% endif %}
         <span class="subjects-count">{{ subjects|length }}</span>
     </h1>
@@ -36,7 +36,7 @@
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            Nova Matéria
+            Novo Componente Currilar
         </a>
     </div>
 </div>
@@ -66,21 +66,21 @@
                         
                         {% if subject.preference_periods %}
                             <div class="info-item">
-                                <span class="info-label">Períodos preferenciais:</span>
+                                <span class="info-label">Horários preferenciais:</span>
                                 <span class="info-value">{{ subject.preference_periods }}</span>
                             </div>
                         {% endif %}
                     </div>
 
                     <div class="subject-actions">
-                        <a href="{% url 'ambient_edit_subjects' subject.id ambient.ambientid %}" class="edit-button" title="Editar matéria">
+                        <a href="{% url 'ambient_edit_subjects' subject.id ambient.ambientid %}" class="edit-button" title="Editar componente currilar">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
                             Editar
                         </a>
-                        <a href="{% url 'ambient_delete_subjects' subject.id ambient.ambientid %}" class="delete-button" title="Excluir matéria">
+                        <a href="{% url 'ambient_delete_subjects' subject.id ambient.ambientid %}" class="delete-button" title="Excluir componente currilar">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -99,14 +99,14 @@
                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                 </svg>
             </div>
-            <h3>Nenhuma matéria cadastrada</h3>
-            <p>Comece criando sua primeira matéria para organizar o currículo do ambiente.</p>
+            <h3>Nenhum componente currilar cadastrado</h3>
+            <p>Comece criando sua primeiro componente currilar para organizar o currículo do ambiente.</p>
             <a href="{% url 'ambient_create_subjects' ambient.ambientid %}" class="empty-action-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                Criar Primeira Matéria
+                Criar Primeiro Componente Currilar
             </a>
         </div>
     {% endif %}

@@ -8,7 +8,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ambient.css' %}">
-<link rel="stylesheet" href="{% static 'css/confirmation-modal.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -158,35 +157,142 @@
                     </div>
                     <div class="stat-info">
                         <span class="stat-value">{{ subjects|length }}</span>
-                        <span class="stat-label">Matérias</span>
+                        <span class="stat-label">Componentes Currilares</span>
                     </div>
                 </div>
             </div>
 
-            <br>
-            {% if table %}
-                <p>Tabela: </p>
-                {% for alocation in table %}
-                    {% if forloop.counter0|divisibleby:columns %}
-                        <br>
-                        Dia {{ alocation.column|add:"1" }}:
-                    {% endif %}
-                    {% for activitie in alocation.activitie.all %}
-                        <p>/ Periodo {{ alocation.line|add:"1" }}: {{ activitie.tclass.name }}, {{ activitie.tsubject.name }}, {{ activitie.tprofessor.user.name }}, {{ activitie.tclassroom.name }} || Linha: {{alocation.line}}, Coluna: {{alocation.column}} /</p>
-                    {% endfor %}
-                {% endfor %}
-                <br>
-                <p>Não Alocado: </p>
-                {% for alocation in not_alocated %}
-                    <p>/ {{ alocation.activitie.tclass }}, {{ alocation.activitie.tsubject }}, {{ alocation.activitie.professor }}, {{ alocation.activitie.tclassroom }} /</p>
-                {% endfor %}
-            {% endif %}
-            
-            <br>
             {% if member.is_professor %}
-                <button><a href="{% url 'ambient_form' ambient.ambientid %}">Preencher Formulário</a></button>
+            <div class="professor-action-section">
+                <div class="professor-action-card">
+                    <div class="professor-action-content">
+                        <div class="professor-action-info">
+                            <div class="professor-action-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="professor-action-text">
+                                <h4>Formulário de Preferências de Atividade (FPA)</h4>
+                                <p>Preencha suas preferências de horários e salas para otimizar sua alocação.</p>
+                            </div>
+                        </div>
+                        <a href="{% url 'ambient_form' ambient.ambientid %}" class="professor-action-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14"></path>
+                                <path d="M12 5l7 7-7 7"></path>
+                            </svg>
+                            Preencher Formulário
+                        </a>
+                    </div>
+                </div>
+            </div>
             {% endif %}
 
+            {% if table %}
+            <div class="info-card schedule-card">
+                <div class="info-header">
+                    <h3>Grade de Horários</h3>
+                    <span class="schedule-badge">{{ table|length }} espaços | {{ activities|length}} atividades</span>
+                </div>
+                <div class="info-body">
+                    <div class="schedule-table-container">
+                        <table class="schedule-table">
+                            <thead>
+                                <tr>
+                                    <th class="period-header">Horário</th>
+                                    {% for day in columns_range %}
+                                        <th class="day-header">Dia {{ day|add:"1" }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in periods_range %}
+                                <tr>
+                                    <td class="period-cell">
+                                        <div class="period-number">{{ period|add:"1" }}º</div>
+                                    </td>
+                                    {% for day in columns_range %}
+                                    <td class="schedule-cell">
+                                        {% for alocation in table %}
+                                            {% if alocation.line == period and alocation.column == day %}
+                                                {% for activitie in alocation.activitie.all %}
+                                                <div class="activity-block">
+                                                    <div class="activity-header">
+                                                        <span class="subject-name">{{ activitie.tsubject.name }}</span>
+                                                        <span class="class-name">{{ activitie.tclass.name }}</span>
+                                                    </div>
+                                                    <div class="activity-details">
+                                                        <div class="professor-info">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                                <circle cx="12" cy="7" r="4"/>
+                                                            </svg>
+                                                            {{ activitie.tprofessor.user.name }}
+                                                        </div>
+                                                        <div class="classroom-info">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                                                <path d="M3 9h18"/>
+                                                            </svg>
+                                                            {{ activitie.tclassroom.name }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not_alocated %}
+            <div class="info-card unallocated-card">
+                <div class="info-header">
+                    <h3>Atividades Não Alocadas</h3>
+                    <span class="unallocated-badge">{{ not_alocated|length }} atividades</span>
+                </div>
+                <div class="info-body">
+                    <div class="unallocated-list">
+                        {% for alocation in not_alocated %}
+                        <div class="unallocated-item">
+                            <div class="unallocated-header">
+                                <span class="unallocated-subject">{{ alocation.activitie.tsubject }}</span>
+                                <span class="unallocated-class">{{ alocation.activitie.tclass }}</span>
+                            </div>
+                            <div class="unallocated-details">
+                                <div class="unallocated-professor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    {{ alocation.activitie.professor }}
+                                </div>
+                                <div class="unallocated-classroom">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <path d="M3 9h18"/>
+                                    </svg>
+                                    {{ alocation.activitie.tclassroom }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             {% if member.admin_type.can_run_atribuition or member.admin_type.can_run_alocation %}
             <div class="admin-actions-card">
@@ -194,12 +300,32 @@
                     <h3>Ações administrativas</h3>
                 </div>
                 <div class="info-body">
+                    <div class="instructions-section">
+                        <div class="instruction-box warning">
+                            <h4>⚠️ Importante - Leia antes de executar</h4>
+                            <p><strong>Execute sempre nesta ordem:</strong> primeiro a <em>Atribuição</em>, depois a <em>Alocação</em>.</p>
+                        </div>
+                    </div>
+
                     <div class="admin-actions">
                         {% if member.admin_type.can_run_atribuition %}
                         <div class="admin-action">
                             <div class="admin-action-details">
-                                <h4>Atribuição de recursos</h4>
-                                <p>Execute a atribuição de professores às turmas e salas de aula com base nas preferências.</p>
+                                <h4>1️⃣ Atribuição de recursos</h4>
+                                <p><strong>O que faz:</strong> Distribui automaticamente professores e salas de aula para as turmas com base nas preferências e formações cadastradas.</p>
+                                
+                                <div class="prerequisites">
+                                    <h5>📋 Pré-requisitos obrigatórios:</h5>
+                                    <ul class="requirements-list">
+                                        <li>✅ Pelo menos uma <strong>sala de aula</strong> cadastrada</li>
+                                        <li>✅ Pelo menos uma <strong>turma</strong> cadastrada</li>
+                                        <li>✅ <strong>Disciplinas obrigatórias</strong> definidas para as turmas</li>
+                                        <li>✅ Pelo menos um <strong>professor</strong> no ambiente</li>
+                                        <li>✅ <strong>Formações</strong> dos professores cadastradas</li>
+                                        <li>✅ <strong>Preferências</strong> de salas definidas (turmas e disciplinas)</li>
+                                    </ul>
+                                    <p class="warning-text">⚠️ <strong>Atenção:</strong> Esta ação apagará todas as atividades existentes e criará novas baseadas nas disciplinas obrigatórias das turmas.</p>
+                                </div>
                                 
                                 {% if activities %}
                                 <div class="activities-list">
@@ -216,30 +342,48 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <a href="{% url 'run_atribuition' ambient.ambientid %}" class="action-button primary-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                </svg>
-                                Rodar atribuição
-                            </a>
+                            <div class="admin-action-button-container">
+                                <button type="button" class="action-button primary-button" id="run-atribuition-btn" data-url="{% url 'run_atribuition' ambient.ambientid %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polygon points="10,8 16,12 10,16 10,8"></polygon>
+                                    </svg>
+                                    Rodar Atribuição
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                         
                         {% if member.admin_type.can_run_alocation %}
                         <div class="admin-action">
                             <div class="admin-action-details">
-                                <h4>Alocação de horários</h4>
-                                <p>Execute a alocação de horários para as atividades com base nas restrições definidas.</p>
+                                <h4>2️⃣ Alocação de horários</h4>
+                                <p><strong>O que faz:</strong> Distribui automaticamente os horários para as atividades já criadas, respeitando as restrições e preferências de horários.</p>
+                                
+                                <div class="prerequisites">
+                                    <h5>📋 Pré-requisitos obrigatórios:</h5>
+                                    <ul class="requirements-list">
+                                        <li>✅ <strong>Atribuição</strong> deve ter sido executada primeiro</li>
+                                        <li>✅ Todas as atividades devem ter <strong>professores atribuídos</strong></li>
+                                        <li>✅ <strong>Horários disponíveis</strong> cadastrados no sistema</li>
+                                        <li>✅ <strong>Estrutura de horários</strong> definida (períodos, dias da semana)</li>
+                                        <li>✅ <strong>Restrições de horários</strong> dos professores configuradas</li>
+                                        <li>✅ <strong>Preferências de horários</strong> das turmas preenchidas</li>
+                                    </ul>
+                                    <p class="info-text">ℹ️ <strong>Dica:</strong> Se houver erros, verifique se todos os professores têm horários disponíveis definidos.</p>
+                                </div>
                             </div>
-                            <a href="{% url 'run_alocation' ambient.ambientid %}" class="action-button primary-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                Rodar alocação
-                            </a>
+                            <div class="admin-action-button-container">
+                                <button type="button" class="action-button secondary-button" id="run-alocation-btn" data-url="{% url 'run_alocation' ambient.ambientid %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    Rodar Alocação
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -251,50 +395,8 @@
     </div>
 </div>
 
-<div id="deleteModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Confirmar Exclusão</h3>
-            <button class="modal-close" onclick="closeDeleteModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="warning-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-            </div>
-            <p><strong>Tem certeza que deseja deletar o ambiente "{{ ambient.name }}"?</strong></p>
-            <p class="warning-text">Esta ação é <strong>irreversível</strong> e irá remover permanentemente:</p>
-            <ul class="warning-list">
-                <li>Todas as turmas e suas configurações</li>
-                <li>Todas as salas e tipos de sala</li>
-                <li>Todas as matérias e formações</li>
-                <li>Todos os membros e suas preferências</li>
-                <li>Todas as atribuições e alocações</li>
-            </ul>
-        </div>
-        <div class="modal-actions">
-            <button class="cancel-button" onclick="closeDeleteModal()">Cancelar</button>
-            <a href="{% url 'ambient_delete' ambient.ambientid %}" class="delete-confirm-button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                Sim, Deletar Ambiente
-            </a>
-        </div>
-    </div>
-</div>
 {% endblock content %}
 
 {% block extra_js %}
-<script src="{% static 'js/confirmation-modal.js' %}"></script>
 <script src="{% static 'js/ambient.js' %}"></script>
 {% endblock %}

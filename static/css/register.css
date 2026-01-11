@@ -114,21 +114,93 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="email"],
-input[type="date"] {
+input[type="date"],
+select {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.3s;
+    background-color: #fff;
+}
+
+select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
 input[type="text"]:focus,
 input[type="password"]:focus, 
 input[type="email"]:focus, 
-input[type="date"]:focus {
+input[type="date"]:focus,
+select:focus {
     border-color: #4361ee;
     outline: none;
+}
+
+select option {
+    padding: 8px 12px;
+    font-size: 1rem;
+    color: #333;
+    background-color: #fff;
+}
+
+select option:hover {
+    background-color: #f8f9fa;
+}
+
+select option[selected] {
+    background-color: #4361ee;
+    color: white;
+}
+
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-input-container input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: #4361ee;
+}
+
+.toggle-password:focus {
+    outline: none;
+    color: #4361ee;
+}
+
+.eye-icon, .eye-off-icon {
+    stroke: currentColor;
 }
 
 input[type="date"]::placeholder {
@@ -143,7 +215,8 @@ input[type="date"]::-moz-placeholder {
     color: #666;
 }
 
-input.success {
+input.success,
+select.success {
     border-color: #4BB543;
     background-color: rgba(75, 181, 67, 0.05);
 }
@@ -191,7 +264,8 @@ input.success {
     font-weight: 500;
 }
 
-input.error {
+input.error,
+select.error {
     border-color: #e63946;
     background-color: rgba(230, 57, 70, 0.05);
 }

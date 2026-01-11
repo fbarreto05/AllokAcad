@@ -1,15 +1,39 @@
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.querySelector('form');
     const nameInput = document.getElementById('name');
+    const ambientSelect = document.getElementById('ambientid');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const birthdateInput = document.getElementById('birthdate');
     const nameError = document.getElementById('nameError');
+    const ambientError = document.getElementById('ambientError');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
-    const birthdateError = document.getElementById('birthdateError');    function showError(element, message) {
+    const birthdateError = document.getElementById('birthdateError');
+
+    function showError(element, message) {
         element.textContent = message;
         element.style.display = 'block';
+    }
+    const togglePassword = document.querySelector('.toggle-password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
+
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.style.display = 'block';
+                eyeOffIcon.style.display = 'none';
+            } else {
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'block';
+            }
+            
+            passwordInput.focus();
+        });
     }
 
     function clearError(element) {
@@ -49,6 +73,11 @@ document.addEventListener('DOMContentLoaded', function() {
         nameInput.classList.remove('error');
     });
 
+    ambientSelect.addEventListener('change', () => {
+        clearError(ambientError);
+        ambientSelect.classList.remove('error');
+    });
+
     emailInput.addEventListener('input', () => {
         clearError(emailError);
         emailInput.classList.remove('error');
@@ -68,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         clearError(nameError);
+        clearError(ambientError);
         clearError(emailError);
         clearError(passwordError);
         clearError(birthdateError);
@@ -77,6 +107,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!nameInput.value.trim()) {
             showError(nameError, 'Por favor, insira seu nome completo');
             nameInput.classList.add('error');
+            hasError = true;
+        } else if (nameInput.value.trim().length < 5) {
+            showError(nameError, 'O nome deve ter pelo menos 5 caracteres');
+            nameInput.classList.add('error');
+            hasError = true;
+        }
+        
+        if (!ambientSelect.value || ambientSelect.value === '') {
+            showError(ambientError, 'Por favor, selecione sua instituição de ensino');
+            ambientSelect.classList.add('error');
             hasError = true;
         }
         
@@ -105,7 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
             birthdateInput.classList.add('error');
             hasError = true;
         }
-          if (hasError) return;
+        
+        if (hasError) return;
 
         const submitButton = document.querySelector('.register-button');
         const originalText = submitButton.innerHTML;
@@ -120,11 +161,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: formData
-            });            if (response.redirected || response.url.includes('/')) {
+            });
+
+            if (response.status === 400) {
+                const errorData = await response.json();
+                if (errorData.error === 'email_exists') {
+                    showError(emailError, errorData.message);
+                    emailInput.classList.add('error');
+                } else {
+                    showError(nameError, 'Erro ao criar conta. Tente novamente.');
+                }
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+                return;
+            }
+
+            if (response.redirected || response.url.includes('/?new_user=')) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
                 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = response.url || '/';
                 }, 2000);
             } else if (response.ok) {
                 showSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');

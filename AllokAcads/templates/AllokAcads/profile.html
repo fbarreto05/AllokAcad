@@ -92,14 +92,6 @@
                     </svg>
                     Editar Perfil
                 </a>
-                <br>
-                <a href="{% url 'profile_delete' %}" class="edit-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                    Apagar Perfil
-                </a>
             </div>
         </div>
 
@@ -174,6 +166,60 @@
         </div>
     </div>
 </div>
+
+<div id="deleteProfileModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirmar Encerramento de Conta</h3>
+            <button class="modal-close" onclick="closeDeleteProfileModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="warning-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <p><strong>Tem certeza que deseja encerrar sua conta "{{ user.name }}"?</strong></p>
+            <p class="warning-text">Esta ação é <strong>irreversível</strong> e irá remover permanentemente:</p>
+            <ul class="warning-list">
+                <li><span class="warning-bullet">•</span>Todos os seus dados pessoais</li>
+                <li><span class="warning-bullet">•</span>Sua participação em todos os ambientes</li>
+                <li><span class="warning-bullet">•</span>Suas preferências e configurações</li>
+                <li><span class="warning-bullet">•</span>Seu histórico de atividades</li>
+                <li><span class="warning-bullet">•</span>Todos os dados associados à sua conta</li>
+            </ul>
+        </div>
+        <div class="modal-actions">
+            <button class="cancel-button" onclick="closeDeleteProfileModal()">Cancelar</button>
+            <a href="{% url 'profile_delete' %}" class="delete-confirm-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="18" y1="8" x2="23" y2="13"></line>
+                    <line x1="23" y1="8" x2="18" y2="13"></line>
+                </svg>
+                Sim, Encerrar Conta
+            </a>
+        </div>
+    </div>
+</div>
+
+<button class="floating-delete-button" onclick="openDeleteProfileModal()" title="Encerrar Conta">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="8.5" cy="7" r="4"></circle>
+        <line x1="18" y1="8" x2="23" y2="13"></line>
+        <line x1="23" y1="8" x2="18" y2="13"></line>
+    </svg>
+    <span>Encerrar Conta</span>
+</button>
 {% endblock content %}
 
 {% block extra_js %}

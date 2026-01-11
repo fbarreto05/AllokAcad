@@ -783,4 +783,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('Sistema de configuração de ambiente inicializado com sucesso!');
+    
+    window.openDeleteModal = function() {
+        openConfirmationModal('deleteModal');
+    };
+    
+    window.closeDeleteModal = function() {
+        closeConfirmationModal('deleteModal');
+    };
+    
+    function openConfirmationModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            modal.focus();
+        }
+    }
+    
+    function closeConfirmationModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            const modalId = e.target.id;
+            closeConfirmationModal(modalId);
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const activeModals = document.querySelectorAll('.modal-overlay.active');
+            activeModals.forEach(modal => {
+                closeConfirmationModal(modal.id);
+            });
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-close') || e.target.closest('.modal-close')) {
+            const modal = e.target.closest('.modal-overlay');
+            if (modal) {
+                closeConfirmationModal(modal.id);
+            }
+        }
+    });
 });

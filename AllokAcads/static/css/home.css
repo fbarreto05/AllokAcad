@@ -144,6 +144,68 @@ body {
     .toast-message {
         font-size: 13px;
     }
+    
+    .pending-requests,
+    .no-ambients {
+        padding: 2rem 1.5rem;
+    }
+    
+    .pending-requests h3,
+    .no-ambients h3 {
+        font-size: 1.25rem;
+    }
+    
+    .pending-requests > p,
+    .no-ambients p {
+        font-size: 1rem;
+    }
+    
+    .pending-request-item {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .pending-request-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .pending-request-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .status-badge {
+        align-self: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .pending-requests,
+    .no-ambients {
+        padding: 1.5rem 1rem;
+    }
+    
+    .pending-requests h3,
+    .no-ambients h3 {
+        font-size: 1.125rem;
+    }
+    
+    .pending-requests > p,
+    .no-ambients p {
+        font-size: 0.9rem;
+    }
+    
+    .pending-request-item {
+        padding: 1rem;
+    }
+    
+    .join-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
 }
 
 .home-page .container {
@@ -245,7 +307,8 @@ body {
 .ambient-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background-color: #f8f9fa;
 }
 
 .ambient-placeholder {
@@ -279,19 +342,172 @@ body {
 
 .no-ambients {
     grid-column: 1 / -1;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 3rem 2rem;
     text-align: center;
-    padding: 4rem 2rem;
-    color: #666;
+    color: #6b7280;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f3f4f6;
 }
 
-.no-ambients svg {
-    margin-bottom: 1rem;
+.no-ambients-icon {
+    margin-bottom: 1.5rem;
     color: #4361ee;
 }
 
+.no-ambients h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
 .no-ambients p {
+    margin-bottom: 2rem;
+    font-size: 1.05rem;
+    color: #6b7280;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.no-ambients-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.pending-requests {
+    grid-column: 1 / -1;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f3f4f6;
+}
+
+.pending-requests-icon {
     margin-bottom: 1.5rem;
-    font-size: 1.1rem;
+    color: #f59e0b;
+}
+
+.pending-requests h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.pending-requests > p {
+    margin-bottom: 2rem;
+    font-size: 1.05rem;
+    color: #6b7280;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pending-requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pending-request-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fbbf24;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.pending-request-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+    border-color: #f59e0b;
+}
+
+.pending-request-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pending-request-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.pending-request-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pending-request-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #4361ee;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.pending-request-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 0.25rem;
+}
+
+.pending-request-details p {
+    font-size: 0.875rem;
+    color: #b45309;
+    margin: 0;
+}
+
+.status-badge {
+    background: #f59e0b;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pending-requests-footer {
+    border-top: 1px solid #fde68a;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.pending-requests-footer p {
+    font-size: 0.875rem;
+    color: #92400e;
+    margin-bottom: 1rem;
+}
+
+.no-ambients svg,
+.pending-requests-icon svg {
+    margin-bottom: 1rem;
 }
 
 .create-first-ambient {
@@ -389,10 +605,54 @@ body {
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.form-group input:focus {
+.form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
     border-color: #4361ee;
     outline: none;
     box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+.form-group select option {
+    padding: 8px 12px;
+    font-size: 1rem;
+    color: #333;
+    background-color: #fff;
+}
+
+.form-group select option:hover {
+    background-color: #f8f9fa;
+}
+
+.form-group select option[selected] {
+    background-color: #4361ee;
+    color: white;
+}
+
+.form-group select option[disabled] {
+    color: #999;
+}
+
+.form-group select:invalid {
+    color: #999;
 }
 
 .form-group input::placeholder {

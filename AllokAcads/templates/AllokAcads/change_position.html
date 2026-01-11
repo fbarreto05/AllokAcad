@@ -106,7 +106,7 @@
                     <select name="admtype" id="admtype" class="form-select" required>
                         <option value="" disabled selected>Selecione um cargo</option>
                         {% for admtype in admtypes %}
-                            <option value="{{ admtype.id }}" {% if admtype.id == member.admin_type.id %}disabled{% endif %}>
+                            <option value="{{ admtype.id }}" {% if admtype.id == member.admin_type.id %}disabled selected{% endif %}>
                                 {{ admtype.name }}
                                 {% if admtype.id == member.admin_type.id %}(Cargo atual){% endif %}
                             </option>

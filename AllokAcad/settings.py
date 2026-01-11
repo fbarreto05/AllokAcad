@@ -24,10 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-f*jsfs)j#d(y+@=4-w%nipy#_nikw@wgi1j+xvgey1l%vm5tal'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['3.23.126.5', '3.128.174.142', 'allokacad.xyz']
-
+ALLOWED_HOSTS = ['127.0.0.1', 'allokacad.xyz']
 
 # Application definition
 
@@ -40,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'AllokAcads',
     'dashboard',
-    'django_plotly_dash',
 ]
 
 MIDDLEWARE = [
@@ -81,7 +79,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'aa_db',
         'USER': 'postgres',
-        'PASSWORD': '07517131',
+        'PASSWORD': 'Fb07517131',
         'HOST': 'localhost',
         "PORT": "5432",
     }
@@ -127,6 +125,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+FILE_UPLOAD_PERMISSIONS = 0o664
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o775
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
