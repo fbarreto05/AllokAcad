@@ -84,7 +84,7 @@
                                     {% for day in columns_range %}
                                     <td class="schedule-selector-cell">
                                         {% for schedule in schedules %}
-                                            {% if schedule.line == day and schedule.column == period %}
+                                            {% if schedule.line == period and schedule.column == day %}
                                                 <label class="schedule-checkbox">
                                                     <input type="checkbox" name="available_schedules" value="{{ schedule.id }}" 
                                                     {% if schedule in member_schedules %} checked {% endif %}>
