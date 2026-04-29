@@ -268,8 +268,8 @@
                         {% for alocation in not_alocated %}
                         <div class="unallocated-item">
                             <div class="unallocated-header">
-                                <span class="unallocated-subject">{{ alocation.activitie.tsubject }}</span>
-                                <span class="unallocated-class">{{ alocation.activitie.tclass }}</span>
+                                <span class="unallocated-subject">{{ alocation.activitie.tsubject.name }}</span>
+                                <span class="unallocated-class">{{ alocation.activitie.tclass.name }}</span>
                             </div>
                             <div class="unallocated-details">
                                 <div class="unallocated-professor">
@@ -277,14 +277,14 @@
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                         <circle cx="12" cy="7" r="4"/>
                                     </svg>
-                                    {{ alocation.activitie.professor }}
+                                    {{ alocation.activitie.tprofessor.user.name }}
                                 </div>
                                 <div class="unallocated-classroom">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="3" y="3" width="18" height="18" rx="2"/>
                                         <path d="M3 9h18"/>
                                     </svg>
-                                    {{ alocation.activitie.tclassroom }}
+                                    {{ alocation.activitie.tclassroom.name }}
                                 </div>
                             </div>
                         </div>
