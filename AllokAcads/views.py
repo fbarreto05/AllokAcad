@@ -1,7 +1,10 @@
+import json
 from urllib import request
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os, datetime, time
+
+import requests
 from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
@@ -2499,6 +2502,7 @@ def run_atribuition(request, ambientid):
             return redirect('home')
 
         if ambient.members.filter(user = user) and member.admin_type.can_run_atribuition:
+            chatbot(ambientid)
             #Limpa as atividades para iniciar uma nova atribuição.
             ambient.activities.all().delete()
             ambient.activities.clear()
@@ -3391,3 +3395,108 @@ def run_alocation(request, ambientid):
         return redirect(f'/ambient/{ambientid}')
     else:
         return redirect('/')
+    
+#AI zone
+
+def professor_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        subject_professor, created = subject.favorite_professors.get_or_create(professor = professor)
+        subject_professor.professor_weight = weight
+        subject_professor.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        class_professor, created = tclass.favorite_professors.get_or_create(professor = professor)
+        class_professor.professor_weight = weight
+        class_professor.save()
+def classroom_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        subject_classroom, created = subject.favorite_classrooms.get_or_create(classroom = classroom)
+        subject_classroom.classroom_weight = weight
+        subject_classroom.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        class_classroom, created = tclass.favorite_classrooms.get_or_create(classroom = classroom)
+        class_classroom.classroom_weight = weight
+        class_classroom.save()
+def schedule_preference_adjustment(ambientid, origin_type, origin, preference, true_false):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
+        if true_false:
+            tclass.prefered_schedules.add(schedule)
+        else:
+            tclass.prefered_schedules.remove(schedule)
+    if origin_type == 'Professor':
+        professor = ambient.members.get(user__name = origin, is_professor = True)
+        schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
+        if true_false:
+            professor.prefered_schedules.add(schedule)
+        else:
+            professor.prefered_schedules.remove(schedule)
+
+
+def chatbot(ambientid):
+    functions = {
+        "schedule_preference_adjustment": schedule_preference_adjustment,
+        "professor_preference_adjustment": professor_preference_adjustment,
+        "classroom_preference_adjustment": classroom_preference_adjustment,
+    }
+
+    user_input = ""
+
+    prompt = f"""
+    Você é um assistente Python. Analise o comando do usuário e responda em JSON com o nome da função e os argumentos.
+    Como argumentos, você receberá o tipo de origem da preferência (professor, matéria ou turma), o nome da origem, 
+    o nome da preferência (horário, professor ou sala) e o peso da preferência (número entre 0 e 100) ou se a 
+    preferência é verdadeira ou falsa, em casos de preferência horária. Caso o usuário não forneça algum dado, você
+    é livre para preencher o formato de resposta da maneira que achar melhor, desde que seja possível entender qual é a preferência, a origem e o peso ou se é verdadeira ou falsa, no caso de preferência horária.
+    Padrões e exemplos de resposta: 
+    1) Para ajustar uma preferência de horário: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', [2,3], True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para o horário 3 do dia 4.
+    2) Para ajustar uma preferência de matéria: {{"function": "professor_preference_adjustment", "args": ['Matéria', 'Matemática', 'Carlos Silva', 100]}} - Define o peso da preferência da matéria de Matemática pelo professor Carlos Silva como 100, o que pode influenciar na alocação de atividades desta matéria para ele.
+    3) Para ajustar uma preferência de sala: {{"function": "classroom_preference_adjustment", "args": ['Turma', 'Ciência da Computação I', 'Laboratório de Informática I', 100]}} - Define o peso da preferência da turma de Ciência da Computação I pelo Laboratório de Informática I como 100, o que pode influenciar na alocação de atividades desta turma para esta sala.
+    Caso o usuário diga para não colocar uma preferência, o peso deve ser definido como 0, ou, no caso de preferência horária, a preferência deve ser definida como falsa.
+    Caso o usuário diga que uma preferência DEVE ser atendida, o peso deve ser definido como 100, ou, no caso de preferência horária, a preferência deve ser definida como verdadeira.
+    Caso o usuário não especifique uma forte necessidade, o peso pode ser definido como 50
+    
+    Para definir horários, o primeiro número sempre será o horário e o segundo sempre será o dia, e a contagem inicia em 0, então [0,0] representa o horário 1 do dia 1, [1,0] representa o horário 2 do dia 1, [0,1] representa o horário 1 do dia 2, e assim por diante.
+
+    Comando: {user_input}
+    """
+    response = requests.post(
+    url="https://openrouter.ai/api/v1/chat/completions",
+    headers={
+        "Authorization": "Bearer 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",
+        "Content-Type": "application/json",
+    },
+    json={
+        "model": "openrouter/owl-alpha",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+    )
+
+    result = response.json()
+    try:
+        result = result["choices"][0]["message"]["content"]
+        result = result.replace("```json", "").replace("```", "").strip()
+        result = result.replace("'", '"').replace("True", "true").replace("False", "false")
+        print(result)
+        result = json.loads(result)
+        func = functions.get(result["function"])
+        if func:
+            output = func(ambientid, *result["args"])
+            print("Resultado:", output)
+        else:
+            print("Função não encontrada:", result["function"])
+    except Exception as e:
+        print("Erro ao processar resposta da LLM:", e)
