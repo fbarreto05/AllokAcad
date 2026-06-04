@@ -18,6 +18,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv
 
 # Migrações do Django
 */migrations/*
@@ -49,3 +50,7 @@ dist/
 *.tmp
 *.swp
 *.swo
+
+# Ignorar dependencias do Node/React
+**/node_modules/
+chatbot-front/dist/
