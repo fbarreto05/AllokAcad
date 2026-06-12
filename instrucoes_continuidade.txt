@@ -1,0 +1,67 @@
+================================================================================
+ INSTRUÇÕES DE CONTINUIDADE: INTEGRAÇÃO DO RKO SOLVER NO ALLOKACAD
+================================================================================
+
+Este arquivo serve como guia para você continuar o trabalho no seu outro notebook.
+Todas as alterações foram feitas na branch 'felipe/backend_RKO_LLM'.
+
+--------------------------------------------------------------------------------
+1. O QUE FOI FEITO ATÉ AGORA
+--------------------------------------------------------------------------------
+* Criado o arquivo 'AllokAcads/rko_environments.py':
+  - Contém a classe 'RKOAttributionEnvironment' para otimizar Professores e Salas.
+  - Contém a classe 'RKOAllocationEnvironment' para otimizar Dias e Períodos.
+  - Adiciona dinamicamente o path do repositório RKO_Python ao sys.path para import.
+
+* Modificado o arquivo 'AllokAcads/views.py':
+  - Substituiu toda a lógica antiga de atribuição gulosa e o backtracking de Fernando
+    pela execução dos resolvedores RKO de Atribuição (5s) e Alocação (5s).
+  - Trata colisões residuais enviando atividades com conflitos insolúveis para
+    a lista de não alocados (not_alocated) na interface.
+
+* Validação de Sintaxe:
+  - Ambos os arquivos foram compilados e estão 100% livres de erros de sintaxe.
+
+--------------------------------------------------------------------------------
+2. PASSO A PASSO PARA SALVAR E SUBIR (Fazer AGORA neste computador)
+--------------------------------------------------------------------------------
+Abra o seu terminal na pasta do AllokAcad e execute os comandos abaixo para salvar
+as alterações e enviá-las para o GitHub:
+
+# 1. Veja os arquivos que alteramos
+git status
+
+# 2. Adicione todos os arquivos modificados e criados para o commit
+git add .
+
+# 3. Crie o commit com uma mensagem explicativa
+git commit -m "feat: integra resolvedor RKO em duas etapas (atribuição e alocação) nas views"
+
+# 4. Envie a branch para o seu GitHub remoto
+git push -u origin felipe/backend_RKO_LLM
+
+--------------------------------------------------------------------------------
+3. PASSO A PASSO PARA CONTINUAR (No seu outro notebook)
+--------------------------------------------------------------------------------
+Quando ligar o outro notebook, siga estas instruções:
+
+# 1. Certifique-se de que os dois repositórios estão na mesma pasta pai:
+#    - C:\Users\felip\Documents\GitHub\AllokAcad
+#    - C:\Users\felip\Documents\GitHub\RKO_Python
+#    (Se o caminho do RKO_Python no outro note for diferente, ajuste a variável
+#     RKO_LIB_PATH no topo de 'AllokAcads/rko_environments.py').
+
+# 2. Abra o terminal na pasta do AllokAcad e baixe a branch:
+git fetch origin
+git checkout felipe/backend_RKO_LLM
+
+# 3. Ative o ambiente virtual (venv) da sua aplicação Django.
+
+# 4. Execute a checagem do Django para garantir que tudo inicializa sem problemas:
+python manage.py check
+
+# 5. Inicie o servidor local:
+python manage.py runserver
+
+# 6. Acesse o sistema e execute os botões de Atribuição e Alocação para testar
+#    a execução do RKO e ver se a grade é gerada perfeitamente na interface!

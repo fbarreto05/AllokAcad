@@ -2499,20 +2499,19 @@ def run_atribuition(request, ambientid):
             return redirect('home')
 
         if ambient.members.filter(user = user) and member.admin_type.can_run_atribuition:
-            #Limpa as atividades para iniciar uma nova atribuição.
+            # Limpa as atividades para iniciar uma nova atribuição.
             ambient.activities.all().delete()
             ambient.activities.clear()
             ambient.save()
-            rooms = ambient.classrooms.all()
+            rooms = list(ambient.classrooms.all())
             for room in rooms:
                 room.num_uses = 0
                 room.save()
-            rooms = ambient.classrooms.all()
-            professors = ambient.members.all().filter(is_professor = True)
+            professors = list(ambient.members.all().filter(is_professor = True))
             for professor in professors:
                 professor.num_uses = 0
                 professor.save()
-            #Recria as atividades.
+            # Recria as atividades.
             classes = ambient.classes.all()
             for aclass in classes:
                 necessary_subjects = aclass.necessary_subjects.all()
@@ -2520,749 +2519,35 @@ def run_atribuition(request, ambientid):
                     activitie = Activitie(tclass = aclass, tsubject = subject.subject, activities_qtd = subject.periods)
                     activitie.save()
                     ambient.activities.add(activitie)
-                    ambient.save()
+            ambient.save()
 
-            #Inicia a atribuição de salas. Para cada atividade, são listadas as salas ideais para a turma e para a disciplina, essas listas são iteradas, analisando o peso 
-            #de cada preferência a cada iteração, e a preferência que tiver o maior peso é selecionada.
-            activities = ambient.activities.all()
-            for activitie in activities:
-                class_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight", "classroom__num_uses")
-                subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight", "classroom__num_uses")
-                highest_weight = 0
-                chosen_room = None
-                chosen_conflitant_classroom = None
-
-                for room in class_rooms:
-                    class_classroom_weight = room.classroom_weight
-                    subject_classroom_weight = subjects_rooms.get(classroom = room.classroom).classroom_weight if subjects_rooms.filter(classroom = room.classroom).exists() else 1
-                    highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
-                    highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-
-                    #Verifica se existem conflitos de horário
-                    timetable = list(ambient.published_timetable.table.all())
-                    activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
-                    activities_with_classroom.append(activitie)
-                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
-
-                    weight = subject_classroom_weight + class_classroom_weight
-
-                    #Se atender aos requisitos, define como a atividade escolhida, assim como seu peso e uma possível atividade conflitante para o caso de precisar ser trocada.
-                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                        highest_weight = weight
-                        chosen_room = room.classroom
-                        chosen_conflitant_classroom = conflitant_classroom
-
-                for room in subjects_rooms:
-                    #Verifica se existem conflitos de horário
-                    subject_classroom_weight = room.classroom_weight
-                    highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-                    highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
+            # Executa a otimização com RKO para Atribuição
+            activities = list(ambient.activities.all())
+            if activities:
+                from AllokAcads.rko_environments import RKOAttributionEnvironment, RKO
+                env = RKOAttributionEnvironment(ambient, activities)
+                solver = RKO(env=env, logger='none')
                 
-                    timetable = list(ambient.published_timetable.table.all())
-                    activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
-                    activities_with_classroom.append(activitie)
-                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
-
-                    weight = subject_classroom_weight
-
-                    #Se atender aos requisitos, define como a atividade escolhida, assim como seu peso e uma possível atividade conflitante para o caso de precisar ser trocada.
-                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                        highest_weight = weight
-                        chosen_room = room.classroom
-                        chosen_conflitant_classroom = conflitant_classroom
-                
-                #Após as iterações, atribui a sala escolhida definitivamente, caso os requisitos sejam atendidos. Se houver uma atividade conflitante, ela também é removida agora.
-                if(highest_weight > 0 and chosen_room != None):
-                    activitie.tclassroom = chosen_room
-                    activitie.classroom_weight = highest_weight
-                    activitie.save()
-                    chosen_room.num_uses += activitie.activities_qtd
-                    chosen_room.save()
-
-                    if isinstance(chosen_conflitant_classroom, Activitie):
-                        tclassroom = chosen_conflitant_classroom.tclassroom
-                        tclassroom.num_uses -= chosen_conflitant_classroom.activities_qtd
-                        tclassroom.save()
-                        chosen_conflitant_classroom.tclassroom = None   
-                        chosen_conflitant_classroom.classroom_weight = 0
-                        chosen_conflitant_classroom.save()
-
-            #Aqui as salas passam por um reajuste para garantir que salas que tenham um uso muito acima da média liberem algumas atividades para outras. Caso haja uma troca, o processo é repetido, com limite de 20 repetições.
-            swap = True
-            it = 0
-            #Este while se repe no máximo dez vezes, enquanto houverem trocas de atividade que deixem uma atividade sem sala, dando a chance de fazer uma nova atribuição para esta atividade
-            while swap and it < 10:
-                swap = False
-                it += 1
-                #Calcula a ocupação média
-                average_occupation = 0
-                for room in rooms:
-                    average_occupation += room.num_uses   
-                if(len(rooms)):
-                    average_occupation = average_occupation/len(rooms)
-
-                for activitie in activities:
-                    if activitie.tclassroom: 
-                        current_subject_classroom_weight = subjects_rooms.get(classroom = activitie.tclassroom).classroom_weight if subjects_rooms.filter(classroom = activitie.tclassroom).exists() else 1
-                        current_class_classroom_weight = class_rooms.get(classroom = activitie.tclassroom).classroom_weight if class_rooms.filter(classroom = activitie.tclassroom).exists() else 1
-                        #Itera para cada atividade, se sua sala tiver um uso acima da média, a atribuição é refeita, removendo a sala atribuída da lista e considerando apenas as outras atividades. 
-                        #Repetindo a mesma lógica de comparação de pesos e escolha de sala.
-                        class_rooms = activitie.tclass.ideal_classrooms.all().order_by("-classroom_weight", "classroom__num_uses")
-                        subjects_rooms = activitie.tsubject.ideal_classrooms.all().order_by("-classroom_weight", "classroom__num_uses")
-                        second_class_rooms = class_rooms.exclude(classroom=activitie.tclassroom)
-                        second_subject_rooms = subjects_rooms.exclude(classroom=activitie.tclassroom)
-
-                        if activitie.tclassroom.num_uses > average_occupation:
-                            highest_weight = 0
-                            chosen_room = None
-                            chosen_conflitant_classroom = None
-
-                            for room in second_class_rooms:
-                                class_classroom_weight = room.classroom_weight
-                                subject_classroom_weight = second_subject_rooms.get(classroom = room.classroom).classroom_weight if second_subject_rooms.filter(classroom = room.classroom).exists() else 1
-                                highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
-                                highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-
-                                timetable = list(ambient.published_timetable.table.all())
-                                activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
-                                activities_with_classroom.append(activitie)
-                                conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
-
-                                weight = subject_classroom_weight + class_classroom_weight
-
-                                #Aqui, verifica também se a diferença de uso entre a sala atualmente atribuída e a sala candidata é suficiente para justificar a troca, para evitar que haja trocas que não resultem em uma melhora significativa na ocupação das salas.
-                                if (((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) and (current_class_classroom_weight < 100 and current_subject_classroom_weight < 100)) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses > activitie.activities_qtd and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                                    highest_weight = weight
-                                    chosen_room = room.classroom
-                                    chosen_conflitant_classroom = conflitant_classroom
-
-                            for room in second_subject_rooms:
-                                subject_classroom_weight = room.classroom_weight
-                                highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
-                                highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-
-                                timetable = list(ambient.published_timetable.table.all())
-                                activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
-                                activities_with_classroom.append(activitie)
-                                conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
-
-                                weight = subject_classroom_weight
-
-                                #Aqui, verifica também se a diferença de uso entre a sala atualmente atribuída e a sala candidata é suficiente para justificar a troca, para evitar que haja trocas que não resultem em uma melhora significativa na ocupação das salas.
-                                if (((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) and (current_class_classroom_weight < 100 and current_subject_classroom_weight < 100)) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100))and weight > highest_weight and activitie.tclassroom.num_uses - room.classroom.num_uses > activitie.activities_qtd and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom and not isinstance(chosen_conflitant_classroom, Activitie):
-                                    highest_weight = weight
-                                    chosen_room = room.classroom
-                                    chosen_conflitant_classroom = conflitant_classroom
-
-                            if(highest_weight > 0 and chosen_room != None):
-                                classroom_save = activitie.tclassroom
-                                classroom_save.num_uses -= activitie.activities_qtd
-                                classroom_save.save()
-                                swap = True
-
-                                activitie.tclassroom = chosen_room
-                                activitie.classroom_weight = highest_weight
-                                chosen_room.num_uses += activitie.activities_qtd
-                                chosen_room.save()
-                                activitie.save()
-
-                            #Caso não tenha escolhido uma boa sala e a preferência pela sala atual seja < 100, vai procurar uma nova sala semelhante, que tenha o mesmo tipo que a atual.
-                            #Repetindo a mesma lógica de comparação de pesos e escolha de sala de sempre.
-                            else: 
-                                chosen_conflitant_classroom = None
-                                chosen_room = None
-                                similar_rooms = Classroom.objects.filter(classroom_type = activitie.tclassroom.classroom_type).order_by('num_uses')
-                                weight = 0
-                                highest_weight = 0
-                                
-                                
-                                for room in similar_rooms:
-                                    #Puxa os pesos de preferência pela sala atual, para comparar e escolher o maior peso
-                                    subject_classroom_weight = subjects_rooms.get(classroom = room).classroom_weight if subjects_rooms.filter(classroom = room).exists() else 1
-                                    class_classroom_weight = class_rooms.get(classroom = room).classroom_weight if class_rooms.filter(classroom = room).exists() else 1
-                                    highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
-                                    highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-
-                                    weight = subject_classroom_weight + class_classroom_weight
-
-                                    #Verifica se há conflitos de horário
-                                    timetable = list(ambient.published_timetable.table.all())
-                                    activities_with_classroom = list(ambient.activities.filter(tclassroom = room))
-                                    activities_with_classroom.append(activitie)
-                                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room)
-                                    #Escolhe a sala se as condições forem atendidas
-                                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and activitie.tclassroom.num_uses - room.num_uses > activitie.activities_qtd and room.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom and not isinstance(chosen_conflitant_classroom, Activitie):
-                                        highest_weight = weight
-                                        chosen_room = room
-                                        chosen_conflitant_classroom = conflitant_classroom
-
-                                #Consolida a atribuição
-                                if(highest_weight > 0 and chosen_room != None):
-                                    classroom_save = activitie.tclassroom
-                                    classroom_save.num_uses -= activitie.activities_qtd
-                                    classroom_save.save()
-                                    swap = True
-
-                                    activitie.tclassroom = chosen_room
-                                    activitie.classroom_weight = highest_weight
-                                    chosen_room.num_uses += activitie.activities_qtd
-                                    chosen_room.save()
-                                    activitie.save()
-
-            #Ao fim do ajuste, verifica se alguma atividade ficou sem uma sala, em caso positivo, lhe atribui uma aleatória, priorizando salas semelhantes e aquelas que tiverem menos ocupação
-            #Repetindo a mesma lógica de comparação de pesos e escolha de sala de sempre.
-            not_atribuited_activities = ambient.activities.filter(tclassroom = None)
-            for activitie in not_atribuited_activities:
-                # Redefine as preferências de salas para a atividade atual
-                class_rooms = activitie.tclass.ideal_classrooms.all()
-                subjects_rooms = activitie.tsubject.ideal_classrooms.all()
-                
-                # Conta a frequência de cada tipo de sala nas preferências
-                classroom_types_count = {}
-                for pref in class_rooms:
-                    room_type = pref.classroom.classroom_type
-                    if room_type:
-                        classroom_types_count[room_type] = classroom_types_count.get(room_type, 0) + 1
-                for pref in subjects_rooms:
-                    room_type = pref.classroom.classroom_type
-                    if room_type:
-                        classroom_types_count[room_type] = classroom_types_count.get(room_type, 0) + 1
-                
-                # Identifica o tipo de sala mais preferido
-                most_preferred_type = max(classroom_types_count, key=classroom_types_count.get) if classroom_types_count else None
-                
-                # Ordena as salas priorizando o tipo mais preferido e depois o número de usos
-                random_rooms = sorted(
-                    ambient.classrooms.all(),
-                    key=lambda room: (
-                        0 if (most_preferred_type and room.classroom_type == most_preferred_type) else 1,
-                        room.num_uses
-                    )
+                # Executa por 5 segundos
+                final_cost, best_solution, _ = solver.solve(
+                    time_total=5,
+                    runs=1,
+                    brkga=2,
+                    vns=2
                 )
                 
-                weight = 0
-                highest_weight = 0
-                chosen_room = None
-                chosen_conflitant_classroom = None
-
-                for random_room in random_rooms:
-                    #Puxa os pesos de preferência pela sala atual, para comparar e escolher o maior peso
-                    subject_classroom_weight = subjects_rooms.get(classroom = random_room).classroom_weight if subjects_rooms.filter(classroom = random_room).exists() else 1
-                    class_classroom_weight = class_rooms.get(classroom = random_room).classroom_weight if class_rooms.filter(classroom = random_room).exists() else 1
-                    highest_subject_classroom_weight = subjects_rooms.get(classroom = chosen_room).classroom_weight if subjects_rooms.filter(classroom = chosen_room).exists() else 1
-                    highest_class_classroom_weight = class_rooms.get(classroom = chosen_room).classroom_weight if class_rooms.filter(classroom = chosen_room).exists() else 1
-                    weight = subject_classroom_weight + class_classroom_weight
-
-                    timetable = list(ambient.published_timetable.table.all())
-                    activities_with_classroom = list(ambient.activities.filter(tclassroom = random_room))
-                    activities_with_classroom.append(activitie)
-                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, random_room)
-
-                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and random_room.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
-                        highest_weight = weight
-                        chosen_room = random_room
-                        chosen_conflitant_classroom = conflitant_classroom
-                        
-                if(highest_weight > 0 and chosen_room != None):
-                    activitie.tclassroom = chosen_room
-                    activitie.classroom_weight = 0
-                    activitie.save()
-                    chosen_room.num_uses += activitie.activities_qtd
-                    chosen_room.save()
+                # Aplica e salva as melhores atribuições encontradas
+                best_activities = env.decoder(best_solution)
+                for act in best_activities:
+                    act.save()
                     
-                    if isinstance(chosen_conflitant_classroom, Activitie):
-                        tclassroom = chosen_conflitant_classroom.tclassroom
-                        tclassroom.num_uses -= chosen_conflitant_classroom.activities_qtd
-                        tclassroom.save()
-                        chosen_conflitant_classroom.tclassroom = None   
-                        chosen_conflitant_classroom.classroom_weight = 0
-                        chosen_conflitant_classroom.save() 
-
-            #inicio da atribuição de professores
-            activities = ambient.activities.all()
-            count = 0
-            repeat = True
-            #Este while se repe no máximo dez vezes, enquanto houverem trocas de atividade que deixem uma atividade sem professor, dando a chance de fazer uma nova atribuição para esta atividade
-            while count < 10 and repeat == True:
-                count += 1
-                repeat = False
-                for activitie in activities:
-                    #Começa selecionando as preferências da turma e da disciplina por professores, e iniciando as varíaveis de peso e professor escolhido para fazer as comparações.
-                    #Além de uma variável de controle que indica se houve uma troca de professor, para garantir que o professor trocado seja desalocado dessa atividade posteriormente.
-                    class_professors = None
-                    subjects_professors = None
-                    if activitie.tclass.favorite_professors:
-                        class_professors = activitie.tclass.favorite_professors.all().order_by("-professor_weight", "professor__num_uses")
-                    if activitie.tsubject.favorite_professors:
-                        subjects_professors = activitie.tsubject.favorite_professors.all().order_by("-professor_weight", "professor__num_uses")
-                    highest_weight = 0
-                    chosen_professor = None  
-                    chosen_conflitant_professor = None              
-                    swap = 0
-                    swapAct = None
-                    
-                    #Itera sobre as preferências de turma por cada professor. Primeiro, coleta seus pesos para fins de comparação, depois, verifica se ele já ultrapassou seu limite de aulas.
-                    #Caso tenha ultrapassado, verifica se alguma das atividades já atribuídas tem peso menor ou igual ao peso da atividade atual (caso seja igual, o desempate é dado pelo peso 
-                    #Da preferência do professor pela matéria), para tentar uma troca, o que altera as variáveis De controle fixed e fixed_activitie, para garantir que haja no máximo uma troca 
-                    #por iteração, e para indicar qual atividade seria trocada.
-                    for professor in class_professors:
-                        subject_professor_weight = subjects_professors.get(professor = professor.professor).professor_weight if subjects_professors.filter(professor = professor.professor).exists() else 1
-                        class_professor_weight = class_professors.get(professor = professor.professor).professor_weight if class_professors.filter(professor = professor.professor).exists() else 1
-                        highest_subject_professor_weight = subjects_professors.get(professor = chosen_professor).professor_weight if subjects_professors.filter(professor = chosen_professor).exists() else 1
-                        highest_class_professor_weight = class_professors.get(professor = chosen_professor).professor_weight if class_professors.filter(professor = chosen_professor).exists() else 11
-
-                        fixed = 0
-                        fixed_activitie = None
-                        weight = class_professor_weight + subject_professor_weight
-                        
-                        current_activities = Activitie.objects.filter(tprofessor = professor.professor).order_by("professor_weight")
-
-                        if current_activities and fixed == 0 and professor.professor.num_uses + activitie.activities_qtd > ambient.max_actv_in_cicle:
-                            for fix_activitie in current_activities:
-                                fixed_subject_professor_weight = fix_activitie.tsubject.favorite_professors.get(professor = fix_activitie.tprofessor).professor_weight if fix_activitie.tsubject.favorite_professors.filter(professor = fix_activitie.tprofessor).exists() else 1
-                                fixed_class_professor_weight = fix_activitie.tclass.favorite_professors.get(professor = fix_activitie.tprofessor).professor_weight if fix_activitie.tclass.favorite_professors.filter(professor = fix_activitie.tprofessor).exists() else 1
-
-                                if (professor.professor.num_uses - fix_activitie.activities_qtd + activitie.activities_qtd) <= ambient.max_actv_in_cicle:
-                                    if (fix_activitie.professor_weight < weight and ((fixed_subject_professor_weight < 100 and fixed_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                        fixed = 1
-                                        fixed_activitie = fix_activitie
-                                        break
-                                    elif (fix_activitie.professor_weight == weight and ((fixed_subject_professor_weight < 100 and fixed_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                        try:
-                                            preference1 = professor.professor.prefered_subjects.get(subject = activitie.tsubject).subject_weight
-                                        except Subject_Preference.DoesNotExist:
-                                            preference1 = 0
-                                        try:
-                                            preference2 = professor.professor.prefered_subjects.get(subject = fix_activitie.tsubject).subject_weight
-                                        except Subject_Preference.DoesNotExist:
-                                            preference2 = 0
-
-                                        if preference1 > preference2:
-                                            fixed = 1
-                                            fixed_activitie = fix_activitie
-                                        break
-                                    else:
-                                        break
-                        
-                        #Agora, o algoritmo inicia a etapa de comparação dos pesos para escolher o professor, considerando dois casos diferentes
-                        #fixed == 0, o que significa que não houve uma troca, logo, a variável de controle swap permanece 0 e swap_activitie None, para garantir que nenhuma troca será feita na atribuição definitiva
-                        #fixed == 1, houve uma troca, então, além de pré-atribuir o professor, as variáveis de controle são alteradas para garantir que a atividade seja trocada a atribuição definitiva.
-                        #Em cada uma delas, o processo é basicamente o mesmo, se o peso atual for maior que o maior peso, o professor é pré-selecionado como escolhido, se for igual, os critérios de desempate são aplicados.
-                        #A única diferença é o estado das variáveis de controle após a escolha.
-                        if fixed == 0 and ((professor.professor.num_uses + activitie.activities_qtd <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100 or subject_professor_weight == 100)):
-                            timetable = list(ambient.published_timetable.table.all())
-                            activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
-                            activities_with_professor.append(activitie)
-
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
-
-                            if conflitant_schedules:
-                                if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    if subjects_professors.filter(professor = professor.professor):
-                                        subject_professor_weight = subjects_professors.get(professor = professor.professor)
-                                    if(professor.professor_weight != 0 and subject_professor_weight != 0):
-                                        chosen_professor = professor.professor
-                                        highest_weight = weight
-                                        swap = 0
-                                        swapAct = None
-                                        chosen_conflitant_professor = conflitant_schedules
-                                elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
-                                    if tchosen_professor == professor.professor:
-                                        swap = 0
-                                        swapAct = None
-                                        chosen_professor = professor.professor
-                                        highest_weight = weight
-                                        chosen_conflitant_professor = conflitant_schedules
-                        elif fixed == 1:
-                            timetable = list(ambient.published_timetable.table.all())
-                            activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
-                            activities_with_professor.append(activitie)
-
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
-                            
-                            if conflitant_schedules:
-                                if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    if(professor.professor_weight != 0 and subject_professor_weight != 0):
-                                        highest_weight = weight
-                                        chosen_professor = professor.professor
-                                        swap = 1
-                                        swapAct = fixed_activitie
-                                        chosen_conflitant_professor = conflitant_schedules
-                                elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
-                                    if tchosen_professor == professor.professor:
-                                        swap = 1
-                                        swapAct = fixed_activitie
-                                        chosen_professor = professor.professor
-                                        highest_weight = weight
-                                        chosen_conflitant_professor = conflitant_schedules
-                            fixed = 0
-
-                    #Agora, o processo é repetido, mas levando em conta apenas as preferências da matéria. Isso é importante para os casos em que não há preferência por parte da disciplina,
-                    #Mas há por parte da materia.
-                    for professor in subjects_professors:
-                        subject_professor_weight = subjects_professors.get(professor = professor.professor).professor_weight if subjects_professors.filter(professor = professor.professor).exists() else 1
-                        class_professor_weight = class_professors.get(professor = professor.professor).professor_weight if class_professors.filter(professor = professor.professor).exists() else 1
-                        highest_subject_professor_weight = subjects_professors.get(professor = chosen_professor).professor_weight if subjects_professors.filter(professor = chosen_professor).exists() else 1
-                        highest_class_professor_weight = class_professors.get(professor = chosen_professor).professor_weight if class_professors.filter(professor = chosen_professor).exists() else 1
-                        
-                        fixed = 0
-                        weight = subject_professor_weight
-                        current_activities = Activitie.objects.filter(tprofessor = professor.professor).order_by("-professor_weight")
-                        if current_activities and fixed == 0:
-                            for fix_activitie in current_activities:
-                                if (professor.professor.num_uses - fix_activitie.activities_qtd + activitie.activities_qtd) <= ambient.max_actv_in_cicle and professor.professor.num_uses + activitie.activities_qtd > ambient.max_actv_in_cicle:    
-                                    
-                                    if fix_activitie.professor_weight < weight:
-                                        fixed = 1
-                                    elif fix_activitie.professor_weight == weight:
-                                        try:
-                                            preference1 = professor.professor.prefered_subjects.get(subject = activitie.tsubject).subject_weight
-                                        except Subject_Preference.DoesNotExist:
-                                            preference1 = 0
-                                        try:
-                                            preference2 = professor.professor.prefered_subjects.get(subject = fix_activitie.tsubject).subject_weight
-                                        except Subject_Preference.DoesNotExist:
-                                            preference2 = 0
-                                        if preference1 > preference2:
-                                            fixed = 1
-
-                        if fixed == 0 and (professor.professor.num_uses + activitie.activities_qtd <= ambient.max_actv_in_cicle) or (professor.professor_weight == 100):
-                            timetable = list(ambient.published_timetable.table.all())
-                            activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
-                            activities_with_professor.append(activitie)
-
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor)
-                            if conflitant_schedules:
-                                if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    highest_weight = weight
-                                    chosen_professor = professor.professor
-                                    swap = 0
-                                    swapAct = None
-                                    chosen_conflitant_professor = conflitant_schedules
-                                elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
-                                    if tchosen_professor == professor.professor:
-                                        swap = 0
-                                        swapAct = None
-                                        chosen_professor = professor.professor
-                                        highest_weight = weight
-                                        chosen_conflitant_professor = conflitant_schedules
-                        elif fixed == 1:
-                            timetable = list(ambient.published_timetable.table.all())
-                            activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
-                            activities_with_professor.append(activitie)
-
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
-
-                            if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
-                                if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    if(professor.professor_weight != 0):
-                                        highest_weight = weight
-                                        chosen_professor = professor.professor
-                                        swap = 1
-                                        swapAct = fixed_activitie
-                                        chosen_conflitant_professor = conflitant_schedules
-                                elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
-                                    if tchosen_professor == professor.professor:
-                                        swap = 1
-                                        swapAct = fixed_activitie
-                                        chosen_professor = professor.professor
-                                        highest_weight = weight
-                                        chosen_conflitant_professor = conflitant_schedules
-                            fixed = 0
-                    
-                    #Aqui é feita a atribuição definitiva do professor escolhido, verificando se há conflitos
-                    if(highest_weight > 0 and chosen_professor != None):
-                        activitie.tprofessor = chosen_professor
-                        activitie.professor_weight = highest_weight
-                        activitie.save()
-                        chosen_professor.num_uses += activitie.activities_qtd
-                        if swap:
-                            swapAct.tprofessor = None
-                            swapAct.professor_weight = 0
-                            swapAct.save()
-                            swapAct.tprofessor.num_uses -= swapAct.activities_qtd
-                            repeat = True
-                        if isinstance(chosen_conflitant_professor, Activitie):
-                            tprofessor = chosen_conflitant_professor.tprofessor
-                            tprofessor.num_uses -= chosen_conflitant_professor.activities_qtd
-                            tprofessor.save()
-                            chosen_conflitant_professor.tprofessor = None   
-                            chosen_conflitant_professor.professor_weight = 0
-                            chosen_conflitant_professor.save()
-                            repeat = True
-
-            
-            #Agora que foi atribuido com base nas preferências da classe e da matéria, vai começar a atribuição com base nas preferências de matéria do professor 
-            #O algoritmo seleciona por materia, depois filtra os professores que têm preferência por ela, ordenando por peso da preferência e número de usos do professor.
-            subjects = ambient.subjects.all()
-            count = 0
-            repeat = True
-            #Este while se repe no máximo dez vezes, enquanto houverem trocas de atividade que deixem uma atividade sem professor, dando a chance de fazer uma nova atribuição para esta atividade
-            while count < 10 and repeat == True:
-                count += 1
-                repeat = False
-                for subject in subjects:
-                    relevant_professors = ambient.members.all().filter(is_professor = True, prefered_subjects__subject = subject).order_by("-prefered_subjects__subject_weight", "num_uses")
-                    subject_preference = 1
-                    selected = 1
-                    activities_with_subject = ambient.activities.all().filter(tsubject = subject, tprofessor = None)
-
-                    #O algoritmo se repete enquando houverem matérias sem professores, professores que querem essa matéria (os professores são excluídos da lista quando não 
-                    #puderem mais ser utilizados) e ao menos um professor for selecionado para a tentativa de utilização.
-                    while(ambient.activities.all().filter(tsubject = subject, tprofessor = None) and relevant_professors and selected != 0):
-                        highest_weight = 0
-                        chosen_professor = None
-                        chosen_conflitant_professor = None
-                        #O algoritmo itera sobre os professores relevantes para a matéria, comparando pelo peso da preferência do professor pela matéria e aplicando os 
-                        # critérios de desempate se necessário, selecionando um professor para tentar atribuir.
-                        for professor in relevant_professors:
-                            professor_subject = professor.prefered_subjects.get(subject = subject)
-                            weight = professor_subject.subject_weight
-
-                            
-                            if professor_subject.subject_weight > highest_weight:
-                                if(subject.favorite_professors.all().filter(professor = professor)):
-                                    subject_preference = subject.favorite_professors.get(professor = professor).professor_weight
-                                if subject_preference != 0:
-                                    chosen_professor = professor
-                                    highest_weight = professor_subject.subject_weight
-                            elif professor_subject.subject_weight == highest_weight:
-                                tchosen_professor = tiebreaker(professor, chosen_professor, activitie)[0]
-                                if tchosen_professor == professor:
-                                    chosen_professor = professor
-                                    highest_weight = professor_subject.subject_weight
-
-                        #Se houver um professor escolhido, o algoritmo organiza as atividades disponíveis ordenando com base na quantidade de horários preferidos coincidentes
-                        #Com o professor. Para cada atividade, verifica se é possível atribuir dado o número de usos do professor, se for possível, ele fará a verificação de sempre
-                        #e atribuirá a atividade ao professor, ou, caso haja um professor já atribuído, fará a comparação de pesos e critérios de desempate para decidir se troca ou 
-                        #não o professor da atividade. Caso o professor ultrapasse o número de usos com a atribuição da atividade, são analisadas todas as suas atividades atuais. Caso 
-                        #uma delas permita a atribuição da nova atividade se tiver o número de usos subtraído e tenha peso menor que a preferência do professor pela matéria, as verificações 
-                        #são realizadas, e a nova atividade pode ser atribuída ao professor. A atividade anteriormente atribuída a ele, por sua vez, passará a ser tratada como uma 
-                        #atividade sem professor.
-                        if chosen_professor:
-                            activities_with_subject = sorted(activities_with_subject, key=lambda subject_activitie: (sum(1 for schedule in subject_activitie.tclass.prefered_schedules.all() if chosen_professor.prefered_schedules.filter(id=schedule.id))), reverse=True)
-                            current_activities = Activitie.objects.filter(tprofessor = chosen_professor).order_by("professor_weight")
-                            professor_subject = chosen_professor.prefered_subjects.get(subject = subject)
-                            used = 0
-                            for subject_activitie in activities_with_subject:
-                                if (chosen_professor.num_uses + subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods <= ambient.max_actv_in_cicle):
-                                    subject_preference = 1
-                                    class_preference = 1
-                                    
-                                    if not(subject_activitie.tprofessor):
-                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
-                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
-                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                        if subject_preference != 0 and class_preference != 0:
-                                            timetable = list(ambient.published_timetable.table.all())
-                                            activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
-                                            activities_with_professor.append(subject_activitie)
-                                            
-                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
-
-                                            if conflitant_schedules:
-                                                tactv = ambient.activities.get(id = subject_activitie.id)
-                                                tactv.tprofessor = chosen_professor
-                                                tactv.professor_weight = professor_subject.subject_weight
-                                                tactv.save()
-                                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                chosen_professor.save()
-                                                used = 1
-                                                if isinstance(conflitant_schedules, Activitie):
-                                                    conflitant_professor = conflitant_schedules.tprofessor
-                                                    conflitant_schedules.tprofessor = None
-                                                    conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
-                                                    conflitant_schedules.save()
-                                                    conflitant_professor.save()
-                                                    repeat = True
-                                                    
-                                    else:
-                                        tchosen_professor = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)[0]
-                                        if tchosen_professor == chosen_professor:
-                                            if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
-                                                subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                            if subject_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
-                                                class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                            if subject_preference != 0 and class_preference != 0:
-                                                timetable = list(ambient.published_timetable.table.all())
-                                                activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
-                                                activities_with_professor.append(subject_activitie)
-                                                conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
-
-                                                if conflitant_schedules:
-                                                    subject_activitie.tprofessor = chosen_professor
-                                                    subject_activitie.professor_weight = professor_subject.subject_weight
-                                                    subject_activitie.save()
-                                                    chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                    subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                    subject_activitie.tprofessor.save()
-                                                    chosen_professor.save()
-                                                    used = 1
-                                                    if isinstance(conflitant_schedules, Activitie): #tem que trocar isso aqui pelo chosen_conflitant_professor
-                                                        conflitant_professor = conflitant_schedules.tprofessor
-                                                        conflitant_schedules.tprofessor = None
-                                                        conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
-                                                        conflitant_schedules.save()
-                                                        conflitant_professor.save()
-                                                        repeat = True
-                                else:
-                                    for c_activitie in current_activities:
-                                        if c_activitie.professor_weight < professor_subject.subject_weight:
-                                            if(chosen_professor.num_uses - c_activitie.tclass.activities_qtd + subject_activitie.tclass.activities_qtd <= ambient.max_actv_in_cicle):
-                                                subject_preference = 1
-                                                class_preference = 1
-                                                
-                                                if not(subject_activitie.tprofessor):
-                                                    if subject_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
-                                                        subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                                    if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
-                                                        class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                                    if subject_preference != 0 and class_preference != 0:
-                                                        timetable = list(ambient.published_timetable.table.all())
-                                                        activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
-                                                        activities_with_professor.append(subject_activitie)
-                                                        
-                                                        conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
-
-                                                        if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
-                                                            c_activitie.tprofessor = None
-                                                            c_activitie.professor_weight = 0
-                                                            c_activitie.save()
-                                                            tactv = ambient.activities.get(id = subject_activitie.id)
-                                                            tactv.tprofessor = chosen_professor
-                                                            tactv.professor_weight = professor_subject.subject_weight
-                                                            tactv.save()
-                                                            chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                            chosen_professor.save()
-                                                            used = 1
-                                                            repeat = True
-                                                else:
-                                                    tchosen_professor = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)[0]
-                                                    if tchosen_professor == chosen_professor:
-                                                        if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
-                                                            subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                                        if subject_activitie.tsubject.favorite_professors.all().filter(professor = chosen_professor):
-                                                            class_preference = subject_activitie.tclass.favorite_professors.all().get(professor = chosen_professor).professor_weight
-                                                        if subject_preference != 0 and class_preference != 0:
-                                                            timetable = list(ambient.published_timetable.table.all())
-                                                            activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
-                                                            activities_with_professor.append(subject_activitie)
-                                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
-
-                                                            if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
-                                                                c_activitie.tprofessor = None
-                                                                c_activitie.professor_weight = 0
-                                                                c_activitie.save()
-                                                                subject_activitie.tprofessor = chosen_professor
-                                                                subject_activitie.professor_weight = professor_subject.subject_weight
-                                                                subject_activitie.save()
-                                                                chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                                subject_activitie.tprofessor.num_uses -= subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
-                                                                subject_activitie.tprofessor.save()
-                                                                chosen_professor.save()
-                                                                used = 1
-                                                                repeat = True
-
-                        #Se, ao chegar ao fim, a variável de controle user permanecer a mesma, significa que ele não foi atribuido a nenhuma atividade, portanto deve
-                        #ser retirado da lista. Se nenhum professor for selecionado em chosen_professor, a variável selected é alterada para 0, e dessa forma, o loop acaba.
-                            if used == 0:
-                                relevant_professors = relevant_professors.exclude(id=chosen_professor.id)
-                        else: selected = 0
-            
-            #Agora, as aulas ainda sem professor serão atribuídas a professores que tenham as formações que sejam interessantes para a disciplina. Selecionando-as e ordenando-as do maior para o menor peso.
-            #O algoritmo itera sobre as atividades, e para cada atividade, itera sobre suas preferências de formação, buscando professores que têm aquela formação, comparando seus pesos e
-            #Aplicando critérios para escolher o melhor.
-            count = 0
-            repeat = True
-            #Este while se repe no máximo dez vezes, enquanto houverem trocas de atividade que deixem uma atividade sem professor, dando a chance de fazer uma nova atribuição para esta atividade
-            while count < 10 and repeat == True:
-                count += 1
-                repeat = False
-                not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-                for not_atribuited_activitie in not_atribuited_activities:
-                    formations = not_atribuited_activitie.tsubject.relevant_formations.all().order_by("-formation_weight")
-                    chosen_professor = None
-                    highest_weight = 0
-                    chosen_conflitant_schedules = None
-                    for formation in formations:
-                        weight = not_atribuited_activitie.tsubject.relevant_formations.get(formation = formation.formation).formation_weight
-                        candidates = ambient.members.filter(is_professor = True, formations__formation = formation.formation).order_by('num_uses')
-                        for candidate in candidates:
-                            subject_preference = 1
-                            class_preference = 1
-                            if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
-                                subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
-                            if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
-                                class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
-                            #Verifica se o candidato atende aos requisitos (pesos diferentes de 0 e disponibilidade horária). Se não houver professor alocado, ele é imediatamente selecionado
-                            #Se houver, os critérios de desempate são aplicados, e o que vencer, permanece. Após verificar se há conflitos, o professor é pré-atribuído.
-                            if subject_preference != 0 and class_preference != 0 and weight > highest_weight and candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
-                                if chosen_professor:
-                                    tchosen_professor = tiebreaker(candidate, chosen_professor, not_atribuited_activitie)[0]
-                                else:
-                                    tchosen_professor = candidate
-
-                                if tchosen_professor == candidate:
-                                    timetable = list(ambient.published_timetable.table.all())
-                                    activities_with_professor = list(ambient.activities.filter(tprofessor = tchosen_professor))
-                                    activities_with_professor.append(not_atribuited_activitie)
-                                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, tchosen_professor)
-
-                                    if conflitant_schedules:
-                                        chosen_conflitant_schedules = conflitant_schedules
-                                        chosen_professor = candidate
-                                        highest_weight = weight
-                    #Atribuição definitiva.      
-                    if chosen_professor:
-                        not_atribuited_activitie.tprofessor = chosen_professor
-                        not_atribuited_activitie.professor_weight = highest_weight
-                        not_atribuited_activitie.save()
-                        chosen_professor.num_uses += not_atribuited_activitie.activities_qtd
-                        chosen_professor.save()
-                        if isinstance(chosen_conflitant_schedules, Activitie):
-                            conflitant_professor = chosen_conflitant_schedules.tprofessor
-                            chosen_conflitant_schedules.tprofessor = None
-                            conflitant_professor.num_uses -= chosen_conflitant_schedules.activities_qtd
-                            chosen_conflitant_schedules.save()
-                            conflitant_professor.save()
-                            repeat = True
-   
-            #Se ainda assim houverem atividades sem professor, elas serão atribuídas randomicamente a professores que tenham menos uso (deve gerar um aviso nessas atividades).
-
-            not_atribuited_activities = ambient.activities.all().filter(tprofessor = None)
-            
-            for not_atribuited_activitie in not_atribuited_activities:
-                candidates = ambient.members.all().filter(is_professor = True).order_by('num_uses')
-                chosen_professor = None
-                for candidate in candidates:
-                    subject_preference = 1
-                    class_preference = 1
-                    if not_atribuited_activitie.tsubject.favorite_professors.all().filter(professor = candidate):
-                        subject_preference = not_atribuited_activitie.tsubject.favorite_professors.all().get(professor = candidate).professor_weight
-                    if not_atribuited_activitie.tclass.favorite_professors.all().filter(professor = candidate):
-                        class_preference = not_atribuited_activitie.tclass.favorite_professors.all().get(professor = candidate).professor_weight
-
-                    timetable = list(ambient.published_timetable.table.all())
-                    activities_with_professor = list(ambient.activities.filter(tprofessor = candidate))
-                    activities_with_professor.append(not_atribuited_activitie)
-                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, candidate)
-
-                    if subject_preference != 0 and class_preference != 0 and candidate.num_uses + not_atribuited_activitie.activities_qtd <= ambient.max_actv_in_cicle and conflitant_schedules:          
-                        chosen_professor = candidate
-                        chosen_conflitant_schedules = conflitant_schedules
-                        break
-
-                if chosen_professor:
-                    not_atribuited_activitie.tprofessor = chosen_professor
-                    not_atribuited_activitie.professor_weight = highest_weight
-                    chosen_professor.num_uses += not_atribuited_activitie.activities_qtd
-                    not_atribuited_activitie.save()
-                    chosen_professor.save()
+                # Atualiza num_uses das salas e professores no banco
+                for room in rooms:
+                    room.num_uses = sum(a.activities_qtd for a in best_activities if a.tclassroom and a.tclassroom.id == room.id)
+                    room.save()
+                for prof in professors:
+                    prof.num_uses = sum(a.activities_qtd for a in best_activities if a.tprofessor and a.tprofessor.id == prof.id)
+                    prof.save()
 
             return redirect(f'/ambient/{ambientid}')
         else:
@@ -3270,70 +2555,14 @@ def run_atribuition(request, ambientid):
     else:
         return redirect('/')
 
-#Este é um algoritmo clássico de agendamento, ele utiliza de backtraging para alocar as atividades, testando cada possibilidade de horário para cada atividade, e, caso 
-#haja mais de uma atividade, ele chama a si mesmo para alocar a próxima atividade. Caso haja um conflito, ele volta e testa a próxima possibilidade de horário da 
-#atividade anterior. Se chegar ao fim das possibilidades de horário desta, ele volta para a atividade anterior e testa a próxima possibilidade de horário dela, e assim 
-#por diante. Se chegar ao fim das possibilidades de horário da primeira atividade, significa que não há solução possível para aquela ordem de atividades.
-def alocate(ambient, timetable, activities):
-    #seleciona a primeira atividade, que será alocada no momento
-    activitie = activities[0]
-    
-    #Obtém os horários preferidos do professor para priorizar aqueles que também são preferidos da turma
-    professor_preferred_schedules = set()
-    if activitie.tprofessor and hasattr(activitie.tprofessor, 'prefered_schedules'):
-        for schedule in activitie.tprofessor.prefered_schedules.all():
-            professor_preferred_schedules.add((schedule.line, schedule.column))
-    
-    #Ordena os horários preferidos da turma: primeiro os que também são preferidos do professor
-    class_schedules = list(activitie.tclass.prefered_schedules.all())
-    class_schedules.sort(key=lambda s: (s.line, s.column) not in professor_preferred_schedules)
-    
-    for start in class_schedules:
-        available = True
-        fixed_timetable = {key: value.copy() for key, value in timetable.items()}
-        #Define o início da atividade com start, o ponto de onde a alocação irá partir, pré-define como disponível e cria uma cópia da grade horária para não alterar a original
-        #caso seja necessário voltar atrás e usá-la como estava antes
-        
-        #Tenta, a partir do ponto de início, alocar a atividade com todos os períodos necessários, somando uma linha a cada período e verificando se naquele slot, existe 
-        #um array [] vazio ou com outras atividades. Se houver, verifica se uma delas tem a mesma sala, professor ou classe da atividade que se quer alocar, o que significaria 
-        #um conflito e, portanto, define o status de available como false.
-        for i in range(activitie.activities_qtd):
-            try:
-                key = (start.line + i, start.column)
-                slot = fixed_timetable[key]
-            except:
-                slot = None
-            if slot == [] or slot:
-                available = True
-                for act in slot:
-                    if act.tclass == activitie.tclass or act.tprofessor == activitie.tprofessor or act.tclassroom == activitie.tclassroom:
-                        available = False
-                        break
-            else:
-                available = False
-                break
-        
-        #Se o horário estiver disponível, a atividade é adicionada aos slots no dicionário, para que as outras atividades também saibam que ela está ali, e uma nova função é
-        #chamada caso o tamanho de atividades seja maior que 1, indicando que ainda há atividades para serem atribuidas, incluindo o estado atual do dicionário com todas 
-        #as atividades já alocadas e as atividades restantes, Se o tamanho da atividades for igual a 1, significa que o algorimo chegou ao fim, então ele retorna o dicionário 
-        #final para ser alocado na grade horária do ambiente. Caso algo aconteça de errado e uma atividade não possa ser alocada em nenhum horário, ela retorna falso e o 
-        #processo reinicia de onde parou.
-        if available:
-            for i in range(activitie.activities_qtd):
-                key = (start.line + i, start.column)
-                fixed_timetable[key].append(activitie)
 
-            if len(activities) > 1:
-                check = alocate(ambient, fixed_timetable, activities[1:])
-                if check:
-                    return check
-            else:
-                return fixed_timetable
-    return False
+def alocate(ambient, timetable, activities):
+    # Esta função era usada pelo backtracking e foi substituída pelo RKO.
+    # Mantida como stub para compatibilidade.
+    return timetable
 
 
 def run_alocation(request, ambientid):
-    
     if request.user.is_authenticated:
         try: 
             user = User.objects.get(userid = request.user.username)
@@ -3350,44 +2579,78 @@ def run_alocation(request, ambientid):
             return redirect('home')
         
         if ambient.members.filter(user = user) and member.admin_type.can_run_alocation:
-            #O algoritmo inicia criando uma tabela vazia, que será preenchida em breve
-            timetable = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
-            timetable.save()
-            ambient.published_timetable = timetable
+            # Limpa qualquer grade anterior
+            if ambient.published_timetable:
+                ambient.published_timetable.delete()
+                
+            # O algoritmo inicia criando uma tabela vazia, que será preenchida em breve
+            timetable_db = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
+            timetable_db.save()
+            ambient.published_timetable = timetable_db
             ambient.save()
+            
+            # Cria slots de alocação vazios no banco de dados
             for schedule in ambient.available_schedules.all():
                 alocation = Alocation(line = schedule.line, column = schedule.column)
                 alocation.save()
                 ambient.published_timetable.table.add(alocation)
-                ambient.save()
+            ambient.save()
 
-            #Agora, cria o dicionário com todos os horários e organiza as funções de acordo com a menor quandidade de horários preferidos e maior quantidade de períodos,
-            #para otimizar a execução do algoritmo de alocação
             activities = list(ambient.activities.all())
-            fixed_timetable = {}
-            for time in timetable.table.all():
-                fixed_timetable[(time.line, time.column)] = []
-            activities.sort(key=lambda x: (x.tclass.prefered_schedules.count(), -x.activities_qtd))
-
-            #A função é chamada, o dicionário é criado e a grade horária do ambiente é definida
-            tdict = alocate(ambient, fixed_timetable, activities)
-            if tdict:
+            if activities:
+                from AllokAcads.rko_environments import RKOAllocationEnvironment, RKO
+                env = RKOAllocationEnvironment(ambient, activities)
+                solver = RKO(env=env, logger='none')
+                
+                # Executa a otimização com RKO para Alocação por 5 segundos
+                final_cost, best_solution, _ = solver.solve(
+                    time_total=5,
+                    runs=1,
+                    brkga=2,
+                    vns=2
+                )
+                
+                # Decodifica a melhor grade horária encontrada
+                tdict = env.decoder(best_solution)
+                
+                # Salva as alocações da grade horária no banco de dados
                 for key, value in tdict.items():
-                    alocation = ambient.published_timetable.table.all().get(line = key[0], column = key[1])
-                    for act in value:
-                        alocation.activitie.add(act)
-                        alocation.save()
+                    try:
+                        alocation_db = ambient.published_timetable.table.all().get(line = key[0], column = key[1])
+                        for act in value:
+                            alocation_db.activitie.add(act)
+                        alocation_db.save()
+                    except Alocation.DoesNotExist:
+                        pass
 
-            #As atividades que não puderam ser alocadas são adicionadas a uma lista, e serão exibidas na tela para o usuário        
-            activities = ambient.activities.all()
-            not_alocated_activities = []
-            for activitie in activities:
-                if not ambient.published_timetable.table.all().filter(activitie = activitie):
-                    not_alocated_activities.append(activitie)
-            for n_activitie in not_alocated_activities:
-                un_activitie = Unregistered_Activitie(activitie = n_activitie)
-                un_activitie.save()
-                ambient.published_timetable.not_alocated.add(un_activitie)
+                # Trata as atividades conflitantes na grade horária final
+                allocated_acts = set()
+                conflitant_acts = set()
+                
+                # Checa duplicidade nos slots
+                for (line, col), acts in tdict.items():
+                    n = len(acts)
+                    if n > 1:
+                        for j in range(n):
+                            a = acts[j]
+                            for k in range(j + 1, n):
+                                b = acts[k]
+                                if (a.tclass == b.tclass) or (a.tprofessor == b.tprofessor) or (a.tclassroom == b.tclassroom):
+                                    conflitant_acts.add(a)
+                                    conflitant_acts.add(b)
+                                    
+                # Salva as atividades em conflito como Unregistered_Activitie
+                for act in conflitant_acts:
+                    # Remove a atividade do slot no banco de dados
+                    for slot in ambient.published_timetable.table.all():
+                        if act in slot.activitie.all():
+                            slot.activitie.remove(act)
+                            slot.save()
+                    
+                    un_activitie = Unregistered_Activitie(activitie = act, message="Conflito de recurso (Professor, Sala ou Turma ocupados).")
+                    un_activitie.save()
+                    ambient.published_timetable.not_alocated.add(un_activitie)
+
         return redirect(f'/ambient/{ambientid}')
     else:
         return redirect('/')
