@@ -96,8 +96,10 @@ urlpatterns = [
 
     path('ambient/run_atribuition/<str:ambientid>', views.run_atribuition, name='run_atribuition'),
     path('ambient/run_alocation/<str:ambientid>', views.run_alocation, name='run_alocation'),
-    
+
+    path('chat/message', views.chat_message, name='chat_message'),
+
     path('dashboard/', include('dashboard.urls')),
-    
-    
+
+
     ]
