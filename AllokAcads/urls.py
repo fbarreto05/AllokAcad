@@ -96,6 +96,7 @@ urlpatterns = [
 
     path('ambient/run_atribuition/<str:ambientid>', views.run_atribuition, name='run_atribuition'),
     path('ambient/run_alocation/<str:ambientid>', views.run_alocation, name='run_alocation'),
+    path('ambient/chatbot/api/<str:ambientid>', views.chatbot_api, name='chatbot_api'),
     
     path('dashboard/', include('dashboard.urls')),
     

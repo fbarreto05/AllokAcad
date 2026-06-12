@@ -15,6 +15,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User as UserAuth
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 # import pwd
 # import grp
 
@@ -3444,14 +3445,15 @@ def schedule_preference_adjustment(ambientid, origin_type, origin, preference, t
             professor.prefered_schedules.remove(schedule)
 
 
-def chatbot(ambientid):
+def chatbot(ambientid, user_input=""):
     functions = {
         "schedule_preference_adjustment": schedule_preference_adjustment,
         "professor_preference_adjustment": professor_preference_adjustment,
         "classroom_preference_adjustment": classroom_preference_adjustment,
     }
 
-    user_input = ""
+    if not user_input:
+        return "Nenhum comando enviado para o chatbot."
 
     prompt = f"""
     Você é um assistente Python. Analise o comando do usuário e responda em JSON com o nome da função e os argumentos.
@@ -3471,32 +3473,80 @@ def chatbot(ambientid):
 
     Comando: {user_input}
     """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "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")
+    model = os.environ.get("OPENROUTER_MODEL", "openrouter/owl-alpha")
+
     response = requests.post(
-    url="https://openrouter.ai/api/v1/chat/completions",
-    headers={
-        "Authorization": "Bearer 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",
-        "Content-Type": "application/json",
-    },
-    json={
-        "model": "openrouter/owl-alpha",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
-    }
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
     )
 
     result = response.json()
+    if "error" in result:
+        error_msg = result["error"].get("message", "Erro desconhecido")
+        print("Erro do OpenRouter:", error_msg)
+        return f"Erro na API do OpenRouter: {error_msg}. Por favor, certifique-se de configurar uma chave de API válida na variável de ambiente OPENROUTER_API_KEY."
+
     try:
-        result = result["choices"][0]["message"]["content"]
-        result = result.replace("```json", "").replace("```", "").strip()
-        result = result.replace("'", '"').replace("True", "true").replace("False", "false")
-        print(result)
-        result = json.loads(result)
-        func = functions.get(result["function"])
+        content = result["choices"][0]["message"]["content"]
+        content_clean = content.replace("```json", "").replace("```", "").strip()
+        content_clean = content_clean.replace("'", '"').replace("True", "true").replace("False", "false")
+        print(content_clean)
+        data = json.loads(content_clean)
+        func_name = data.get("function")
+        args = data.get("args", [])
+        
+        func = functions.get(func_name)
         if func:
-            output = func(ambientid, *result["args"])
-            print("Resultado:", output)
+            func(ambientid, *args)
+            if func_name == "schedule_preference_adjustment":
+                origin_type, origin, preference, true_false = args
+                status = "ativa" if true_false else "inativa"
+                return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' no horário/dia {preference} para {status}."
+            elif func_name == "professor_preference_adjustment":
+                origin_type, origin, preference, weight = args
+                return f"Entendi! Defini a preferência do {origin_type} '{origin}' pelo professor '{preference}' com peso {weight}."
+            elif func_name == "classroom_preference_adjustment":
+                origin_type, origin, preference, weight = args
+                return f"Entendi! Defini a preferência do {origin_type} '{origin}' pela sala '{preference}' com peso {weight}."
+            return f"Comando '{func_name}' executado com sucesso."
         else:
-            print("Função não encontrada:", result["function"])
+            return f"Desculpe, não encontrei a função '{func_name}' nas minhas configurações."
     except Exception as e:
         print("Erro ao processar resposta da LLM:", e)
+        try:
+            fallback = result["choices"][0]["message"]["content"]
+            if fallback:
+                return fallback
+        except:
+            pass
+        return f"Desculpe, ocorreu um erro ao processar sua solicitação: {str(e)}"
+
+
+@csrf_exempt
+def chatbot_api(request, ambientid):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "not_authenticated", "response": "Usuário não autenticado."}, status=401)
+    
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            user_input = data.get("message", "").strip()
+            if not user_input:
+                return JsonResponse({"response": "Por favor, digite uma mensagem válida."}, status=400)
+            
+            bot_response = chatbot(ambientid, user_input)
+            return JsonResponse({"response": bot_response})
+        except Exception as e:
+            return JsonResponse({"error": "invalid_request", "response": f"Erro ao processar requisição: {str(e)}"}, status=400)
+    
+    return JsonResponse({"error": "method_not_allowed", "response": "Método não permitido."}, status=405)

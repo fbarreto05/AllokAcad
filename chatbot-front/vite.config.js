@@ -4,11 +4,18 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    outDir: '../AllokAcads/static',
+    emptyOutDir: false,
     rollupOptions: {
       output: {
-        entryFileNames: `chat-widget.js`,
-        chunkFileNames: `chat-widget.js`,
-        assetFileNames: `chat-widget.[ext]`
+        entryFileNames: `js/chat-widget.js`,
+        chunkFileNames: `js/chat-widget.js`,
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'css/chat-widget.[ext]';
+          }
+          return 'assets/chat-widget.[ext]';
+        }
       }
     }
   }

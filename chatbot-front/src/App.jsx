@@ -14,6 +14,17 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const getAmbientId = () => {
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    if (pathParts[0] === 'ambient' && pathParts.length >= 2) {
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart !== 'delete') {
+        return lastPart;
+      }
+    }
+    return null;
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -22,14 +33,43 @@ function App() {
     setInput('');
     setIsLoading(true);
 
-    // MOCK: Simula a resposta do back-end (Para você testar sem o Python estar pronto)
-    setTimeout(() => {
+    try {
+      const ambientId = getAmbientId();
+      if (!ambientId) {
+        setMessages(prev => [...prev, { 
+          sender: 'bot', 
+          text: "Não foi possível identificar o ambiente atual. Certifique-se de que você está em uma página de ambiente." 
+        }]);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`/ambient/chatbot/api/${ambientId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro na resposta do servidor');
+      }
+
+      const data = await response.json();
       setMessages(prev => [...prev, { 
         sender: 'bot', 
-        text: `Entendi. Vou pedir para o sistema processar a alteração: "${userMessage}".` 
+        text: data.response || "Comando processado com sucesso!" 
       }]);
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, { 
+        sender: 'bot', 
+        text: "Desculpe, ocorreu um erro ao se comunicar com o servidor." 
+      }]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
