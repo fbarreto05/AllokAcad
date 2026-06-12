@@ -14,6 +14,13 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const getCsrfToken = () => {
+    const match = document.cookie.split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('csrftoken='));
+    return match ? match.split('=')[1] : '';
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -22,14 +29,30 @@ function App() {
     setInput('');
     setIsLoading(true);
 
-    // MOCK: Simula a resposta do back-end (Para você testar sem o Python estar pronto)
-    setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        sender: 'bot', 
-        text: `Entendi. Vou pedir para o sistema processar a alteração: "${userMessage}".` 
+    try {
+      const res = await fetch('/chat/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      const data = await res.json();
+      const botText = res.ok
+        ? data.response
+        : 'Ocorreu um erro ao processar sua mensagem. Tente novamente.';
+
+      setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        sender: 'bot',
+        text: 'Não foi possível conectar ao servidor. Verifique sua conexão.',
       }]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

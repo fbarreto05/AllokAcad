@@ -1,7 +1,7 @@
 from urllib import request
 from django.shortcuts import render, redirect
 from django.conf import settings
-import random, os, datetime, time
+import random, os, datetime, time, json
 from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
@@ -3391,3 +3391,59 @@ def run_alocation(request, ambientid):
         return redirect(f'/ambient/{ambientid}')
     else:
         return redirect('/')
+
+
+def chat_message(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'not_authenticated'}, status=401)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method_not_allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        message = body.get('message', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'invalid_json'}, status=400)
+
+    if not message:
+        return JsonResponse({'error': 'empty_message'}, status=400)
+
+    try:
+        user_profile = User.objects.get(userid=request.user.username)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'user_not_found'}, status=404)
+
+    response_text = _process_chat_message(user_profile, message)
+    return JsonResponse({'response': response_text})
+
+
+def _process_chat_message(user_profile, message):
+    msg_lower = message.lower()
+    ambients = user_profile.ambients.all()
+
+    if any(w in msg_lower for w in ['horário', 'horarios', 'grade', 'schedule', 'timetable']):
+        count = ambients.count()
+        if count == 0:
+            return "Você ainda não faz parte de nenhum ambiente. Solicite acesso pelo menu Início."
+        return (
+            f"Você tem acesso a {count} ambiente(s). "
+            "Abra o ambiente desejado para visualizar ou ajustar a grade horária."
+        )
+
+    if any(w in msg_lower for w in ['ambiente', 'ambientes', 'turma', 'turmas']):
+        if not ambients.exists():
+            return "Você ainda não faz parte de nenhum ambiente."
+        names = ', '.join(a.name for a in ambients)
+        return f"Seus ambientes: {names}."
+
+    if any(w in msg_lower for w in ['ajuda', 'help', 'o que você faz', 'o que voce faz']):
+        return (
+            "Posso ajudar você com informações sobre seus ambientes e grades horárias. "
+            "Pergunte sobre 'meus ambientes', 'minha grade' ou acesse o ambiente pelo menu principal para fazer alterações."
+        )
+
+    return (
+        f"Recebi sua mensagem. Para ajustes de grade, acesse o ambiente pelo menu principal. "
+        "Em breve terei mais funcionalidades para te ajudar!"
+    )
