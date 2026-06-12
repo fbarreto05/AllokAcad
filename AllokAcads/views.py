@@ -3544,6 +3544,14 @@ def chatbot_api(request, ambientid):
                 return JsonResponse({"response": "Por favor, digite uma mensagem válida."}, status=400)
             
             bot_response = chatbot(ambientid, user_input)
+            
+            # Executa a atribuição e alocação automaticamente
+            run_atribuition(request, ambientid)
+            run_alocation(request, ambientid)
+            
+            if bot_response and not any(err in bot_response for err in ["Desculpe", "Erro na API", "Nenhum"]):
+                bot_response += "\n\n🔄 A atribuição e a alocação de horários foram recalculadas automaticamente com base neste ajuste!"
+            
             return JsonResponse({"response": bot_response})
         except Exception as e:
             return JsonResponse({"error": "invalid_request", "response": f"Erro ao processar requisição: {str(e)}"}, status=400)

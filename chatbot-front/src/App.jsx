@@ -61,6 +61,12 @@ function App() {
         sender: 'bot', 
         text: data.response || "Comando processado com sucesso!" 
       }]);
+
+      if (data.response && data.response.includes('🔄')) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      }
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { 
