@@ -2503,7 +2503,6 @@ def run_atribuition(request, ambientid):
             return redirect('home')
 
         if ambient.members.filter(user = user) and member.admin_type.can_run_atribuition:
-            chatbot(ambientid)
             #Limpa as atividades para iniciar uma nova atribuição.
             ambient.activities.all().delete()
             ambient.activities.clear()
