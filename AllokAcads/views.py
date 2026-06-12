@@ -3428,20 +3428,54 @@ def classroom_preference_adjustment(ambientid, origin_type, origin, preference, 
         class_classroom.save()
 def schedule_preference_adjustment(ambientid, origin_type, origin, preference, true_false):
     ambient = Ambient.objects.get(ambientid = ambientid)
+    
+    is_day_only = False
+    day_index = None
+    
+    if isinstance(preference, int):
+        is_day_only = True
+        day_index = preference
+    elif isinstance(preference, str):
+        val = preference.lower().replace("dia", "").strip()
+        try:
+            if "dia" in preference.lower():
+                day_index = int(val) - 1
+            else:
+                day_index = int(val)
+            is_day_only = True
+        except ValueError:
+            pass
+
+    schedules_to_adjust = []
+    if is_day_only and day_index is not None:
+        periods = ambient.periods_in_a_day
+        for line in range(periods):
+            try:
+                schedule = ambient.available_schedules.get(line = line, column = day_index)
+                schedules_to_adjust.append(schedule)
+            except Exception as e:
+                print(f"Erro ao obter horário do dia {day_index}, período {line}: {e}")
+    else:
+        try:
+            schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
+            schedules_to_adjust = [schedule]
+        except Exception as e:
+            print(f"Erro ao obter horário com coordenadas {preference}: {e}")
+
     if origin_type == 'Turma':
         tclass = ambient.classes.get(name = origin)
-        schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
-        if true_false:
-            tclass.prefered_schedules.add(schedule)
-        else:
-            tclass.prefered_schedules.remove(schedule)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                tclass.prefered_schedules.add(schedule)
+            else:
+                tclass.prefered_schedules.remove(schedule)
     if origin_type == 'Professor':
         professor = ambient.members.get(user__name = origin, is_professor = True)
-        schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
-        if true_false:
-            professor.prefered_schedules.add(schedule)
-        else:
-            professor.prefered_schedules.remove(schedule)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                professor.prefered_schedules.add(schedule)
+            else:
+                professor.prefered_schedules.remove(schedule)
 
 
 def chatbot(ambientid, user_input=""):
@@ -3461,14 +3495,15 @@ def chatbot(ambientid, user_input=""):
     preferência é verdadeira ou falsa, em casos de preferência horária. Caso o usuário não forneça algum dado, você
     é livre para preencher o formato de resposta da maneira que achar melhor, desde que seja possível entender qual é a preferência, a origem e o peso ou se é verdadeira ou falsa, no caso de preferência horária.
     Padrões e exemplos de resposta: 
-    1) Para ajustar uma preferência de horário: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', [2,3], True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para o horário 3 do dia 4.
-    2) Para ajustar uma preferência de matéria: {{"function": "professor_preference_adjustment", "args": ['Matéria', 'Matemática', 'Carlos Silva', 100]}} - Define o peso da preferência da matéria de Matemática pelo professor Carlos Silva como 100, o que pode influenciar na alocação de atividades desta matéria para ele.
-    3) Para ajustar uma preferência de sala: {{"function": "classroom_preference_adjustment", "args": ['Turma', 'Ciência da Computação I', 'Laboratório de Informática I', 100]}} - Define o peso da preferência da turma de Ciência da Computação I pelo Laboratório de Informática I como 100, o que pode influenciar na alocação de atividades desta turma para esta sala.
+    1) Para ajustar uma preferência de horário específico: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', [2,3], True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para o horário 3 do dia 4.
+    2) Para ajustar a preferência de horário para um DIA INTEIRO: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', 2, True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para TODOS os horários do dia 3 (dia indexado em 2). Se o usuário disser "dia Y", passe o número Y-1 como o terceiro argumento.
+    3) Para ajustar uma preferência de matéria: {{"function": "professor_preference_adjustment", "args": ['Matéria', 'Matemática', 'Carlos Silva', 100]}} - Define o peso da preferência da matéria de Matemática pelo professor Carlos Silva como 100, o que pode influenciar na alocação de atividades desta matéria para ele.
+    4) Para ajustar uma preferência de sala: {{"function": "classroom_preference_adjustment", "args": ['Turma', 'Ciência da Computação I', 'Laboratório de Informática I', 100]}} - Define o peso da preferência da turma de Ciência da Computação I pelo Laboratório de Informática I como 100, o que pode influenciar na alocação de atividades desta turma para esta sala.
     Caso o usuário diga para não colocar uma preferência, o peso deve ser definido como 0, ou, no caso de preferência horária, a preferência deve ser definida como falsa.
     Caso o usuário diga que uma preferência DEVE ser atendida, o peso deve ser definido como 100, ou, no caso de preferência horária, a preferência deve ser definida como verdadeira.
     Caso o usuário não especifique uma forte necessidade, o peso pode ser definido como 50
     
-    Para definir horários, o primeiro número sempre será o horário e o segundo sempre será o dia, e a contagem inicia em 0, então [0,0] representa o horário 1 do dia 1, [1,0] representa o horário 2 do dia 1, [0,1] representa o horário 1 do dia 2, e assim por diante.
+    Para definir horários específicos, o primeiro número sempre será o horário e o segundo sempre será o dia, e a contagem inicia em 0, então [0,0] representa o horário 1 do dia 1. Se for especificado um dia inteiro, use apenas o número do dia indexado em 0 (ex: "dia 3" virá como o número 2).
 
     Comando: {user_input}
     """
@@ -3510,7 +3545,18 @@ def chatbot(ambientid, user_input=""):
             if func_name == "schedule_preference_adjustment":
                 origin_type, origin, preference, true_false = args
                 status = "ativa" if true_false else "inativa"
-                return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' no horário/dia {preference} para {status}."
+                if isinstance(preference, int) or (isinstance(preference, str) and not isinstance(preference, list)):
+                    try:
+                        val = int(str(preference).lower().replace("dia", "").strip())
+                        if "dia" not in str(preference).lower():
+                            display_day = val + 1
+                        else:
+                            display_day = val
+                    except:
+                        display_day = preference
+                    return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' para TODOS os horários do Dia {display_day} para {status}."
+                else:
+                    return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' no horário/dia {preference} para {status}."
             elif func_name == "professor_preference_adjustment":
                 origin_type, origin, preference, weight = args
                 return f"Entendi! Defini a preferência do {origin_type} '{origin}' pelo professor '{preference}' com peso {weight}."
