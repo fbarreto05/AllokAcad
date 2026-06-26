@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Específico do Django
+# Especifico do Django
 *.log
 *.pot
 *.pyc
@@ -18,11 +18,12 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
-# Migrações do Django
+# Migracoes do Django
 */migrations/*
 
-# Diretórios do IDE/editor
+# Diretorios do IDE/editor
 .vscode/
 .idea/
 *.swp
@@ -35,17 +36,21 @@ Thumbs.db
 # Checkpoints de notebooks Jupyter
 .ipynb_checkpoints/
 
-# Arquivos de configuração específicos do Python
+# Arquivos de configuracao especificos do Python
 *.pyc
 *.pyo
 *.pyd
 *.bak
 
-# Ignorar diretórios de build, se criados manualmente (ex.: para assets)
+# Ignorar diretorios de build, se criados manualmente (ex.: para assets)
 build/
 dist/
 
-# Ignorar arquivos temporários de editores
+# Ignorar arquivos temporarios de editores
 *.tmp
 *.swp
 *.swo
+
+# Ignorar dependencias do Node/React
+**/node_modules/
+chatbot-front/dist/

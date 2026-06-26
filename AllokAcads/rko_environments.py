@@ -1,11 +1,3 @@
-import sys
-import os
-
-# Adiciona o caminho da biblioteca RKO ao sys.path para garantir que o import funcione
-RKO_LIB_PATH = r"C:\Users\felip\Documents\GitHub\RKO_Python\src"
-if RKO_LIB_PATH not in sys.path:
-    sys.path.append(RKO_LIB_PATH)
-
 from rko import RKO
 
 class RKOAttributionEnvironment:
@@ -58,7 +50,7 @@ class RKOAttributionEnvironment:
             
         return self.aulas
 
-    def cost(self, aulas):
+    def cost(self, aulas, final_solution=False):
         """
         Calcula o custo da atribuição. Penaliza capacidade excedida, sobrecarga
         de horários de professores e desrespeito a preferências.
@@ -207,7 +199,7 @@ class RKOAllocationEnvironment:
                 timetable[(row + p, col)].append(a)
         return timetable
 
-    def cost(self, timetable):
+    def cost(self, timetable, final_solution=False):
         """
         Mapeia penalidades de colisão física e violações de preferências de horários.
         """

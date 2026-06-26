@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-BR">    <head>
+<html lang="pt-BR">
+    <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{% block title %}AllokAcad{% endblock %}</title>
@@ -14,7 +15,6 @@
         {% block extra_css %}{% endblock %}
     </head>
     <body class="{% block body_class %}page-with-sidebar{% endblock %}">
-        
         <button id="menu-toggle" class="menu-toggle" aria-label="Abrir menu">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -24,13 +24,13 @@
         </button>
 
         <div class="sidebar-overlay"></div>
-        
+
         <div class="container">
             <nav class="sidebar">
                 <div class="logo-container">
                     <img src="{% static 'images/allokacad-logo-white.png' %}" alt="AllokAcad" class="logo">
                 </div>
-                
+
                 <div class="user-info">
                     <div class="user-avatar">
                         {% if user.picture %}
@@ -41,17 +41,17 @@
                     </div>
                     <div class="user-text">
                         <span class="welcome-text">Bem-vindo(a),</span>
-                        <h2 class="username" title="{{ user.name }}">{{ user.name|default:"Usuário" }}</h2>
+                        <h2 class="username" title="{{ user.name }}">{{ user.name|default:"Usuario" }}</h2>
                     </div>
                 </div>
-                
+
                 <div class="nav-links">
                     <a href="{% url 'home'  %}" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                             <polyline points="9 22 9 12 15 12 15 22"></polyline>
                         </svg>
-                        Início
+                        Inicio
                     </a>
 
                     <a href="{% url 'dashboard_app:professor_dashboard' %}" class="nav-link">
@@ -62,7 +62,7 @@
                         </svg>
                         Dashboards
                     </a>
-                    
+
                     <a href="{% url 'profile'  %}" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -71,7 +71,7 @@
                         Perfil
                     </a>
                 </div>
-                
+
                 <a href="{% url 'exit' %}" class="logout">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -81,7 +81,7 @@
                     Sair
                 </a>
             </nav>
-            
+
             <main class="main-content">
             {% block content %}{% endblock %}
             </main>

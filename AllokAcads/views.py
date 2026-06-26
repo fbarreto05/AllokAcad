@@ -1,7 +1,10 @@
+import json
 from urllib import request
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os, datetime, time
+
+import requests
 from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
@@ -12,6 +15,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User as UserAuth
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 # import pwd
 # import grp
 
@@ -70,13 +74,13 @@ def register_validate(request):
 
         if User.objects.filter(email=email):
             return JsonResponse({'error': 'email_exists', 'message': 'Este e-mail já está cadastrado no sistema.'}, status=400)
-        
+
         while(True):
             identificator = generate_userid()
             user = User.objects.filter(userid = identificator)
             if(not user):
                 break
-            
+
         directory = os.path.join(settings.BASE_DIR, f'media/users/{identificator}/user_picture')
         os.makedirs(directory, exist_ok=True)
         default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'users/user.png')
@@ -84,7 +88,7 @@ def register_validate(request):
         picture = f'users/{identificator}/user_picture/user.png'
 
         ambient = Ambient.objects.get(ambientid = ambientid)
-        
+
         if ambient:
             ambient.enter_solicitations.append(identificator)
             ambient.save()
@@ -97,35 +101,35 @@ def register_validate(request):
         user.save()
 
         return redirect(f'/')
-    
+
 def profile(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         picture = user.picture
         return render(request, "AllokAcads/profile.html", {'userid' : user.userid, 'user' : user, 'picture' : picture})
     else:
         return redirect('/')
-    
+
 def profile_edit(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         return render(request, "AllokAcads/profile_edit.html", {'userid' : user.userid, 'user' : user})
     else:
         return redirect('/')
-    
+
 def profile_edit_validate(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         user_session = request.user
@@ -154,12 +158,12 @@ def profile_edit_validate(request):
         return redirect(f'/home/profile')
     else:
         return redirect('/')
-    
+
 def profile_delete(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         userauth = UserAuth.objects.get(id = user.id)
@@ -170,25 +174,25 @@ def profile_delete(request):
 
 def home(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         ambients = user.ambients.all()
         username = user.name
         system_ambients = Ambient.objects.all()
-        
+
         pending_requests = []
         for ambient in system_ambients:
             if user.userid in ambient.enter_solicitations:
                 pending_requests.append(ambient)
-    
+
         return render(request, "AllokAcads/home.html", {
-            'user': user, 
-            'username': username, 
-            'userid': user.userid, 
-            'ambients': ambients, 
+            'user': user,
+            'username': username,
+            'userid': user.userid,
+            'ambients': ambients,
             'system_ambients': system_ambients,
             'pending_requests': pending_requests
         })
@@ -204,9 +208,9 @@ def exit(request):
 
 def create_ambient(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         return render(request, "AllokAcads/create_ambient.html", {'user' : user, 'userid' : user.userid})
@@ -225,9 +229,9 @@ def generate_ambientid():
 
 def create_ambient_validate(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         picture = request.FILES.get('picture')
@@ -242,13 +246,13 @@ def create_ambient_validate(request):
                 if(not ambient):
                     break
 
-            if not picture: 
+            if not picture:
                 directory = os.path.join(settings.BASE_DIR, f'media/ambients/{identificator}/ambient_picture')
                 os.makedirs(directory, exist_ok=True)
                 default_picture_path = os.path.join(settings.BASE_DIR, 'media', 'ambients/ambient.png')
                 copyfile(default_picture_path, os.path.join(directory, 'ambient.png'))
                 picture = f'ambients/{identificator}/ambient_picture/ambient.png'
-            
+
             main_adm = AdminTP(name='Administrador', can_configure_ambient=True, can_gerenciate_members=True, can_register_resources=True, can_run_atribuition=True, can_run_alocation=True)
             main_adm.save()
 
@@ -259,16 +263,16 @@ def create_ambient_validate(request):
             creator.save()
             user.ambients.add(ambient)
             ambient.admin_types.add(main_adm)
-            ambient.members.add(creator)         
+            ambient.members.add(creator)
         return redirect('/home')
     else:
         return redirect('/'),
 
 def enter_ambient(request):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         ambientid = request.POST.get('ambient_identificator')
@@ -276,7 +280,7 @@ def enter_ambient(request):
             ambient = Ambient.objects.get(ambientid=ambientid)
         except Ambient.DoesNotExist:
             return redirect('home')
-        
+
         if ambient:
             if not(user.userid in ambient.enter_solicitations):
                 if not(ambient.members.filter(user = user)):
@@ -295,9 +299,9 @@ def enter_ambient(request):
 
 def ambient(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -306,9 +310,9 @@ def ambient(request, ambientid):
             return redirect('home')
         try:
             member = ambient.members.get(user = user)
-        except Member.DoesNotExist: 
+        except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user):  
+        if ambient.members.filter(user = user):
             not_alocated = []
             ordered_table = []
             if ambient.published_timetable:
@@ -331,8 +335,8 @@ def ambient(request, ambientid):
             if ambient.days_in_a_cicle:
                 columns_range = range(ambient.days_in_a_cicle)
             if ambient.periods_in_a_day:
-                periods_range = range(ambient.periods_in_a_day)   
-            
+                periods_range = range(ambient.periods_in_a_day)
+
             return render(request, "AllokAcads/ambient.html", {
                 'ambient': ambient,
                 'user': user,
@@ -354,12 +358,12 @@ def ambient(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_form(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -370,7 +374,7 @@ def ambient_form(request, ambientid):
             member = ambient.members.get(user=user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user): 
+        if ambient.members.filter(user = user):
             schedules = ambient.available_schedules.all()
             member_schedules = member.prefered_schedules.all()
             classrooms = ambient.classrooms.all()
@@ -407,12 +411,12 @@ def ambient_form(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_form_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -423,7 +427,7 @@ def ambient_form_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.is_professor:   
+        if ambient.members.filter(user = user) and member.is_professor:
             available_schedules = request.POST.getlist('available_schedules')
             prefered_subjects = request.POST.getlist('prefered_subjects')
             member.prefered_schedules.clear()
@@ -443,12 +447,12 @@ def ambient_form_validate(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_config(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -459,16 +463,16 @@ def ambient_config(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:  
+        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:
             member = member
-            
+
             context = {
                 'ambient': ambient,
                 'user': user,
-                'userid': user.userid, 
+                'userid': user.userid,
                 'member': member
             }
-            
+
             return render(request, "AllokAcads/ambient_config.html", context)
         else:
             return redirect('home')
@@ -478,9 +482,9 @@ def ambient_config(request, ambientid):
 
 def ambient_config_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -491,7 +495,7 @@ def ambient_config_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:  
+        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:
             picture = request.FILES.get('picture')
             name = request.POST.get('name')
             description = request.POST.get('description')
@@ -558,12 +562,12 @@ def ambient_config_validate(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -574,7 +578,7 @@ def ambient_delete(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:  
+        if ambient.members.filter(user = user) and member.admin_type.can_configure_ambient:
             ambient.delete()
         return redirect('home')
     else:
@@ -582,28 +586,28 @@ def ambient_delete(request, ambientid):
 
 def ambient_profile(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
             ambient = Ambient.objects.get(ambientid=ambientid)
         except Ambient.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user):      
+        if ambient.members.filter(user = user):
             picture = user.picture
             return render(request, "AllokAcads/ambient_profile.html", {'user' : user, 'ambient' : ambient, 'picture' : picture, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_profile_edit(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -614,7 +618,7 @@ def ambient_profile_edit(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user):
             formations = ambient.formations.all()
             relevant_formations = list(member.formations.values_list('formation', flat=True))
@@ -626,12 +630,12 @@ def ambient_profile_edit(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_profile_edit_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -642,7 +646,7 @@ def ambient_profile_edit_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user):
             ambient_formations = ambient.formations.all()
             registration = request.POST.get('register')
@@ -676,9 +680,9 @@ def ambient_profile_edit_validate(request, ambientid):
 
 def ambient_members(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -689,19 +693,19 @@ def ambient_members(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user):         
+        if ambient.members.filter(user = user):
             members = ambient.members.all().order_by('user__name')
             return render(request, "AllokAcads/ambient_members.html", {'ambient' : ambient, 'user' : user, 'members' : members,  'tmember' : member, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def professor_true(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -712,7 +716,7 @@ def professor_true(request, memberid, ambientid):
             tmember = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
             try:
                 member = ambient.members.all().get(id=memberid)
@@ -725,12 +729,12 @@ def professor_true(request, memberid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def professor_false(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -753,12 +757,12 @@ def professor_false(request, memberid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def change_position(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -769,7 +773,7 @@ def change_position(request, memberid, ambientid):
             tmember = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
             try:
                 member = ambient.members.get(id=memberid)
@@ -781,12 +785,12 @@ def change_position(request, memberid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def change_position_validate(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -797,9 +801,9 @@ def change_position_validate(request, memberid, ambientid):
             tmember = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
-            try: 
+            try:
                 member = ambient.members.get(id=memberid)
             except Member.DoesNotExist:
                 return redirect(f'/ambient/members/{ambientid}')
@@ -812,12 +816,12 @@ def change_position_validate(request, memberid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def remove_member(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -845,9 +849,9 @@ def remove_member(request, memberid, ambientid):
 
 def ambient_solicitations(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -877,9 +881,9 @@ def ambient_solicitations(request, ambientid):
 
 def accept_solicitation(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -891,7 +895,7 @@ def accept_solicitation(request, memberid, ambientid):
         except Member.DoesNotExist:
             return redirect('home')
 
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:  
+        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
             try:
                 member = User.objects.get(userid = memberid)
             except User.DoesNotExist:
@@ -911,9 +915,9 @@ def accept_solicitation(request, memberid, ambientid):
 
 def refuse_solicitation(request, memberid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -925,7 +929,7 @@ def refuse_solicitation(request, memberid, ambientid):
         except Member.DoesNotExist:
             return redirect('home')
 
-        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:  
+        if ambient.members.filter(user = user) and tmember.admin_type.can_gerenciate_members:
             ambient.enter_solicitations.remove(memberid)
             ambient.save()
             return redirect(f'/ambient/solicitations/{ambientid}')
@@ -936,9 +940,9 @@ def refuse_solicitation(request, memberid, ambientid):
 
 def ambient_resources(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -949,15 +953,15 @@ def ambient_resources(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:     
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             context = {
                 'ambient': ambient,
                 'user': user,
                 'userid': user.userid,
                 'username': user.name
             }
-            
+
             return render(request, "AllokAcads/ambient_resources.html", context)
         else:
             return redirect('home')
@@ -966,9 +970,9 @@ def ambient_resources(request, ambientid):
 
 def ambient_subjects(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -979,8 +983,8 @@ def ambient_subjects(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             subjects = ambient.subjects.all().order_by('name')
             return render(request, "AllokAcads/ambient_subjects.html", {'ambient' : ambient, 'user' : user, 'subjects' : subjects, 'userid': user.userid})
         else:
@@ -990,9 +994,9 @@ def ambient_subjects(request, ambientid):
 
 def ambient_create_subjects(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1003,8 +1007,8 @@ def ambient_create_subjects(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-            
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             classrooms = ambient.classrooms.all().order_by('name')
             professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
             formations = ambient.formations.all().order_by('name')
@@ -1013,12 +1017,12 @@ def ambient_create_subjects(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_subjects_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1029,7 +1033,7 @@ def ambient_create_subjects_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             name = request.POST.get("name")
             subject = Subject(name=name)
             subject.save()
@@ -1063,12 +1067,12 @@ def ambient_create_subjects_validate(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_subjects(request, subjectid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1079,8 +1083,8 @@ def ambient_edit_subjects(request, subjectid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 subject = Subject.objects.get(id = subjectid)
             except Subject.DoesNotExist:
@@ -1105,12 +1109,12 @@ def ambient_edit_subjects(request, subjectid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_subjects_validate(request, subjectid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1121,8 +1125,8 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             name = request.POST.get("name")
             try:
                 subject = Subject.objects.get(id = subjectid)
@@ -1132,7 +1136,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
             classroom_ids = request.POST.getlist("ideal_classrooms")
             professor_ids = request.POST.getlist("favorite_professors")
             formation_ids = request.POST.getlist("relevant_formations")
-            
+
             if name or classroom_ids or professor_ids or formation_ids:
                 if name:
                     subject.name = name
@@ -1144,7 +1148,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
                         classroom_preference = Classroom_Preference(classroom=classroom, classroom_weight=classroom_weight)
                         classroom_preference.save()
                         subject.ideal_classrooms.add(classroom_preference)
-            
+
                     subject.favorite_professors.all().delete()
                     for professor_id in professor_ids:
                         professor = Member.objects.get(id = professor_id)
@@ -1152,7 +1156,7 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
                         professor_preference = Professor_Preference(professor=professor, professor_weight=professor_weight)
                         professor_preference.save()
                         subject.favorite_professors.add(professor_preference)
-                
+
                     subject.relevant_formations.all().delete()
                     for formation_id in formation_ids:
                         formation = Formation.objects.get(id = formation_id)
@@ -1167,12 +1171,12 @@ def ambient_edit_subjects_validate(request, subjectid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete_subjects(request, subjectid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1183,8 +1187,8 @@ def ambient_delete_subjects(request, subjectid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 subject = Subject.objects.get(id = subjectid)
             except Subject.DoesNotExist:
@@ -1195,12 +1199,12 @@ def ambient_delete_subjects(request, subjectid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_classes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1211,8 +1215,8 @@ def ambient_classes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             classes = ambient.classes.all().order_by('name')
             return render(request, "AllokAcads/ambient_classes.html", {'ambient': ambient, 'user': user, 'userid': user.userid, 'username': user.name, 'classes': classes})
         else:
@@ -1222,9 +1226,9 @@ def ambient_classes(request, ambientid):
 
 def ambient_create_classes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1235,8 +1239,8 @@ def ambient_create_classes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             schedules = ambient.available_schedules.all()
             classrooms = ambient.classrooms.all().order_by('name')
             professors = ambient.members.all().filter(is_professor = True).order_by('user__name')
@@ -1247,12 +1251,12 @@ def ambient_create_classes(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_classes_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1263,8 +1267,8 @@ def ambient_create_classes_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             name = request.POST.get("name")
             number_of_students = request.POST.get("number_of_students")
             tclass = Class(name=name, number_of_students=number_of_students)
@@ -1304,12 +1308,12 @@ def ambient_create_classes_validate(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_classes(request, classid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1320,7 +1324,7 @@ def ambient_edit_classes(request, classid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 tclass = Class.objects.get(id = classid)
             except Class.DoesNotExist:
@@ -1345,12 +1349,12 @@ def ambient_edit_classes(request, classid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_classes_validate(request, classid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1361,7 +1365,7 @@ def ambient_edit_classes_validate(request, classid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 tclass = Class.objects.get(id = classid)
             except Class.DoesNotExist:
@@ -1378,31 +1382,31 @@ def ambient_edit_classes_validate(request, classid, ambientid):
                     tclass.name = name
                 if number_of_students:
                     tclass.number_of_students = number_of_students
-                
+
                 tclass.prefered_schedules.clear()
                 if schedule_ids:
                     for schedule_id in schedule_ids:
                         schedule = Schedule_Preference.objects.get(id = schedule_id)
                         tclass.prefered_schedules.add(schedule)
-                
+
                 tclass.ideal_classrooms.all().delete()
-                if classroom_ids:   
+                if classroom_ids:
                     for classroom_id in classroom_ids:
                         classroom = Classroom.objects.get(id = classroom_id)
                         classroom_weight = request.POST.get(f"classroom_weight_{classroom_id}")
                         classroom_preference = Classroom_Preference(classroom=classroom, classroom_weight=classroom_weight)
                         classroom_preference.save()
                         tclass.ideal_classrooms.add(classroom_preference)
-                
+
                 tclass.favorite_professors.all().delete()
-                if professor_ids: 
+                if professor_ids:
                     for professor_id in professor_ids:
                         professor = Member.objects.get(id = professor_id)
                         professor_weight = request.POST.get(f"professor_weight_{professor_id}")
                         professor_preference = Professor_Preference(professor=professor, professor_weight=professor_weight)
                         professor_preference.save()
                         tclass.favorite_professors.add(professor_preference)
-                
+
                 tclass.necessary_subjects.all().delete()
                 if subject_ids:
                     for subject_id in subject_ids:
@@ -1418,12 +1422,12 @@ def ambient_edit_classes_validate(request, classid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete_classes(request, classid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1434,7 +1438,7 @@ def ambient_delete_classes(request, classid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 tclass = Class.objects.get(id = classid)
             except Class.DoesNotExist:
@@ -1448,9 +1452,9 @@ def ambient_delete_classes(request, classid, ambientid):
 
 def ambient_rooms(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1461,7 +1465,7 @@ def ambient_rooms(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             rooms = ambient.classrooms.all().order_by('name')
             return render(request, "AllokAcads/ambient_rooms.html", {'ambient' : ambient, 'user' : user, 'rooms' : rooms, 'userid': user.userid})
         else:
@@ -1471,9 +1475,9 @@ def ambient_rooms(request, ambientid):
 
 def ambient_create_rooms(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1484,7 +1488,7 @@ def ambient_create_rooms(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             roomtypes = ambient.classroom_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_create_rooms.html", {'ambient' : ambient, 'user' : user, 'roomtypes' : roomtypes, 'userid': user.userid})
         else:
@@ -1494,9 +1498,9 @@ def ambient_create_rooms(request, ambientid):
 
 def ambient_create_rooms_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1507,7 +1511,7 @@ def ambient_create_rooms_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             name = request.POST.get('name')
             roomtype = request.POST.get('roomtype')
             capacity = request.POST.get('capacity')
@@ -1520,12 +1524,12 @@ def ambient_create_rooms_validate(request, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_rooms(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1536,7 +1540,7 @@ def ambient_edit_rooms(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 room = Classroom.objects.get(id = roomid)
             except Classroom.DoesNotExist:
@@ -1547,12 +1551,12 @@ def ambient_edit_rooms(request, roomid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_rooms_validate(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1563,8 +1567,8 @@ def ambient_edit_rooms_validate(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 room = Classroom.objects.get(id = roomid)
             except Classroom.DoesNotExist:
@@ -1584,12 +1588,12 @@ def ambient_edit_rooms_validate(request, roomid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete_rooms(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1600,8 +1604,8 @@ def ambient_delete_rooms(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 room = Classroom.objects.get(id = roomid)
             except Classroom.DoesNotExist:
@@ -1612,12 +1616,12 @@ def ambient_delete_rooms(request, roomid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_formations(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1628,20 +1632,20 @@ def ambient_formations(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             formations = ambient.formations.all().order_by('name')
             return render(request, "AllokAcads/ambient_formations.html", {'ambient' : ambient, 'user' : user, 'formations' : formations, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_formations(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1652,19 +1656,19 @@ def ambient_create_formations(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             return render(request, "AllokAcads/ambient_create_formations.html", {'ambient' : ambient, 'user' : user, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_formations_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1675,8 +1679,8 @@ def ambient_create_formations_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             name = request.POST.get('name')
             formation = Formation(name=name)
             formation.save()
@@ -1689,9 +1693,9 @@ def ambient_create_formations_validate(request, ambientid):
 
 def ambient_edit_formations(request, formationid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1702,8 +1706,8 @@ def ambient_edit_formations(request, formationid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             roomtypes = ambient.classroom_types.all()
             try:
                 formation = Formation.objects.get(id = formationid)
@@ -1714,12 +1718,12 @@ def ambient_edit_formations(request, formationid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_formations_validate(request, formationid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1730,14 +1734,14 @@ def ambient_edit_formations_validate(request, formationid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 formation = Formation.objects.get(id = formationid)
             except Formation.DoesNotExist:
                 return redirect(f'/ambient/resources/formations/{ambient.ambientid}')
-            name = request.POST.get('name')    
-            
+            name = request.POST.get('name')
+
             if name:
                 formation.name = name
             formation.save()
@@ -1746,12 +1750,12 @@ def ambient_edit_formations_validate(request, formationid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete_formations(request, formationid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1762,7 +1766,7 @@ def ambient_delete_formations(request, formationid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 formation = Formation.objects.get(id = formationid)
             except Formation.DoesNotExist:
@@ -1773,12 +1777,12 @@ def ambient_delete_formations(request, formationid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_roomtypes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1789,8 +1793,8 @@ def ambient_roomtypes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             roomtypes = ambient.classroom_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_roomtypes.html", {'ambient' : ambient, 'user' : user, 'roomtypes' : roomtypes, 'userid': user.userid})
         else:
@@ -1800,9 +1804,9 @@ def ambient_roomtypes(request, ambientid):
 
 def ambient_create_roomtypes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1813,8 +1817,8 @@ def ambient_create_roomtypes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             return render(request, "AllokAcads/ambient_create_roomtypes.html", {'ambient' : ambient, 'user' : user, 'userid': user.userid})
         else:
             return redirect('home')
@@ -1823,9 +1827,9 @@ def ambient_create_roomtypes(request, ambientid):
 
 def ambient_create_roomtypes_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1836,10 +1840,10 @@ def ambient_create_roomtypes_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             roomtype = ClassroomTP(name=name)
-            name = request.POST.get('name') 
+            name = request.POST.get('name')
             if roomtype:
                 roomtype.save()
                 ambient.classroom_types.add(roomtype)
@@ -1851,9 +1855,9 @@ def ambient_create_roomtypes_validate(request, ambientid):
 
 def ambient_edit_roomtypes(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1864,23 +1868,23 @@ def ambient_edit_roomtypes(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources: 
-            try: 
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
+            try:
                 roomtype = ClassroomTP.objects.get(id = roomid)
-            except ClassroomTP.DoesNotExist: 
+            except ClassroomTP.DoesNotExist:
                 return redirect(f'/ambient/resources/roomtypes/{ambient.ambientid}')
             return render(request, "AllokAcads/ambient_edit_roomtypes.html", {'roomtype': roomtype, 'ambient': ambient, 'roomid': roomid, 'user': user})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_roomtypes_validate(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1891,13 +1895,13 @@ def ambient_edit_roomtypes_validate(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 roomtype = ClassroomTP.objects.get(id = roomid)
-            except ClassroomTP.DoesNotExist: 
+            except ClassroomTP.DoesNotExist:
                 return redirect(f'/ambient/resources/roomtypes/{ambient.ambientid}')
-            name = request.POST.get('name')    
+            name = request.POST.get('name')
             if name:
                 roomtype.name = name
                 roomtype.save()
@@ -1909,9 +1913,9 @@ def ambient_edit_roomtypes_validate(request, roomid, ambientid):
 
 def ambient_delete_roomtypes(request, roomid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1922,11 +1926,11 @@ def ambient_delete_roomtypes(request, roomid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 roomtype = ClassroomTP.objects.get(id = roomid)
-            except ClassroomTP.DoesNotExist: 
+            except ClassroomTP.DoesNotExist:
                 return redirect(f'/ambient/resources/roomtypes/{ambient.ambientid}')
             roomtype.delete()
             return redirect(f'/ambient/resources/roomtypes/{ambient.ambientid}')
@@ -1934,12 +1938,12 @@ def ambient_delete_roomtypes(request, roomid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_admtypes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1950,20 +1954,20 @@ def ambient_admtypes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             admtypes = ambient.admin_types.all().order_by('name')
             return render(request, "AllokAcads/ambient_admtypes.html", {'ambient' : ambient, 'user' : user, 'admtypes' : admtypes, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_admtypes(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1974,19 +1978,19 @@ def ambient_create_admtypes(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             return render(request, "AllokAcads/ambient_create_admtypes.html", {'ambient' : ambient, 'user' : user, 'userid': user.userid})
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_create_admtypes_validate(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -1997,8 +2001,8 @@ def ambient_create_admtypes_validate(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             if request.POST.get('name'):
                 name = request.POST.get('name')
             can_configure_ambient = True if request.POST.get('can_configure_ambient') == 'on' else False
@@ -2011,18 +2015,18 @@ def ambient_create_admtypes_validate(request, ambientid):
             if admtp:
                 admtp.save()
                 ambient.admin_types.add(admtp)
-            
+
             return redirect(f'/ambient/resources/admtypes/{ambient.ambientid}')
         else:
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_admtypes(request, admtypeid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -2033,8 +2037,8 @@ def ambient_edit_admtypes(request, admtypeid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 admtp = AdminTP.objects.get(id = admtypeid)
             except AdminTP.DoesNotExist:
@@ -2044,12 +2048,12 @@ def ambient_edit_admtypes(request, admtypeid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_edit_admtypes_validate(request, admtypeid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -2060,8 +2064,8 @@ def ambient_edit_admtypes_validate(request, admtypeid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             if request.POST.get('name'):
                 name = request.POST.get('name')
             can_configure_ambient = True if request.POST.get('can_configure_ambient') == 'on' else False
@@ -2089,12 +2093,12 @@ def ambient_edit_admtypes_validate(request, admtypeid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def ambient_delete_admtypes(request, admtypeid, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -2105,8 +2109,8 @@ def ambient_delete_admtypes(request, admtypeid, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
-        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:  
+
+        if ambient.members.filter(user = user) and member.admin_type.can_register_resources:
             try:
                 admtype = AdminTP.objects.get(id = admtypeid)
             except AdminTP.DoesNotExist:
@@ -2117,7 +2121,7 @@ def ambient_delete_admtypes(request, admtypeid, ambientid):
             return redirect('home')
     else:
         return redirect('/')
-    
+
 def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
     #Garante que, caso não haja uma segunda atividade para avaliar qual das duas é mais importante, a disputa seja feita apenas entre a primeira atividade, para definir qual professor deve ser escolhido.
     if not activitie2:
@@ -2138,7 +2142,7 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
     try:
         formations_2 = chosen_professor.formations.all()
     except:
-        formations_2 = None 
+        formations_2 = None
     formation_1_count = 1
     formation_2_count = 1
     degree_1_count = 0
@@ -2161,7 +2165,7 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
                     degree_1_count += 100
                 formation_1_count *= formation.formation_weight
 
-    for formation in relevant_formations2:            
+    for formation in relevant_formations2:
         for a_formation in formations_2:
             if a_formation.formation == formation:
                 professional_experience_2_count = formation.professional_experience_time
@@ -2173,12 +2177,12 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
                 elif a_formation.formation_degree == 'Doutor':
                     degree_2_count += 100
                 formation_2_count *= formation.formation_weight
-    
+
     try:
         tclass_professor1 = activitie.tclass.favorite_professors.all().get(professor = professor).professor_weight
     except:
         tclass_professor1 = 1
-    try: 
+    try:
         tsubjects_professor1 = activitie.tsubject.favorite_professors.all().get(professor = professor).professor_weight
     except:
         tsubjects_professor1 = 1
@@ -2191,7 +2195,7 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
         tsubjects_professor2 = activitie2.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
     except:
         tsubjects_professor2 = 1
-    
+
     #Inicia a comparação seguindo os critérios de desempate: Maior preferência da atividade > Grau de formação acadêmica > Tempo de experiência profissional > Tempo de experiência didática > Tempo no Campus > Tempo na instituição > Idade > Relevância das formações para a disciplina.
     if(tclass_professor1 != 0 and tsubjects_professor1 != 0):
         if (tclass_professor1 + tsubjects_professor1 > tclass_professor2 + tsubjects_professor2 and ((tclass_professor2 < 100 and tsubjects_professor2 < 100) or (tclass_professor1 == 100 or tsubjects_professor1 == 100))):
@@ -2215,8 +2219,8 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
                                 if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
                                     return professor, True
                                 elif datetime.date.today() - professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
-                                    if formation_1_count > formation_2_count:   
-                                        return professor, True 
+                                    if formation_1_count > formation_2_count:
+                                        return professor, True
     return chosen_professor, False
 
 def check_conflitant_schedules_classroom(activities_with_classroom, timetable, classroom, switched = False):
@@ -2235,7 +2239,7 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
     #Aqui, acessamos a atividade que precisa ser alocada, se houverem mais atividades na lista, selecionamos a última, que será sempre a que desejamos, caso contrário, selecionamos a única atividade da lista.
     if len(activities_with_classroom) > 1:
         tactivitie = activities_with_classroom[-1]
-    else: 
+    else:
         tactivitie = activities_with_classroom[0]
 
     #Agora organizamos as atividades por maior quantidade de horários preferidos e maior quantidade de horários necessários, para iniciar pelas alocações mais "difíceis" e, assim, otimizar o algoritmo. Em seguida, selecionamos a primeira atividade da lista para tentar alocá-la em algum horário.
@@ -2245,23 +2249,23 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
     classroom_subject_weight = activitie.tsubject.ideal_classrooms.get(classroom = activitie.tclassroom).classroom_weight if activitie.tsubject.ideal_classrooms.filter(classroom = activitie.tclassroom).exists() else 1
 
     #Aqui definimos o peso da atividade para aquela sala, se a atividade for diferente da que desejamos alocar no momento, o peso é puxado diretamente de suas preferências, caso contrário, ele é calculado. O peso da atividade a ser alocada também é calculado separadamente para fins de comparação.
-    if activitie.classroom_weight: 
+    if activitie.classroom_weight:
         current_weight = activitie.classroom_weight
     else:
         current_weight = (tactivitie.tclass.ideal_classrooms.get(classroom = classroom).classroom_weight if tactivitie.tclass.ideal_classrooms.filter(classroom = classroom).exists() else 1) + (tactivitie.tsubject.ideal_classrooms.get(classroom = classroom).classroom_weight if tactivitie.tsubject.ideal_classrooms.filter(classroom = classroom).exists() else 1)
     example_weight = (tactivitie.tclass.ideal_classrooms.get(classroom = classroom).classroom_weight if tactivitie.tclass.ideal_classrooms.filter(classroom = classroom).exists() else 1) + (tactivitie.tsubject.ideal_classrooms.get(classroom = classroom).classroom_weight if tactivitie.tsubject.ideal_classrooms.filter(classroom = classroom).exists() else 1)
 
-    #Aqui inicia o processo de alocação. Uma iteração inicia sobre os horários preferidos da atividade, verificando se o horário marcado e os horários em sequência (considerando o tamanho da atividade) estão disponíveis. 
+    #Aqui inicia o processo de alocação. Uma iteração inicia sobre os horários preferidos da atividade, verificando se o horário marcado e os horários em sequência (considerando o tamanho da atividade) estão disponíveis.
     #Se o horário estiver disponível, ele é marcado como ocupado pela atividade no dicionário. Caso contrário, se a atividade tiver peso maior do que, no máximo, uma única atividade que já esteja alocada naquele horário, ela poderá tomar o lugar dela e retornar a atividade desalocada para removê-la daquele horário.
     #Há uma variável de controle que se mantém durante o backtracking para garantir que haja apenas uma troca por iteração, para evitar que haja uma série de trocas que poderiam desalocar várias atividades e, assim, causar um grande problema.
     #A função é novamente chamada para tentar alocar a próxima atividade da lista, e dessa forma, todas as possibilidades podem ser testadas.
-    
+
     last_switch = None
     last_switched_activitie = None
     last_start = None
-    for s, start in enumerate(activitie.tclass.prefered_schedules.all()):   
+    for s, start in enumerate(activitie.tclass.prefered_schedules.all()):
         switched_activitie = None
-        switch = False 
+        switch = False
         available = False
         timetable = {key: value.copy() if isinstance(value, list) else value for key, value in fixed_timetable.items()}
 
@@ -2305,7 +2309,7 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
             start = last_start
             switch = last_switch
             switched_activitie = last_switched_activitie
-        
+
         if available:
             #Agora, os horários definidos como disponíveis são marcados como ocupados pela atividade no dicionário, e se houver uma atividade marcada como trocada, seus horários anteriormente ocupados serão marcados como livres.
             #Este dicionário serve apenas para esta iteração de horário de início, sendo que, se a possibilidade for inválida e este horário precisar mudar, o dicionário é reiniciado para seu último estado válido, o que foi passado na chamada da função, e o processo se repete com o novo dicionário.
@@ -2337,15 +2341,15 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
             else:
                 if switch:
                     return switched_activitie
-            
-                return True 
+
+                return True
     return False
 
 def check_conflitant_schedules_professor(activities_with_professor, timetable, professor, switched = False):
     #Se não houverem atividades com o professor alocado, não há conflito de horários, logo a função retorna verdadeiro imediatamente.
     if not activities_with_professor:
         return True
-    
+
     #Caso a lista não seja um dicionário com [linha, coluna] : atividade, ele é convertido para esse formato, caso já seja, simplesmente é copiado.
     fixed_timetable = {}
     if not isinstance(timetable, dict):
@@ -2353,11 +2357,11 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
             fixed_timetable[(time.line, time.column)] = "Available"
     else:
         fixed_timetable = {key: value.copy() if isinstance(value, list) else value for key, value in timetable.items()}
-    
+
     #Aqui, acessamos a atividade que precisa ser alocada, se houverem mais atividades na lista, selecionamos a última, que será sempre a que desejamos, caso contrário, selecionamos a única atividade da lista.
     if len(activities_with_professor) > 1:
         tactivitie = activities_with_professor[-1]
-    else: 
+    else:
         tactivitie = activities_with_professor[0]
 
     #Agora organizamos as atividades por maior quantidade de horários preferidos e maior quantidade de horários necessários, para iniciar pelas alocações mais "difíceis" e, assim, otimizar o algoritmo. Em seguida, selecionamos a primeira atividade da lista para tentar alocá-la em algum horário.
@@ -2367,23 +2371,23 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
     professor_subject_weight = activitie.tsubject.favorite_professors.get(professor = activitie.tprofessor).professor_weight if activitie.tsubject.favorite_professors.filter(professor = activitie.tprofessor).exists() else 1
 
     #Aqui definimos o peso da atividade para aquele professor, se a atividade for diferente da que desejamos alocar no momento, o peso é puxado diretamente de suas preferências, caso contrário, ele é calculado. O peso da atividade a ser alocada também é calculado separadamente para fins de comparação.
-    if activitie.professor_weight: 
+    if activitie.professor_weight:
         current_weight = activitie.professor_weight
     else:
         current_weight = (tactivitie.tclass.favorite_professors.get(professor = professor).professor_weight if tactivitie.tclass.favorite_professors.filter(professor = professor).exists() else 1) + (tactivitie.tsubject.favorite_professors.get(professor = professor).professor_weight if tactivitie.tsubject.favorite_professors.filter(professor = professor).exists() else 1)
     example_weight = (tactivitie.tclass.favorite_professors.get(professor = professor).professor_weight if tactivitie.tclass.favorite_professors.filter(professor = professor).exists() else 1) + (tactivitie.tsubject.favorite_professors.get(professor = professor).professor_weight if tactivitie.tsubject.favorite_professors.filter(professor = professor).exists() else 1)
 
-    #Aqui inicia o processo de alocação. Uma iteração inicia sobre os horários preferidos da atividade, verificando se o horário marcado e os horários em sequência (considerando o tamanho da atividade) estão disponíveis. 
+    #Aqui inicia o processo de alocação. Uma iteração inicia sobre os horários preferidos da atividade, verificando se o horário marcado e os horários em sequência (considerando o tamanho da atividade) estão disponíveis.
     #Se o horário estiver disponível, ele é marcado como ocupado pela atividade no dicionário. Caso contrário, se a atividade tiver peso maior do que, no máximo, uma única atividade que já esteja alocada naquele horário, ela poderá tomar o lugar dela e retornar a atividade desalocada para removê-la daquele horário.
     #Caso o peso seja igual, os critérios de desempate são aplicados, e o professor escolhido será mantido. Há uma variável de controle que se mantém durante o backtracking para garantir que haja apenas uma troca por iteração, para evitar que haja uma série de trocas que poderiam desalocar várias atividades e, assim, causar um grande problema.
     #A função é novamente chamada para tentar alocar a próxima atividade da lista, e dessa forma, todas as possibilidades podem ser testadas.
-        
+
     last_switch = None
     last_switched_activitie = None
     last_start = None
     for s, start in enumerate(activitie.tclass.prefered_schedules.all()):
         switched_activitie = None
-        switch = False 
+        switch = False
         available = False
         timetable = {key: value.copy() if isinstance(value, list) else value for key, value in fixed_timetable.items()}
 
@@ -2392,7 +2396,7 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
                 slot = timetable.get((start.line+i, start.column))
             except:
                 slot = None
-            
+
             if slot:
                 if slot == "Available":
                     available = True
@@ -2409,7 +2413,7 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
                 elif current_weight == example_weight and professor_class_weight < 100 and professor_subject_weight < 100 and activitie != tactivitie:
                     if switched == False or activitie == last_switched_activitie:
                         t_activitie = timetable.get((start.line+i, start.column))
-                        
+
                         if tiebreaker(professor, t_activitie.tprofessor, activitie, t_activitie)[0] == professor:
                             switch = True
                             switched_activitie = activitie
@@ -2445,7 +2449,7 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
             start = last_start
             switch = last_switch
             switched_activitie = last_switched_activitie
-        
+
         #Agora, os horários definidos como disponíveis são marcados como ocupados pela atividade no dicionário, e se houver uma atividade marcada como trocada, seus horários anteriormente ocupados serão marcados como livres.
         #Este dicionário serve apenas para esta iteração de horário de início, sendo que, se a possibilidade for inválida e este horário precisar mudar, o dicionário é reiniciado para seu último estado válido, o que foi passado na chamada da função, e o processo se repete com o novo dicionário.
         if available:
@@ -2466,7 +2470,7 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
                     if switch:
                         if not isinstance(check, Activitie):
                             return switched_activitie
-                        else: 
+                        else:
                             return False
                     else:
                         if isinstance(check, Activitie):
@@ -2477,16 +2481,16 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
             else:
                 if switch:
                     return switched_activitie
-                
+
                 return True
     return False
-    
 
-def run_atribuition(request, ambientid):   
+
+def run_atribuition(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -2527,7 +2531,7 @@ def run_atribuition(request, ambientid):
                 from AllokAcads.rko_environments import RKOAttributionEnvironment, RKO
                 env = RKOAttributionEnvironment(ambient, activities)
                 solver = RKO(env=env, logger='none')
-                
+
                 # Executa por 5 segundos
                 final_cost, best_solution, _ = solver.solve(
                     time_total=5,
@@ -2535,12 +2539,12 @@ def run_atribuition(request, ambientid):
                     brkga=2,
                     vns=2
                 )
-                
+
                 # Aplica e salva as melhores atribuições encontradas
                 best_activities = env.decoder(best_solution)
                 for act in best_activities:
                     act.save()
-                    
+
                 # Atualiza num_uses das salas e professores no banco
                 for room in rooms:
                     room.num_uses = sum(a.activities_qtd for a in best_activities if a.tclassroom and a.tclassroom.id == room.id)
@@ -2564,9 +2568,9 @@ def alocate(ambient, timetable, activities):
 
 def run_alocation(request, ambientid):
     if request.user.is_authenticated:
-        try: 
+        try:
             user = User.objects.get(userid = request.user.username)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             auth_logout(request)
             return redirect('/')
         try:
@@ -2577,18 +2581,18 @@ def run_alocation(request, ambientid):
             member = ambient.members.get(user = user)
         except Member.DoesNotExist:
             return redirect('home')
-        
+
         if ambient.members.filter(user = user) and member.admin_type.can_run_alocation:
             # Limpa qualquer grade anterior
             if ambient.published_timetable:
                 ambient.published_timetable.delete()
-                
+
             # O algoritmo inicia criando uma tabela vazia, que será preenchida em breve
             timetable_db = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
             timetable_db.save()
             ambient.published_timetable = timetable_db
             ambient.save()
-            
+
             # Cria slots de alocação vazios no banco de dados
             for schedule in ambient.available_schedules.all():
                 alocation = Alocation(line = schedule.line, column = schedule.column)
@@ -2601,7 +2605,7 @@ def run_alocation(request, ambientid):
                 from AllokAcads.rko_environments import RKOAllocationEnvironment, RKO
                 env = RKOAllocationEnvironment(ambient, activities)
                 solver = RKO(env=env, logger='none')
-                
+
                 # Executa a otimização com RKO para Alocação por 5 segundos
                 final_cost, best_solution, _ = solver.solve(
                     time_total=5,
@@ -2609,10 +2613,10 @@ def run_alocation(request, ambientid):
                     brkga=2,
                     vns=2
                 )
-                
+
                 # Decodifica a melhor grade horária encontrada
                 tdict = env.decoder(best_solution)
-                
+
                 # Salva as alocações da grade horária no banco de dados
                 for key, value in tdict.items():
                     try:
@@ -2626,7 +2630,7 @@ def run_alocation(request, ambientid):
                 # Trata as atividades conflitantes na grade horária final
                 allocated_acts = set()
                 conflitant_acts = set()
-                
+
                 # Checa duplicidade nos slots
                 for (line, col), acts in tdict.items():
                     n = len(acts)
@@ -2638,7 +2642,7 @@ def run_alocation(request, ambientid):
                                 if (a.tclass == b.tclass) or (a.tprofessor == b.tprofessor) or (a.tclassroom == b.tclassroom):
                                     conflitant_acts.add(a)
                                     conflitant_acts.add(b)
-                                    
+
                 # Salva as atividades em conflito como Unregistered_Activitie
                 for act in conflitant_acts:
                     # Remove a atividade do slot no banco de dados
@@ -2646,7 +2650,7 @@ def run_alocation(request, ambientid):
                         if act in slot.activitie.all():
                             slot.activitie.remove(act)
                             slot.save()
-                    
+
                     un_activitie = Unregistered_Activitie(activitie = act, message="Conflito de recurso (Professor, Sala ou Turma ocupados).")
                     un_activitie.save()
                     ambient.published_timetable.not_alocated.add(un_activitie)
@@ -2654,3 +2658,212 @@ def run_alocation(request, ambientid):
         return redirect(f'/ambient/{ambientid}')
     else:
         return redirect('/')
+#AI zone
+
+def professor_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        subject_professor, created = subject.favorite_professors.get_or_create(professor = professor)
+        subject_professor.professor_weight = weight
+        subject_professor.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        class_professor, created = tclass.favorite_professors.get_or_create(professor = professor)
+        class_professor.professor_weight = weight
+        class_professor.save()
+def classroom_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        subject_classroom, created = subject.ideal_classrooms.get_or_create(classroom = classroom)
+        subject_classroom.classroom_weight = weight
+        subject_classroom.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        class_classroom, created = tclass.ideal_classrooms.get_or_create(classroom = classroom)
+        class_classroom.classroom_weight = weight
+        class_classroom.save()
+def schedule_preference_adjustment(ambientid, origin_type, origin, preference, true_false):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+
+    is_day_only = False
+    day_index = None
+
+    if isinstance(preference, int):
+        is_day_only = True
+        day_index = preference
+    elif isinstance(preference, str):
+        val = preference.lower().replace("dia", "").strip()
+        try:
+            if "dia" in preference.lower():
+                day_index = int(val) - 1
+            else:
+                day_index = int(val)
+            is_day_only = True
+        except ValueError:
+            pass
+
+    schedules_to_adjust = []
+    if is_day_only and day_index is not None:
+        periods = ambient.periods_in_a_day
+        for line in range(periods):
+            try:
+                schedule = ambient.available_schedules.get(line = line, column = day_index)
+                schedules_to_adjust.append(schedule)
+            except Exception as e:
+                print(f"Erro ao obter horário do dia {day_index}, período {line}: {e}")
+    else:
+        try:
+            schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
+            schedules_to_adjust = [schedule]
+        except Exception as e:
+            print(f"Erro ao obter horário com coordenadas {preference}: {e}")
+
+    if origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                tclass.prefered_schedules.add(schedule)
+            else:
+                tclass.prefered_schedules.remove(schedule)
+    if origin_type == 'Professor':
+        professor = ambient.members.get(user__name = origin, is_professor = True)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                professor.prefered_schedules.add(schedule)
+            else:
+                professor.prefered_schedules.remove(schedule)
+
+
+def chatbot(ambientid, user_input=""):
+    functions = {
+        "schedule_preference_adjustment": schedule_preference_adjustment,
+        "professor_preference_adjustment": professor_preference_adjustment,
+        "classroom_preference_adjustment": classroom_preference_adjustment,
+    }
+
+    if not user_input:
+        return "Nenhum comando enviado para o chatbot."
+
+    prompt = f"""
+    Você é um assistente Python. Analise o comando do usuário e responda em JSON com o nome da função e os argumentos.
+    Como argumentos, você receberá o tipo de origem da preferência (professor, matéria ou turma), o nome da origem,
+    o nome da preferência (horário, professor ou sala) e o peso da preferência (número entre 0 e 100) ou se a
+    preferência é verdadeira ou falsa, em casos de preferência horária. Caso o usuário não forneça algum dado, você
+    é livre para preencher o formato de resposta da maneira que achar melhor, desde que seja possível entender qual é a preferência, a origem e o peso ou se é verdadeira ou falsa, no caso de preferência horária.
+    Padrões e exemplos de resposta:
+    1) Para ajustar uma preferência de horário específico: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', [2,3], True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para o horário 3 do dia 4.
+    2) Para ajustar a preferência de horário para um DIA INTEIRO: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', 2, True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para TODOS os horários do dia 3 (dia indexado em 2). Se o usuário disser "dia Y", passe o número Y-1 como o terceiro argumento.
+    3) Para ajustar uma preferência de matéria: {{"function": "professor_preference_adjustment", "args": ['Matéria', 'Matemática', 'Carlos Silva', 100]}} - Define o peso da preferência da matéria de Matemática pelo professor Carlos Silva como 100, o que pode influenciar na alocação de atividades desta matéria para ele.
+    4) Para ajustar uma preferência de sala: {{"function": "classroom_preference_adjustment", "args": ['Turma', 'Ciência da Computação I', 'Laboratório de Informática I', 100]}} - Define o peso da preferência da turma de Ciência da Computação I pelo Laboratório de Informática I como 100, o que pode influenciar na alocação de atividades desta turma para esta sala.
+    Caso o usuário diga para não colocar uma preferência, o peso deve ser definido como 0, ou, no caso de preferência horária, a preferência deve ser definida como falsa.
+    Caso o usuário diga que uma preferência DEVE ser atendida, o peso deve ser definido como 100, ou, no caso de preferência horária, a preferência deve ser definida como verdadeira.
+    Caso o usuário não especifique uma forte necessidade, o peso pode ser definido como 50
+
+    Para definir horários específicos, o primeiro número sempre será o horário e o segundo sempre será o dia, e a contagem inicia em 0, então [0,0] representa o horário 1 do dia 1. Se for especificado um dia inteiro, use apenas o número do dia indexado em 0 (ex: "dia 3" virá como o número 2).
+
+    Comando: {user_input}
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    model = os.environ.get("OPENROUTER_MODEL", "openrouter/owl-alpha")
+    if not api_key:
+        return "Configure a variável de ambiente OPENROUTER_API_KEY para ativar o chat de IA."
+
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+    )
+
+    result = response.json()
+    if "error" in result:
+        error_msg = result["error"].get("message", "Erro desconhecido")
+        print("Erro do OpenRouter:", error_msg)
+        return f"Erro na API do OpenRouter: {error_msg}. Por favor, certifique-se de configurar uma chave de API válida na variável de ambiente OPENROUTER_API_KEY."
+
+    try:
+        content = result["choices"][0]["message"]["content"]
+        content_clean = content.replace("```json", "").replace("```", "").strip()
+        content_clean = content_clean.replace("'", '"').replace("True", "true").replace("False", "false")
+        print(content_clean)
+        data = json.loads(content_clean)
+        func_name = data.get("function")
+        args = data.get("args", [])
+
+        func = functions.get(func_name)
+        if func:
+            func(ambientid, *args)
+            if func_name == "schedule_preference_adjustment":
+                origin_type, origin, preference, true_false = args
+                status = "ativa" if true_false else "inativa"
+                if isinstance(preference, int) or (isinstance(preference, str) and not isinstance(preference, list)):
+                    try:
+                        val = int(str(preference).lower().replace("dia", "").strip())
+                        if "dia" not in str(preference).lower():
+                            display_day = val + 1
+                        else:
+                            display_day = val
+                    except:
+                        display_day = preference
+                    return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' para TODOS os horários do Dia {display_day} para {status}."
+                else:
+                    return f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' no horário/dia {preference} para {status}."
+            elif func_name == "professor_preference_adjustment":
+                origin_type, origin, preference, weight = args
+                return f"Entendi! Defini a preferência do {origin_type} '{origin}' pelo professor '{preference}' com peso {weight}."
+            elif func_name == "classroom_preference_adjustment":
+                origin_type, origin, preference, weight = args
+                return f"Entendi! Defini a preferência do {origin_type} '{origin}' pela sala '{preference}' com peso {weight}."
+            return f"Comando '{func_name}' executado com sucesso."
+        else:
+            return f"Desculpe, não encontrei a função '{func_name}' nas minhas configurações."
+    except Exception as e:
+        print("Erro ao processar resposta da LLM:", e)
+        try:
+            fallback = result["choices"][0]["message"]["content"]
+            if fallback:
+                return fallback
+        except:
+            pass
+        return f"Desculpe, ocorreu um erro ao processar sua solicitação: {str(e)}"
+
+
+@csrf_exempt
+def chatbot_api(request, ambientid):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "not_authenticated", "response": "Usuário não autenticado."}, status=401)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            user_input = data.get("message", "").strip()
+            if not user_input:
+                return JsonResponse({"response": "Por favor, digite uma mensagem válida."}, status=400)
+
+            bot_response = chatbot(ambientid, user_input)
+
+            # Executa a atribuição e alocação automaticamente
+            run_atribuition(request, ambientid)
+            run_alocation(request, ambientid)
+
+            if bot_response and not any(err in bot_response for err in ["Desculpe", "Erro na API", "Nenhum"]):
+                bot_response += "\n\n🔄 A atribuição e a alocação de horários foram recalculadas automaticamente com base neste ajuste!"
+
+            return JsonResponse({"response": bot_response})
+        except Exception as e:
+            return JsonResponse({"error": "invalid_request", "response": f"Erro ao processar requisição: {str(e)}"}, status=400)
+
+    return JsonResponse({"error": "method_not_allowed", "response": "Método não permitido."}, status=405)
