@@ -8,7 +8,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ambient.css' %}">
-<link rel="stylesheet" href="{% static 'css/chat-widget.css' %}">
+<link rel="stylesheet" href="{% static 'css/chat-widget.css' %}?v={% now 'U' %}">
 {% endblock %}
 
 {% block content %}
@@ -294,6 +294,34 @@
                 </div>
             </div>
             {% endif %}
+
+            {% if restricoes_ativas %}
+            <div class="info-card rules-card" style="border-left: 4px solid #f72585;">
+                <div class="info-header">
+                    <h3>Restrições Dinâmicas (IA)</h3>
+                    <span class="rules-badge" style="background-color: #f72585; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">{{ restricoes_ativas|length }} ativas</span>
+                </div>
+                <div class="info-body" style="padding-top: 10px;">
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">As restrições abaixo foram inseridas via assistente de IA e são aplicadas na otimização da grade.</p>
+                    <div class="rules-list" style="display: flex; flex-direction: column; gap: 10px;">
+                        {% for rule in restricoes_ativas %}
+                        <div class="rule-item" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="font-weight: 600; color: #212529; font-size: 14px;">
+                                📌 {{ rule.description }}
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                {% for cond in rule.conditions %}
+                                <span class="rule-condition" style="background: #e9f5ff; border: 1px solid #bde0fe; color: #0077b6; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-family: monospace;">
+                                    {{ cond.field }} {{ cond.operator }} "{{ cond.value }}"
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             {% if member.admin_type.can_run_atribuition or member.admin_type.can_run_alocation %}
             <div class="admin-actions-card">
@@ -402,5 +430,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/ambient.js' %}"></script>
-<script type="module" crossorigin src="{% static 'js/chat-widget.js' %}"></script>
+<script type="module" crossorigin src="{% static 'js/chat-widget.js' %}?v={% now 'U' %}"></script>
 {% endblock %}

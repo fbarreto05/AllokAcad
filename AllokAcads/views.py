@@ -337,6 +337,9 @@ def ambient(request, ambientid):
             if ambient.periods_in_a_day:
                 periods_range = range(ambient.periods_in_a_day)
 
+            from AllokAcads.rko_llm_constraints import load_rules
+            restricoes_ativas = load_rules(ambient.ambientid)
+
             return render(request, "AllokAcads/ambient.html", {
                 'ambient': ambient,
                 'user': user,
@@ -353,6 +356,7 @@ def ambient(request, ambientid):
                 'not_alocated': not_alocated,
                 'columns_range': columns_range,
                 'periods_range': periods_range,
+                'restricoes_ativas': restricoes_ativas,
             })
         else:
             return redirect('home')
@@ -2486,6 +2490,157 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
     return False
 
 
+def _run_attribution_logic_silent(ambient):
+    # Limpa as atividades para iniciar uma nova atribuição.
+    old_activities = list(ambient.activities.all())
+    ambient.activities.clear()
+    Activitie.objects.filter(id__in=[act.id for act in old_activities]).delete()
+    ambient.save()
+    rooms = list(ambient.classrooms.all())
+    for room in rooms:
+        room.num_uses = 0
+        room.save()
+    professors = list(ambient.members.all().filter(is_professor = True))
+    for professor in professors:
+        professor.num_uses = 0
+        professor.save()
+    # Recria as atividades.
+    classes = ambient.classes.all()
+    for aclass in classes:
+        necessary_subjects = aclass.necessary_subjects.all()
+        for subject in necessary_subjects:
+            activitie = Activitie(tclass = aclass, tsubject = subject.subject, activities_qtd = subject.periods)
+            activitie.save()
+            ambient.activities.add(activitie)
+    ambient.save()
+
+    # Executa a otimização com RKO para Atribuição
+    activities = list(ambient.activities.all())
+    if activities:
+        from AllokAcads.rko_environments import RKOAttributionEnvironment, RKO
+        env = RKOAttributionEnvironment(ambient, activities)
+        solver = RKO(env=env, logger='none')
+        attribution_time = int(os.environ.get("RKO_ATTRIBUTION_TIME", "5"))
+
+        # Executa por 5 segundos
+        final_cost, best_solution, _ = solver.solve(
+            time_total=attribution_time,
+            runs=1,
+            brkga=2,
+            vns=2
+        )
+
+        # Aplica e salva as melhores atribuições encontradas
+        best_activities = env.decoder(best_solution)
+        for act in best_activities:
+            act.save()
+
+        # Atualiza num_uses das salas e professores no banco
+        for room in rooms:
+            room.num_uses = sum(a.activities_qtd for a in best_activities if a.tclassroom and a.tclassroom.id == room.id)
+            room.save()
+        for prof in professors:
+            prof.num_uses = sum(a.activities_qtd for a in best_activities if a.tprofessor and a.tprofessor.id == prof.id)
+            prof.save()
+
+
+def _run_allocation_logic_silent(ambient):
+    # Limpa qualquer grade anterior
+    if ambient.published_timetable:
+        ambient.published_timetable.delete()
+
+    # O algoritmo inicia criando uma tabela vazia, que será preenchida em breve
+    timetable_db = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
+    timetable_db.save()
+    ambient.published_timetable = timetable_db
+    ambient.save()
+
+    # Cria slots de alocação vazios no banco de dados
+    for schedule in ambient.available_schedules.all():
+        alocation = Alocation(line = schedule.line, column = schedule.column)
+        alocation.save()
+        ambient.published_timetable.table.add(alocation)
+    ambient.save()
+
+    activities = list(ambient.activities.all())
+    if activities:
+        from AllokAcads.rko_environments import RKOAllocationEnvironment, RKO
+        env = RKOAllocationEnvironment(ambient, activities)
+        solver = RKO(env=env, logger='none')
+        allocation_time = int(os.environ.get("RKO_ALLOCATION_TIME", "30"))
+
+        # Executa a otimização com RKO para Alocação por 5 segundos
+        final_cost, best_solution, _ = solver.solve(
+            time_total=allocation_time,
+            runs=1,
+            brkga=2,
+            vns=2
+        )
+
+        # Decodifica a melhor grade horária encontrada
+        tdict = env.decoder(best_solution)
+        from AllokAcads import rko_llm_constraints
+        repair_log = rko_llm_constraints.repair_allocation_timetable(ambient, tdict)
+        live_activities = Activitie.objects.in_bulk({
+            act.id
+            for acts in tdict.values()
+            for act in acts
+            if getattr(act, "id", None)
+        })
+
+        # Salva as alocações da grade horária no banco de dados
+        for key, value in tdict.items():
+            try:
+                alocation_db = ambient.published_timetable.table.all().get(line = key[0], column = key[1])
+                for act in value:
+                    live_act = live_activities.get(act.id)
+                    if live_act:
+                        alocation_db.activitie.add(live_act)
+                alocation_db.save()
+            except Alocation.DoesNotExist:
+                pass
+
+        # Trata as atividades conflitantes — remove só o mínimo necessário
+        removed_ids = set()
+        while True:
+            conflict_count = {}
+            has_conflict = False
+            for (line, col), slot_acts in tdict.items():
+                active = [a for a in slot_acts if a.id not in removed_ids]
+                for j in range(len(active)):
+                    for k in range(j + 1, len(active)):
+                        a, b = active[j], active[k]
+                        if (a.tclass is not None and a.tclass == b.tclass) or \
+                           (a.tprofessor is not None and a.tprofessor == b.tprofessor) or \
+                           (a.tclassroom is not None and a.tclassroom == b.tclassroom):
+                            conflict_count[a.id] = conflict_count.get(a.id, 0) + 1
+                            conflict_count[b.id] = conflict_count.get(b.id, 0) + 1
+                            has_conflict = True
+            if not has_conflict:
+                break
+            worst_id = max(conflict_count, key=conflict_count.get)
+            removed_ids.add(worst_id)
+
+        # Remove as atividades conflitantes do banco e registra como não alocadas
+        for act_id in removed_ids:
+            live_act = live_activities.get(act_id)
+            if not live_act:
+                continue
+            for slot in ambient.published_timetable.table.all():
+                if live_act in slot.activitie.all():
+                    slot.activitie.remove(live_act)
+                    slot.save()
+            un_activitie = Unregistered_Activitie(
+                activitie=live_act,
+                message="Conflito de recurso (Professor, Sala ou Turma ocupados)."
+            )
+            un_activitie.save()
+            ambient.published_timetable.not_alocated.add(un_activitie)
+
+        # Tenta reinserir as atividades removidas com outra sala/horário
+        if removed_ids:
+            rko_llm_constraints.repair_published_timetable(ambient)
+
 def run_atribuition(request, ambientid):
     if request.user.is_authenticated:
         try:
@@ -2502,57 +2657,8 @@ def run_atribuition(request, ambientid):
         except Member.DoesNotExist:
             return redirect('home')
 
-        if ambient.members.filter(user = user) and member.admin_type.can_run_atribuition:
-            # Limpa as atividades para iniciar uma nova atribuição.
-            ambient.activities.all().delete()
-            ambient.activities.clear()
-            ambient.save()
-            rooms = list(ambient.classrooms.all())
-            for room in rooms:
-                room.num_uses = 0
-                room.save()
-            professors = list(ambient.members.all().filter(is_professor = True))
-            for professor in professors:
-                professor.num_uses = 0
-                professor.save()
-            # Recria as atividades.
-            classes = ambient.classes.all()
-            for aclass in classes:
-                necessary_subjects = aclass.necessary_subjects.all()
-                for subject in necessary_subjects:
-                    activitie = Activitie(tclass = aclass, tsubject = subject.subject, activities_qtd = subject.periods)
-                    activitie.save()
-                    ambient.activities.add(activitie)
-            ambient.save()
-
-            # Executa a otimização com RKO para Atribuição
-            activities = list(ambient.activities.all())
-            if activities:
-                from AllokAcads.rko_environments import RKOAttributionEnvironment, RKO
-                env = RKOAttributionEnvironment(ambient, activities)
-                solver = RKO(env=env, logger='none')
-
-                # Executa por 5 segundos
-                final_cost, best_solution, _ = solver.solve(
-                    time_total=5,
-                    runs=1,
-                    brkga=2,
-                    vns=2
-                )
-
-                # Aplica e salva as melhores atribuições encontradas
-                best_activities = env.decoder(best_solution)
-                for act in best_activities:
-                    act.save()
-
-                # Atualiza num_uses das salas e professores no banco
-                for room in rooms:
-                    room.num_uses = sum(a.activities_qtd for a in best_activities if a.tclassroom and a.tclassroom.id == room.id)
-                    room.save()
-                for prof in professors:
-                    prof.num_uses = sum(a.activities_qtd for a in best_activities if a.tprofessor and a.tprofessor.id == prof.id)
-                    prof.save()
-
+        if ambient.members.filter(user = user) and member.admin_type and member.admin_type.can_run_atribuition:
+            _run_attribution_logic_silent(ambient)
             return redirect(f'/ambient/{ambientid}')
         else:
             return redirect('home')
@@ -2582,80 +2688,11 @@ def run_alocation(request, ambientid):
         except Member.DoesNotExist:
             return redirect('home')
 
-        if ambient.members.filter(user = user) and member.admin_type.can_run_alocation:
-            # Limpa qualquer grade anterior
-            if ambient.published_timetable:
-                ambient.published_timetable.delete()
-
-            # O algoritmo inicia criando uma tabela vazia, que será preenchida em breve
-            timetable_db = Timetable(lines_number = ambient.periods_in_a_day, columns_number = ambient.days_in_a_cicle)
-            timetable_db.save()
-            ambient.published_timetable = timetable_db
-            ambient.save()
-
-            # Cria slots de alocação vazios no banco de dados
-            for schedule in ambient.available_schedules.all():
-                alocation = Alocation(line = schedule.line, column = schedule.column)
-                alocation.save()
-                ambient.published_timetable.table.add(alocation)
-            ambient.save()
-
-            activities = list(ambient.activities.all())
-            if activities:
-                from AllokAcads.rko_environments import RKOAllocationEnvironment, RKO
-                env = RKOAllocationEnvironment(ambient, activities)
-                solver = RKO(env=env, logger='none')
-
-                # Executa a otimização com RKO para Alocação por 5 segundos
-                final_cost, best_solution, _ = solver.solve(
-                    time_total=5,
-                    runs=1,
-                    brkga=2,
-                    vns=2
-                )
-
-                # Decodifica a melhor grade horária encontrada
-                tdict = env.decoder(best_solution)
-
-                # Salva as alocações da grade horária no banco de dados
-                for key, value in tdict.items():
-                    try:
-                        alocation_db = ambient.published_timetable.table.all().get(line = key[0], column = key[1])
-                        for act in value:
-                            alocation_db.activitie.add(act)
-                        alocation_db.save()
-                    except Alocation.DoesNotExist:
-                        pass
-
-                # Trata as atividades conflitantes na grade horária final
-                allocated_acts = set()
-                conflitant_acts = set()
-
-                # Checa duplicidade nos slots
-                for (line, col), acts in tdict.items():
-                    n = len(acts)
-                    if n > 1:
-                        for j in range(n):
-                            a = acts[j]
-                            for k in range(j + 1, n):
-                                b = acts[k]
-                                if (a.tclass == b.tclass) or (a.tprofessor == b.tprofessor) or (a.tclassroom == b.tclassroom):
-                                    conflitant_acts.add(a)
-                                    conflitant_acts.add(b)
-
-                # Salva as atividades em conflito como Unregistered_Activitie
-                for act in conflitant_acts:
-                    # Remove a atividade do slot no banco de dados
-                    for slot in ambient.published_timetable.table.all():
-                        if act in slot.activitie.all():
-                            slot.activitie.remove(act)
-                            slot.save()
-
-                    un_activitie = Unregistered_Activitie(activitie = act, message="Conflito de recurso (Professor, Sala ou Turma ocupados).")
-                    un_activitie.save()
-                    ambient.published_timetable.not_alocated.add(un_activitie)
-
-        return redirect(f'/ambient/{ambientid}')
+        if ambient.members.filter(user = user) and member.admin_type and member.admin_type.can_run_alocation:
+            _run_allocation_logic_silent(ambient)
+            return redirect(f'/ambient/{ambientid}')
+        else:
+            return redirect('home')
     else:
         return redirect('/')
 #AI zone
@@ -2740,6 +2777,986 @@ def schedule_preference_adjustment(ambientid, origin_type, origin, preference, t
                 professor.prefered_schedules.remove(schedule)
 
 
+def rko_chatbot(ambientid, user_input="", conversation_history=None):
+    if not user_input:
+        return "Nenhum comando enviado para o chatbot.", False
+
+    try:
+        ambient = Ambient.objects.get(ambientid=ambientid)
+    except Ambient.DoesNotExist:
+        return "Nao encontrei este ambiente para configurar o RKO.", False
+
+    env_path = os.path.join(settings.BASE_DIR, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        k, v = line.strip().split("=", 1)
+                        os.environ[k.strip()] = v.strip().strip('"').strip("'")
+        except Exception:
+            pass
+
+    api_key = os.environ.get("HF_TOKEN")
+    model = os.environ.get("HF_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
+    if not api_key:
+        return "Configure a variavel de ambiente HF_TOKEN para ativar o chat de IA.", False
+
+    try:
+        from AllokAcads import rko_llm_constraints
+
+        memory_response = _answer_from_chat_memory(user_input, conversation_history)
+        if memory_response:
+            return memory_response, False
+
+        unknown_professor_response = _ask_about_unknown_professor(ambient, user_input)
+        if unknown_professor_response:
+            return unknown_professor_response, False
+
+        deterministic_actions = _build_deterministic_rko_actions(user_input)
+        if deterministic_actions:
+            return _run_rko_json_actions(rko_llm_constraints, ambientid, deterministic_actions)
+
+        messages = [
+            {"role": "system", "content": _build_json_actions_prompt(rko_llm_constraints, ambient)},
+        ]
+        for item in (conversation_history or [])[-12:]:
+            sender = item.get("sender")
+            text = (item.get("text") or "").strip()
+            if not text:
+                continue
+            if sender == "user":
+                messages.append({"role": "user", "content": text})
+            elif sender == "bot":
+                messages.append({"role": "assistant", "content": text})
+        messages.append({"role": "user", "content": user_input})
+
+        response = requests.post(
+            url="https://router.huggingface.co/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": 0,
+            },
+            timeout=90,
+        )
+
+        result = response.json()
+        if response.status_code != 200:
+            print("Erro do Hugging Face. Status:", response.status_code, "Body:", response.text)
+            error_msg = "Erro desconhecido"
+            if isinstance(result, dict):
+                err = result.get("error")
+                if isinstance(err, dict):
+                    error_msg = err.get("message", str(err))
+                elif err:
+                    error_msg = str(err)
+                elif "message" in result:
+                    error_msg = str(result.get("message"))
+            return f"Erro na API do Hugging Face: {error_msg}. Configure um token valido em HF_TOKEN.", False
+
+        message = result["choices"][0]["message"]
+        content = (message.get("content") or "").strip()
+
+        # Tenta extrair e rodar as acoes JSON do content do modelo
+        json_output, parsed_rules_changed, executed_actions = _parse_and_run_json_actions(
+            rko_llm_constraints, ambientid, content
+        )
+
+        if executed_actions:
+            # Se executou acoes, faz uma segunda chamada para o modelo explicar o resultado em portugues.
+            # Montamos um historico limpo substituindo o system prompt restritivo de JSON por um explicativo.
+            second_messages = []
+            for msg in messages:
+                if msg.get("role") == "system":
+                    second_messages.append({
+                        "role": "system",
+                        "content": "Voce e um assistente de IA amigavel que ajuda a analisar a grade horaria e explicar os resultados em portugues."
+                    })
+                else:
+                    second_messages.append(msg)
+
+            second_messages.append({"role": "assistant", "content": content})
+            second_messages.append({
+                "role": "user",
+                "content": (
+                    f"Resultados da execucao das acoes no RKO:\n{json_output}\n\n"
+                    f"Por favor, responda ao usuario em portugues de forma muito amigavel e natural, "
+                    f"explicando o resultado dessas acoes ou respondendo diretamente a pergunta dele com base nesses dados. "
+                    f"ATENCAO: Se alguma acao falhou com erro (como 'Erro ao executar' ou 'ValueError'), explique amigavelmente ao usuario qual foi o erro no RKO em vez de dizer que funcionou."
+                )
+            })
+
+            try:
+                second_response = requests.post(
+                    url="https://router.huggingface.co/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": second_messages,
+                        "temperature": 0.5,
+                    },
+                    timeout=90,
+                )
+                if second_response.status_code == 200:
+                    second_result = second_response.json()
+                    final_content = (second_result["choices"][0]["message"].get("content") or "").strip()
+                    return final_content, parsed_rules_changed
+            except Exception:
+                pass
+
+            # Fallback se a segunda chamada falhar
+            return json_output, parsed_rules_changed
+
+        # Se o content existia mas nao continha JSON/acoes, e uma resposta em texto natural.
+        # Retorna ela diretamente ao usuario em vez do fallback rigido!
+        if content:
+            return content, False
+
+        # Trata tool_calls nativos caso o modelo os utilize (mantido por compatibilidade)
+        tool_calls = message.get("tool_calls") or []
+        if tool_calls:
+            rules_changed = False
+            second_messages = []
+            for msg in messages:
+                if msg.get("role") == "system":
+                    second_messages.append({
+                        "role": "system",
+                        "content": "Voce e um assistente de IA amigavel que ajuda a analisar a grade horaria e explicar os resultados em portugues."
+                    })
+                else:
+                    second_messages.append(msg)
+
+            second_messages.append(message)
+            for tool_call in tool_calls:
+                tool_call_id = tool_call.get("id")
+                function_data = tool_call.get("function", {})
+                function_name = function_data.get("name")
+                function_args = json.loads(function_data.get("arguments") or "{}")
+                tool_output, tool_rules_changed, _ = _run_rko_tool_action(
+                    rko_llm_constraints,
+                    ambientid,
+                    function_name,
+                    function_args,
+                )
+                rules_changed = rules_changed or tool_rules_changed
+                
+                second_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "name": function_name,
+                    "content": tool_output
+                })
+
+            second_response = requests.post(
+                url="https://router.huggingface.co/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": second_messages,
+                    "temperature": 0.5,
+                },
+                timeout=90,
+            )
+
+            second_result = second_response.json()
+            if second_response.status_code == 200:
+                final_message = second_result["choices"][0]["message"]
+                return (final_message.get("content") or "").strip(), rules_changed
+            else:
+                return f"Resultados da execucao das acoes no RKO:\n{json_output}", rules_changed
+
+        return "Nao consegui identificar uma restricao para aplicar ao RKO.", False
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Desculpe, ocorreu um erro ao processar sua solicitacao: {str(e)}", False
+
+
+def _build_deterministic_rko_actions(user_input):
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", user_input or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch)).lower()
+
+    out_of_scope_message = _detect_out_of_scope_rko_request(text)
+    if out_of_scope_message:
+        return [{
+            "function": "respond_to_user",
+            "arguments": {"message": out_of_scope_message},
+        }]
+
+    actions = []
+    mentions_restrictions = "restric" in text or "restri" in text or "retric" in text or "retri" in text
+    mentions_aline = "aline paula" in text
+    mentions_english = "lingua inglesa" in text or "inglesa" in text
+    mentions_tuesday = "terca" in text
+    asks_clear = any(word in text for word in ["apague", "limpe", "remova todas", "delete todas"])
+    asks_list = (
+        any(phrase in text for phrase in ["quais sao", "quais", "liste", "listar", "mostre", "temos ativa", "ativas"])
+        and mentions_restrictions
+    )
+    asks_optimize = any(word in text for word in ["otimize", "otimizar", "rode", "gerar", "gere", "recalcule"])
+    asks_analysis = any(phrase in text for phrase in [
+        "funcionou", "funcionaram", "funciona", "funcionar", "deu certo", "foi atend", "foram atend", "explica",
+        "explique", "analise", "analisar", "verifique", "validar", "valide",
+        "conflito", "problema",
+    ]) and any(term in text for term in ["restric", "restri", "retric", "retri", "grade", "solucao", "aloc", "horario"])
+
+    if asks_clear and mentions_restrictions:
+        actions.append({"function": "clear_all_constraints", "arguments": {}})
+
+    if asks_list:
+        actions.append({"function": "list_constraints", "arguments": {}})
+
+    professor_days_action = _build_professor_only_days_action_from_text(user_input)
+    if professor_days_action:
+        actions.append(professor_days_action)
+
+    if mentions_aline and mentions_english and "so pode" in text:
+        actions.append(_build_professor_only_subject_action("Aline Paula", "Lingua Inglesa"))
+
+    elif mentions_aline and mentions_english:
+        actions.append({
+            "function": "add_restriction_rule",
+            "arguments": {
+                "description": "Aline Paula deve dar aulas de Lingua Inglesa",
+                "conditions": [
+                    {"field": "disciplina", "operator": "==", "value": "Língua Inglesa"},
+                    {"field": "professor", "operator": "!=", "value": "Aline Paula"},
+                ],
+            },
+        })
+
+    if mentions_aline and mentions_tuesday:
+        actions.append({
+            "function": "add_restriction_rule",
+            "arguments": {
+                "description": "Aline Paula so pode dar aula na Terca-feira",
+                "conditions": [
+                    {"field": "professor", "operator": "==", "value": "Aline Paula"},
+                    {"field": "dia", "operator": "!=", "value": "Terca"},
+                ],
+            },
+        })
+
+    if asks_optimize:
+        actions.append({"function": "run_unified_solver", "arguments": {}})
+        actions.append({"function": "analyze_solution", "arguments": {}})
+
+    if asks_analysis and not asks_optimize:
+        actions.append({"function": "analyze_solution", "arguments": {}})
+
+    return actions
+
+
+def _detect_out_of_scope_rko_request(text):
+    if not text:
+        return None
+
+    aggregate_patterns = [
+        (
+            ["cada turma", "por dia"],
+            ["maximo", "no maximo", "minimo", "no minimo", "mais de", "menos de"],
+            "limite agregado de aulas por turma/dia",
+        ),
+        (
+            ["professor", "por dia"],
+            ["maximo", "no maximo", "minimo", "no minimo", "mais de", "menos de"],
+            "limite agregado de aulas por professor/dia",
+        ),
+        (
+            ["aulas", "seguid"],
+            ["maximo", "no maximo", "mais de", "consecutiv"],
+            "limite de aulas consecutivas",
+        ),
+        (
+            ["horario vazio"],
+            ["entre", "janela", "gap", "buraco", "aulas"],
+            "controle de janelas entre aulas",
+        ),
+        (
+            ["janela"],
+            ["turma", "professor", "aula"],
+            "controle de janelas entre aulas",
+        ),
+        (
+            ["mesmo dia"],
+            ["nao podem acontecer", "nao pode acontecer", "disciplinas", "materias"],
+            "relacao entre duas disciplinas no mesmo dia",
+        ),
+        (
+            ["aulas mais dificeis"],
+            ["comeco", "inicio", "fim", "leves"],
+            "preferencia qualitativa de dificuldade",
+        ),
+        (
+            ["aulas dificeis"],
+            ["comeco", "inicio", "fim", "leves"],
+            "preferencia qualitativa de dificuldade",
+        ),
+        (
+            ["equilibr"],
+            ["turma", "professor", "semana", "dias"],
+            "balanceamento global da grade",
+        ),
+    ]
+
+    for required_terms, trigger_terms, label in aggregate_patterns:
+        if all(term in text for term in required_terms) and any(term in text for term in trigger_terms):
+            return (
+                f"Essa restricao ainda esta fora do escopo atual do RKO dinamico: {label}. "
+                "Hoje eu consigo aplicar regras diretas por professor, turma, disciplina, sala, dia e periodo, "
+                "mas nao consigo representar contagens ou padroes agregados como uma regra dinamica simples. "
+                "Nao alterei as restricoes e nao rodei a otimizacao para evitar uma resposta falsa de sucesso."
+            )
+
+    return None
+
+
+def _normalize_chat_text(text):
+    import unicodedata
+
+    normalized = unicodedata.normalize("NFKD", text or "")
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch)).lower()
+
+
+def _extract_name_from_text(text):
+    import re
+
+    normalized = _normalize_chat_text(text)
+    match = re.search(r"\bmeu nome (?:e|eh)\s+([a-z][a-z'-]*)", normalized, re.IGNORECASE)
+    if not match:
+        return None
+    return match.group(1).strip(" .,!?:;").title()
+
+
+def _message_looks_like_rko_request(text):
+    normalized = _normalize_chat_text(text)
+    rko_terms = [
+        "restric", "restri", "retric", "retri", "otimiz", "grade", "aloc", "atribu", "horario", "aula",
+        "professor", "professora", "turma", "sala", "disciplina", "materia",
+        "ingles", "lingua", "aline", "terça", "terca", "slot",
+    ]
+    return any(term in normalized for term in rko_terms)
+
+
+def _extract_requested_professor_name(text):
+    import re
+
+    normalized = _normalize_chat_text(text)
+    patterns = [
+        r".*?\b(?:professora|professor)\s+(.+?)\s+(?:so pode|s\? pode|deve|pode dar|da aula|dar aula)",
+        r".*?\b(?:a|o)\s+(.+?)\s+(?:so pode|s\? pode|deve|pode dar|da aula|dar aula)",
+        r"^(?:a|o)\s+(.+?)\s+(?:so pode|s\? pode|deve|pode dar|da aula|dar aula)",
+        r"^(?:professora|professor)\s+(.+?)\s+(?:so pode|s\? pode|deve|pode dar|da aula|dar aula)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, normalized)
+        if not match:
+            continue
+        name = match.group(1).strip(" .,!?:;")
+        name = name.replace("professora ", "").replace("professor ", "").strip()
+        words = [word for word in name.split() if word not in ["a", "o"]]
+        if len(words) >= 2:
+            return " ".join(words).title()
+    return None
+
+
+def _find_subject_name_in_text(ambient, text):
+    normalized = _normalize_chat_text(text)
+    best_match = None
+    for subject in ambient.subjects.all():
+        subject_name = subject.name or ""
+        subject_normalized = _normalize_chat_text(subject_name)
+        if subject_normalized and subject_normalized in normalized:
+            if not best_match or len(subject_name) > len(best_match):
+                best_match = subject_name
+    if not best_match and ("lingua inglesa" in normalized or "inglesa" in normalized):
+        best_match = "Lingua Inglesa"
+    return best_match
+
+
+def _build_professor_only_subject_action(professor_name, subject_name):
+    return {
+        "function": "add_restriction_rule",
+        "arguments": {
+            "description": f"{professor_name} so pode dar {subject_name}",
+            "conditions": [
+                {"field": "professor", "operator": "==", "value": professor_name},
+                {"field": "disciplina", "operator": "!=", "value": subject_name},
+            ],
+        },
+    }
+
+
+def _build_subject_only_professor_action(professor_name, subject_name):
+    return {
+        "function": "add_restriction_rule",
+        "arguments": {
+            "description": f"{subject_name} deve ser com {professor_name}",
+            "conditions": [
+                {"field": "disciplina", "operator": "==", "value": subject_name},
+                {"field": "professor", "operator": "!=", "value": professor_name},
+            ],
+        },
+    }
+
+
+def _build_professor_only_day_action(professor_name, day_name):
+    return {
+        "function": "add_restriction_rule",
+        "arguments": {
+            "description": f"{professor_name} so pode dar aula na {day_name}",
+            "conditions": [
+                {"field": "professor", "operator": "==", "value": professor_name},
+                {"field": "dia", "operator": "!=", "value": day_name},
+            ],
+        },
+    }
+
+
+def _build_professor_only_days_action_from_text(user_input):
+    normalized = _normalize_chat_text(user_input)
+    if not ("so pode" in normalized or "s? pode" in normalized):
+        return None
+    if not ("aula" in normalized or "dar" in normalized):
+        return None
+
+    professor_name = _extract_requested_professor_name(user_input)
+    if not professor_name:
+        return None
+
+    day_aliases = [
+        ("Segunda", ["segunda", "segunda feira"]),
+        ("Terca", ["terca", "ter?a", "terca feira", "ter?a feira"]),
+        ("Quarta", ["quarta", "quarta feira"]),
+        ("Quinta", ["quinta", "quinta feira"]),
+        ("Sexta", ["sexta", "sexta feira"]),
+        ("Sabado", ["sabado", "sabado feira"]),
+        ("Domingo", ["domingo"]),
+    ]
+    allowed_days = []
+    for canonical, aliases in day_aliases:
+        if any(alias in normalized for alias in aliases):
+            allowed_days.append(canonical)
+
+    if not allowed_days:
+        return None
+
+    day_text = " ou ".join(allowed_days)
+    return {
+        "function": "add_restriction_rule",
+        "arguments": {
+            "description": f"{professor_name} so pode dar aula em {day_text}",
+            "conditions": [
+                {"field": "professor", "operator": "==", "value": professor_name},
+                {"field": "dia", "operator": "not in", "value": allowed_days},
+            ],
+        },
+    }
+
+
+def _detect_ambiguous_professor_subject_restriction(ambient, user_input):
+    normalized = _normalize_chat_text(user_input)
+    only_intent = "so pode" in normalized or "s? pode" in normalized or "pode dar" in normalized
+    if not only_intent:
+        return None
+    if not any(day in normalized for day in ["terca", "ter?a", "segunda", "quarta", "quinta", "sexta", "sabado", "domingo"]):
+        return None
+
+    professor_name = _extract_requested_professor_name(user_input)
+    subject_name = _find_subject_name_in_text(ambient, user_input)
+    if not professor_name or not subject_name:
+        return None
+
+    professor_exists = any(
+        _normalize_chat_text(member.user.name) == _normalize_chat_text(professor_name)
+        for member in ambient.members.filter(is_professor=True)
+        if member.user and member.user.name
+    )
+    if not professor_exists:
+        return None
+
+    day_name = "Terca" if ("terca" in normalized or "ter?a" in normalized) else None
+    if not day_name:
+        return None
+
+    base_actions = [
+        _build_professor_only_day_action(professor_name, day_name),
+        _build_professor_only_subject_action(professor_name, subject_name),
+    ]
+    optional_action = _build_subject_only_professor_action(professor_name, subject_name)
+
+    return {
+        "type": "confirm_subject_direction",
+        "professor": professor_name,
+        "subject": subject_name,
+        "base_actions": base_actions,
+        "optional_action": optional_action,
+        "question": (
+            f"Antes de aplicar, quero confirmar para nao criar a regra errada.\n"
+            f"Entendi que {professor_name} so pode dar aula na {day_name} e so pode dar {subject_name}.\n"
+            f"Voce tambem quer obrigar que toda {subject_name} seja com {professor_name}?"
+        ),
+    }
+
+
+def _resolve_pending_rko_confirmation(pending, user_input):
+    normalized = _normalize_chat_text(user_input)
+    if not pending or pending.get("type") != "confirm_subject_direction":
+        return None
+
+    yes_terms = ["sim", "isso", "tambem", "obrig", "toda", "com ela", "com ele"]
+    no_terms = ["nao", "não", "so limitar", "só limitar", "apenas limitar", "so a", "só a"]
+
+    if any(term in normalized for term in yes_terms):
+        return pending.get("base_actions", []) + [pending.get("optional_action")]
+    if any(term in normalized for term in no_terms):
+        return pending.get("base_actions", [])
+    return None
+
+
+def _ask_about_unknown_professor(ambient, user_input):
+    import difflib
+
+    if not _message_looks_like_rko_request(user_input):
+        return None
+
+    requested_name = _extract_requested_professor_name(user_input)
+    if not requested_name:
+        return None
+
+    professors = [
+        member.user.name
+        for member in ambient.members.all().filter(is_professor=True)
+        if member.user and member.user.name
+    ]
+    normalized_map = {_normalize_chat_text(name): name for name in professors}
+    normalized_requested = _normalize_chat_text(requested_name)
+
+    if normalized_requested in normalized_map:
+        return None
+
+    close = difflib.get_close_matches(normalized_requested, normalized_map.keys(), n=1, cutoff=0.65)
+    if close:
+        suggestion = normalized_map[close[0]]
+        return (
+            f"Nao encontrei a professora {requested_name} neste ambiente. "
+            f"Voce quis dizer {suggestion}? Se sim, envie a regra novamente com esse nome."
+        )
+
+    return (
+        f"Nao encontrei a professora {requested_name} neste ambiente. "
+        "Confirma o nome da professora antes de eu aplicar a restricao?"
+    )
+
+
+def _answer_from_chat_memory(user_input, conversation_history=None):
+    normalized = _normalize_chat_text(user_input)
+    name = _extract_name_from_text(user_input)
+
+    if name:
+        return f"Prazer, {name}. Vou usar seu nome nesta conversa."
+
+    asks_name = "qual" in normalized and "meu nome" in normalized
+    if asks_name:
+        for item in reversed(conversation_history or []):
+            if not isinstance(item, dict) or item.get("sender") != "user":
+                continue
+            remembered_name = _extract_name_from_text(item.get("text") or "")
+            if remembered_name:
+                return f"Seu nome e {remembered_name}."
+        return "Ainda nao encontrei seu nome no historico desta conversa."
+
+    capability_phrases = [
+        "o que voce pode fazer", "o que vc pode fazer", "o que consegue fazer",
+        "como voce pode ajudar", "como vc pode ajudar", "quais comandos",
+        "o que da para fazer",
+    ]
+    if any(phrase in normalized for phrase in capability_phrases):
+        return (
+            "Posso conversar com voce e ajudar a mexer na grade: listar restricoes, "
+            "apagar restricoes, criar regras em linguagem natural e rodar a otimizacao "
+            "por atribuicao e alocacao. Tambem consigo lembrar do contexto desta sessao."
+        )
+
+    greetings = ["oi", "ola", "olá", "fala", "bom dia", "boa tarde", "boa noite", "tudo bem"]
+    is_short_casual = len(normalized.split()) <= 8 and any(greeting in normalized for greeting in greetings)
+    if is_short_casual and not _message_looks_like_rko_request(user_input):
+        return "Tudo bem sim. Pode mandar."
+
+    asks_general_question = "?" in (user_input or "") or normalized.startswith((
+        "o que", "como", "quando", "por que", "porque", "qual", "quais", "quem", "onde"
+    ))
+    if asks_general_question and not _message_looks_like_rko_request(user_input):
+        if conversation_history:
+            return None
+        return "Posso te responder pelo contexto da conversa e tambem executar ajustes na grade quando voce pedir."
+
+    if not _message_looks_like_rko_request(user_input):
+        if conversation_history:
+            return None
+        return "Certo, estou acompanhando."
+
+    return None
+
+
+def _build_json_actions_prompt(rko_llm_constraints, ambient):
+    return (
+        rko_llm_constraints.build_system_prompt(ambient)
+        + "\n\n"
+        + "IMPORTANTE: este modelo nao suporta function calling nativo. "
+        + "Responda somente com JSON valido, sem markdown e sem explicacoes.\n"
+        + "Formato obrigatorio:\n"
+        + '{"actions":[{"function":"nome_da_ferramenta","arguments":{...}}]}\n'
+        + "Voce pode retornar multiplas actions em ordem. Ferramentas disponiveis e seus argumentos JSON:\n"
+        + "- add_restriction_rule: {\"description\": \"Descricao curta\", \"conditions\": [{\"field\": \"campo\", \"operator\": \"operador\", \"value\": valor}]}\n"
+        + "  * Campos disponiveis: \"professor\", \"turma\", \"disciplina\", \"sala\", \"dia\", \"periodo\"\n"
+        + "  * Operadores: \"==\", \"!=\", \"in\", \"not in\"\n"
+        + "- remove_restriction_rule: {\"index\": <numero_inteiro>}\n"
+        + "- respond_to_user: {\"message\": \"sua resposta em portugues para o usuario\"}\n"
+        + "- clear_all_constraints, list_constraints, get_current_timetable, analyze_solution, run_unified_solver: sem argumentos (use {})\n\n"
+        + "Use a ferramenta respond_to_user (argumento: message) quando quiser apenas responder algo diretamente ao usuario em portugues.\n"
+        + "Fora do escopo: limites agregados/contagens como 'maximo duas aulas por dia', aulas consecutivas, janelas/gaps, balanceamento global e preferencias qualitativas. "
+        + "Nesses casos, use respond_to_user explicando que a regra ainda nao pode ser representada e nao chame clear_all_constraints nem run_unified_solver.\n"
+        + "ATENCAO: Sempre que o usuario perguntar sobre quem esta na grade, quais periodos, salas, ou qualquer detalhe da grade atual, "
+        + "use get_current_timetable ou analyze_solution para obter a grade horaria real. Nao presuma ou adivinhe com base apenas nas restricoes.\n"
+        + "Quando o usuario pedir para otimizar a grade completa, use nesta ordem: "
+        + "run_unified_solver e analyze_solution. "
+        + "Quando o usuario perguntar se as restricoes funcionaram, use analyze_solution."
+    )
+
+
+def _extract_json_from_content(content):
+    import re
+    match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    match = re.search(r"```\s*(.*?)\s*```", content, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    first_brace = content.find('{')
+    last_brace = content.rfind('}')
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        return content[first_brace:last_brace+1].strip()
+    return content.strip()
+
+
+def _extract_all_json_objects(content):
+    import json
+    decoder = json.JSONDecoder()
+    content_len = len(content)
+    idx = 0
+    results = []
+    while idx < content_len:
+        start = content.find('{', idx)
+        if start == -1:
+            break
+        try:
+            obj, end = decoder.raw_decode(content, start)
+            results.append(obj)
+            idx = end
+        except json.JSONDecodeError:
+            idx = start + 1
+    return results
+
+
+def _parse_and_run_json_actions(rko_llm_constraints, ambientid, content):
+    import json
+    decoded_objects = _extract_all_json_objects(content)
+    if not decoded_objects:
+        return None, False, []
+
+    actions = []
+    for data in decoded_objects:
+        if isinstance(data, list):
+            actions.extend(data)
+        elif isinstance(data, dict):
+            if isinstance(data.get("actions"), list):
+                actions.extend(data["actions"])
+            elif data.get("tool") or data.get("function"):
+                actions.append(data)
+
+    if not actions:
+        return None, False, []
+
+    outputs = []
+    rules_changed = False
+    solver_ran = False
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        function_name = action.get("tool") or action.get("function")
+        if not function_name:
+            continue
+        args = action.get("arguments") or action.get("args") or {}
+        output, changed, ran_solver = _run_rko_tool_action(rko_llm_constraints, ambientid, function_name, args)
+        outputs.append(f"Execucao da ferramenta {function_name}:\n{output}")
+        rules_changed = rules_changed or changed
+        solver_ran = solver_ran or ran_solver
+
+    return "\n\n".join(outputs), rules_changed and not solver_ran, actions
+
+
+def _try_run_rko_tool_from_json_content(rko_llm_constraints, ambientid, content):
+    content_clean = content.replace("```json", "").replace("```", "").strip()
+    try:
+        data = json.loads(content_clean)
+    except Exception:
+        try:
+            content_clean = content_clean.replace("'", '"').replace("True", "true").replace("False", "false")
+            data = json.loads(content_clean)
+        except Exception:
+            return None, False
+
+    if isinstance(data, list):
+        return _run_rko_json_actions(rko_llm_constraints, ambientid, data)
+
+    if not isinstance(data, dict):
+        return None, False
+
+    if isinstance(data.get("actions"), list):
+        return _run_rko_json_actions(rko_llm_constraints, ambientid, data["actions"])
+
+    function_name = data.get("tool") or data.get("function")
+    if not function_name:
+        return None, False
+
+    args = data.get("arguments") or data.get("args") or {}
+    if isinstance(args, list):
+        if function_name == "add_restriction_rule" and len(args) >= 2:
+            args = {"description": args[0], "conditions": args[1]}
+        else:
+            args = {}
+            
+    output, rules_changed, _ = _run_rko_tool_action(rko_llm_constraints, ambientid, function_name, args)
+    return output, rules_changed
+
+
+def _tool_output_succeeded(output):
+    text = str(output or "").lower()
+    failure_markers = [
+        "erro ao executar", "obrigatoria", "obrigatorio", "invalido",
+        "nao encontrado", "nao consegui",
+    ]
+    return bool(text.strip()) and not any(marker in text for marker in failure_markers)
+
+
+def _run_rko_tool_action(rko_llm_constraints, ambientid, function_name, args):
+    args = args or {}
+    if isinstance(args, list):
+        if function_name == "add_restriction_rule" and len(args) >= 2:
+            args = {"description": args[0], "conditions": args[1]}
+        else:
+            args = {}
+
+    if function_name == "run_unified_solver":
+        return rko_llm_constraints.run_tool(ambientid, function_name, args), False, True
+
+    if function_name in ["run_attribution_solver", "run_allocation_solver"]:
+        return (
+            "Pelo chat da IA, a otimizacao agora usa apenas o resolvedor unificado "
+            "(atribuicao + alocacao juntos). Os decoders separados continuam disponiveis nos botoes da interface.",
+            False,
+            False,
+        )
+
+    if function_name == "add_restriction_rule" and not args.get("description"):
+        conds = args.get("conditions") or []
+        cond_strings = []
+        for cond in conds:
+            if isinstance(cond, dict):
+                cond_strings.append(f"{cond.get('field')} {cond.get('operator')} {cond.get('value')}")
+        args["description"] = "Restricao: " + " e ".join(cond_strings) if cond_strings else "Nova restricao dinamica" 
+
+    output = rko_llm_constraints.run_tool(ambientid, function_name, args)
+    rules_changed_tools = ["add_restriction_rule", "clear_all_constraints", "remove_restriction_rule"]
+    rules_changed = function_name in rules_changed_tools and _tool_output_succeeded(output)
+    return output, rules_changed, False
+
+
+def _run_rko_solver_action_via_app(ambientid, function_name):
+    try:
+        ambient = Ambient.objects.get(ambientid=ambientid)
+    except Ambient.DoesNotExist:
+        return f"Ambiente {ambientid} nao encontrado."
+
+    if function_name == "run_attribution_solver":
+        _run_attribution_logic_silent(ambient)
+        return "Otimizador de Atribuicao (Fase 1) concluido pela rotina da aplicacao."
+
+    if function_name == "run_allocation_solver":
+        _run_allocation_logic_silent(ambient)
+        ambient.refresh_from_db()
+
+        activities_total = ambient.activities.count()
+        allocated_ids = set()
+        not_allocated_count = 0
+        if ambient.published_timetable:
+            not_allocated_count = ambient.published_timetable.not_alocated.count()
+            for slot in ambient.published_timetable.table.all():
+                allocated_ids.update(slot.activitie.values_list("id", flat=True))
+
+        return (
+            "Otimizador de Alocacao (Fase 2) concluido pela rotina da aplicacao. "
+            f"Atividades alocadas: {len(allocated_ids)}/{activities_total}. "
+            f"Nao alocadas por conflito: {not_allocated_count}."
+        )
+
+    return f"Ferramenta desconhecida: {function_name}"
+
+
+def _run_rko_json_actions(rko_llm_constraints, ambientid, actions):
+    outputs = []
+    rules_changed = False
+    solver_ran = False
+
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        function_name = action.get("tool") or action.get("function")
+        if not function_name:
+            continue
+        args = action.get("arguments") or action.get("args") or {}
+        if function_name in ["run_unified_solver", "run_attribution_solver", "run_allocation_solver"] and any(
+            not _tool_output_succeeded(output) for output in outputs
+        ):
+            outputs.append("Nao rodei a otimizacao porque uma regra anterior nao foi aplicada corretamente.")
+            continue
+        output, changed, ran_solver = _run_rko_tool_action(rko_llm_constraints, ambientid, function_name, args)
+        outputs.append(output)
+        rules_changed = rules_changed or changed
+        solver_ran = solver_ran or ran_solver
+
+    if not outputs:
+        return None, False
+    return _format_rko_outputs(outputs), rules_changed and not solver_ran
+
+
+def _format_rko_outputs(outputs):
+    formatted = []
+    for output in outputs:
+        text = str(output or "")
+        if text.startswith("Analise deterministica da grade:"):
+            formatted.append(_summarize_solution_analysis(text))
+        else:
+            formatted.append(text)
+    return "\n".join(item for item in formatted if item)
+
+
+def _summarize_solution_analysis(text):
+    raw_json = text.split("Analise deterministica da grade:", 1)[1].strip()
+    try:
+        data = json.loads(raw_json)
+    except Exception:
+        return text
+
+    resumo = data.get("resumo", {})
+    resultado = data.get("resultado", {})
+    observacoes = data.get("observacoes", [])
+    restricoes = data.get("restricoes", [])
+    pending_unique = data.get("nao_alocadas_unicas", [])
+
+    lines = []
+    if resumo.get("atividades_total", 0) and resumo.get("atividades_alocadas_unicas", 0) == 0:
+        return (
+            "Ainda nao consigo avaliar bem essa solucao porque a grade publicada esta vazia: "
+            "existem atividades cadastradas, mas nenhuma aparece alocada. "
+            "O melhor proximo passo e rodar a otimizacao novamente e depois pedir a analise."
+        )
+
+    if resultado.get("restricoes_ok"):
+        if pending_unique:
+            lines.append(
+                "Deu certo sim: todas as restricoes ativas foram atendidas. "
+                f"Mas, para manter essas regras sem violar a grade, {len(pending_unique)} atividade(s) ficaram sem alocacao."
+            )
+        elif resultado.get("conflitos_ok"):
+            lines.append("Deu certo sim: todas as restricoes foram atendidas e nao encontrei atividades pendentes ou conflitos na grade.")
+        else:
+            lines.append("As restricoes foram atendidas, mas ainda encontrei conflito de recurso na grade.")
+    else:
+        violated_rules_count = resumo.get("restricoes_violadas", len([
+            rule for rule in restricoes if rule.get("violacoes")
+        ]))
+        lines.append(
+            f"Ainda nao deu totalmente certo: {violated_rules_count} restricao(oes) ativa(s) foram violadas."
+        )
+
+    attended_rules = []
+    violated_rules = []
+    for rule in restricoes:
+        violations = rule.get("violacoes") or []
+        if not violations:
+            attended_rules.append(rule.get("descricao"))
+            continue
+        violated_rules.append(rule)
+
+    if attended_rules and not violated_rules:
+        lines.append("As restricoes atendidas foram: " + "; ".join(str(rule) for rule in attended_rules) + ".")
+
+    for rule in violated_rules:
+        violations = rule.get("violacoes") or []
+        unique_activities = {}
+        for violation in violations:
+            activity = violation.get("atividade", {})
+            activity_id = activity.get("id") or f"{activity.get('turma')}:{activity.get('disciplina')}"
+            unique_activities.setdefault(activity_id, violation)
+
+        lines.append(
+            f"O ponto principal e a regra '{rule.get('descricao')}'. "
+            f"Ela foi quebrada por {len(unique_activities)} atividade(s), embora apareca em {len(violations)} periodo(s)."
+        )
+        first_violation = next(iter(unique_activities.values()), None)
+        if first_violation:
+            slot = first_violation.get("slot", {})
+            activity = first_violation.get("atividade", {})
+            lines.append(
+                "Exemplo: "
+                f"{activity.get('disciplina')} de {activity.get('turma')} ficou com "
+                f"{activity.get('professor')} em {slot.get('dia')}. "
+                "Isso viola a restricao porque esse dia nao esta entre os dias permitidos."
+            )
+
+    if pending_unique:
+        lines.append(
+            f"Tambem ficou {len(pending_unique)} atividade(s) sem alocacao. "
+            "Pelo motivo registrado, nao parece ser falta simples de periodo: foi conflito de recurso "
+            "(professor, turma ou sala disputando o mesmo encaixe)."
+        )
+        for pending in pending_unique[:1]:
+            activity = pending.get("atividade") or {}
+            reasons = [reason for reason in pending.get("motivos", []) if reason]
+            reason_text = reasons[0] if reasons else "Sem motivo detalhado registrado."
+            lines.append(
+                f"Exemplo de pendencia: {activity.get('turma')} - {activity.get('disciplina')}, "
+                f"com {activity.get('professor')}, na {activity.get('sala')}. "
+                f"Motivo registrado: {reason_text}"
+            )
+        if len(pending_unique) > 1:
+            lines.append(f"Ha mais {len(pending_unique) - 1} atividade(s) pendente(s), mas o padrao e o mesmo.")
+
+    useful_notes = [
+        note for note in observacoes
+        if "restricoes dinamicas ativas" not in note and "nao alocadas" not in note
+    ]
+    if useful_notes:
+        lines.append("Um detalhe importante: " + useful_notes[0])
+
+    return "\n".join(lines)
+
+
 def chatbot(ambientid, user_input=""):
     functions = {
         "schedule_preference_adjustment": schedule_preference_adjustment,
@@ -2769,13 +3786,13 @@ def chatbot(ambientid, user_input=""):
 
     Comando: {user_input}
     """
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    model = os.environ.get("OPENROUTER_MODEL", "openrouter/owl-alpha")
+    api_key = os.environ.get("HF_TOKEN")
+    model = os.environ.get("HF_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
     if not api_key:
-        return "Configure a variável de ambiente OPENROUTER_API_KEY para ativar o chat de IA."
+        return "Configure a variável de ambiente HF_TOKEN para ativar o chat de IA."
 
     response = requests.post(
-        url="https://openrouter.ai/api/v1/chat/completions",
+        url="https://router.huggingface.co/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -2789,10 +3806,15 @@ def chatbot(ambientid, user_input=""):
     )
 
     result = response.json()
-    if "error" in result:
-        error_msg = result["error"].get("message", "Erro desconhecido")
-        print("Erro do OpenRouter:", error_msg)
-        return f"Erro na API do OpenRouter: {error_msg}. Por favor, certifique-se de configurar uma chave de API válida na variável de ambiente OPENROUTER_API_KEY."
+    if response.status_code != 200:
+        error_msg = "Erro desconhecido"
+        if isinstance(result, dict):
+            if "error" in result:
+                error_msg = result["error"].get("message", str(result["error"]))
+            elif "message" in result:
+                error_msg = result.get("message")
+        print("Erro do Hugging Face:", error_msg)
+        return f"Erro na API do Hugging Face: {error_msg}. Por favor, certifique-se de configurar um token de API válido na variável de ambiente HF_TOKEN."
 
     try:
         content = result["choices"][0]["message"]["content"]
@@ -2843,8 +3865,18 @@ def chatbot(ambientid, user_input=""):
 
 @csrf_exempt
 def chatbot_api(request, ambientid):
+    history_key = f"rko_chat_history:{ambientid}"
+    pending_key = f"rko_pending_confirmation:{ambientid}"
+    greeting = "Ola! Sou a IA do AllokAcad. Como posso ajustar a sua grade?"
+
     if not request.user.is_authenticated:
         return JsonResponse({"error": "not_authenticated", "response": "Usuário não autenticado."}, status=401)
+
+    if request.method == "GET":
+        history = request.session.get(history_key, [])
+        if not history:
+            history = [{"sender": "bot", "text": greeting}]
+        return JsonResponse({"history": history})
 
     if request.method == "POST":
         try:
@@ -2853,16 +3885,70 @@ def chatbot_api(request, ambientid):
             if not user_input:
                 return JsonResponse({"response": "Por favor, digite uma mensagem válida."}, status=400)
 
-            bot_response = chatbot(ambientid, user_input)
+            history = request.session.get(history_key, [])
+            pending = request.session.get(pending_key)
 
-            # Executa a atribuição e alocação automaticamente
-            run_atribuition(request, ambientid)
-            run_alocation(request, ambientid)
+            if pending:
+                resolved_actions = _resolve_pending_rko_confirmation(pending, user_input)
+                if resolved_actions is None:
+                    bot_response = (
+                        "Ainda preciso dessa confirmacao para seguir: "
+                        "voce quer obrigar a disciplina com essa professora tambem, "
+                        "ou e so para limitar a professora?"
+                    )
+                    rules_changed = False
+                else:
+                    from AllokAcads import rko_llm_constraints
+                    bot_response, rules_changed = _run_rko_json_actions(
+                        rko_llm_constraints,
+                        ambientid,
+                        [action for action in resolved_actions if action],
+                    )
+                    request.session.pop(pending_key, None)
+                    request.session.modified = True
+            else:
+                ambient = Ambient.objects.get(ambientid=ambientid)
+                pending_confirmation = _detect_ambiguous_professor_subject_restriction(ambient, user_input)
+                if pending_confirmation:
+                    request.session[pending_key] = pending_confirmation
+                    request.session.modified = True
+                    bot_response = pending_confirmation["question"]
+                    rules_changed = False
+                else:
+                    bot_response, rules_changed = rko_chatbot(ambientid, user_input, history)
+            solver_ran = (
+                "Otimizador Unificado" in bot_response or
+                "Otimizador de Atribuicao" in bot_response or
+                "Otimizador de Alocacao" in bot_response
+            )
 
-            if bot_response and not any(err in bot_response for err in ["Desculpe", "Erro na API", "Nenhum"]):
-                bot_response += "\n\n🔄 A atribuição e a alocação de horários foram recalculadas automaticamente com base neste ajuste!"
+            if rules_changed and not solver_ran:
+                from AllokAcads import rko_llm_constraints
+                solver_output = rko_llm_constraints.run_tool(ambientid, "run_unified_solver", {})
+                solver_ran = _tool_output_succeeded(solver_output)
+                bot_response += (
+                    "\n\n" + solver_output +
+                    "\n\nA grade foi recalculada automaticamente com o resolvedor unificado da IA."
+                )
 
-            return JsonResponse({"response": bot_response})
+            history = [
+                item for item in history
+                if isinstance(item, dict) and item.get("sender") in ["user", "bot"] and item.get("text")
+            ]
+            history.extend([
+                {"sender": "user", "text": user_input},
+                {"sender": "bot", "text": bot_response},
+            ])
+            history = history[-40:]
+            request.session[history_key] = history
+            request.session.modified = True
+
+            return JsonResponse({
+                "response": bot_response,
+                "rules_changed": rules_changed,
+                "should_reload": bool(rules_changed or solver_ran),
+                "history": history,
+            })
         except Exception as e:
             return JsonResponse({"error": "invalid_request", "response": f"Erro ao processar requisição: {str(e)}"}, status=400)
 

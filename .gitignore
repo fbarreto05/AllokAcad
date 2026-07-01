@@ -54,3 +54,8 @@ dist/
 # Ignorar dependencias do Node/React
 **/node_modules/
 chatbot-front/dist/
+
+# Estado local gerado pela IA/RKO
+.env
+scratch/
+rko_llm_constraints.json
