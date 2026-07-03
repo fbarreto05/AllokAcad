@@ -206,8 +206,8 @@
                             <thead>
                                 <tr>
                                     <th class="period-header">Horário</th>
-                                    {% for day in columns_range %}
-                                        <th class="day-header">Dia {{ day|add:"1" }}</th>
+                                    {% for day_header in day_headers %}
+                                        <th class="day-header">{{ day_header }}</th>
                                     {% endfor %}
                                 </tr>
                             </thead>
@@ -278,14 +278,16 @@
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                         <circle cx="12" cy="7" r="4"/>
                                     </svg>
-                                    {{ alocation.activitie.tprofessor.user.name }}
+                                    <span class="unallocated-label">Professor atribuido:</span>
+                                    {{ alocation.activitie.tprofessor.user.name|default:"Sem professor" }}
                                 </div>
                                 <div class="unallocated-classroom">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="3" y="3" width="18" height="18" rx="2"/>
                                         <path d="M3 9h18"/>
                                     </svg>
-                                    {{ alocation.activitie.tclassroom.name }}
+                                    <span class="unallocated-label">Sala atribuida:</span>
+                                    {{ alocation.activitie.tclassroom.name|default:"Sem sala" }}
                                 </div>
                             </div>
                         </div>

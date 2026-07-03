@@ -338,7 +338,7 @@ class RKOAllocationEnvironment:
 
         self.professores = list(self.ambient.members.all())
         self.salas = list(self.ambient.classrooms.all())
-        
+
         prof_map = {p.id: p for p in self.professores}
         room_map = {r.id: r for r in self.salas}
 
@@ -469,8 +469,7 @@ class RKOAllocationEnvironment:
 class RKOUnifiedEnvironment:
     """
     Ambiente RKO unificado para a IA: escolhe professor, sala e horario na
-    mesma solucao. O gene de horario tambem pode escolher deixar a atividade
-    pendente quando isso evita conflito ou restricao.
+    mesma solucao.
     """
     def __init__(self, ambient, activities):
         self._original_activities = list(activities)
@@ -534,6 +533,7 @@ class RKOUnifiedEnvironment:
                 for col in range(self.days)
                 for line in range(self.periods)
             }
+        self._professor_allowed_period_limits = self._build_professor_allowed_period_limits()
 
         self._class_pref = {}
         self._prof_pref = {}
@@ -553,6 +553,35 @@ class RKOUnifiedEnvironment:
                     if all(key in self._available_keys for key in keys):
                         positions.append((row, col))
             self._valid_positions.append(positions)
+
+    def _build_professor_allowed_period_limits(self):
+        limits = {}
+        available_by_day = {}
+        for _, col in self._available_keys:
+            available_by_day[col] = available_by_day.get(col, 0) + 1
+
+        for rule in rko_llm_constraints.load_rules(self.ambient.ambientid):
+            professor_name = None
+            allowed_days = None
+            for cond in rule.get("conditions", []):
+                if cond.get("field") == "professor" and cond.get("operator") == "==":
+                    professor_name = cond.get("value")
+                if cond.get("field") == "dia" and cond.get("operator") in ["!=", "not in"]:
+                    raw_days = cond.get("value")
+                    raw_days = raw_days if isinstance(raw_days, list) else [raw_days]
+                    allowed_days = [
+                        day_index for day_index in (
+                            rko_llm_constraints._day_index(day) for day in raw_days
+                        )
+                        if day_index is not None
+                    ]
+
+            if professor_name and allowed_days:
+                max_periods = sum(available_by_day.get(day, 0) for day in allowed_days)
+                key = rko_llm_constraints._normalize(professor_name)
+                limits[key] = min(limits.get(key, max_periods), max_periods)
+
+        return limits
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -581,9 +610,11 @@ class RKOUnifiedEnvironment:
                 room = self.salas[r_idx]
 
             positions = self._valid_positions[i]
-            position_count = len(positions) + 1
-            pos_idx = min(int(keys[3 * i + 2] * position_count), position_count - 1)
-            selected_position = positions[pos_idx] if pos_idx < len(positions) else None
+            if positions:
+                pos_idx = min(int(keys[3 * i + 2] * len(positions)), len(positions) - 1)
+                selected_position = positions[pos_idx]
+            else:
+                selected_position = None
 
             db_act = self.db_activities_map.get(a.id)
             act_obj = db_act if db_act is not None else a
@@ -710,6 +741,7 @@ class RKOUnifiedEnvironment:
             custo,
             scheduled_activities,
             self.ambient.ambientid,
+            self._professor_allowed_period_limits,
         )
         return rko_llm_constraints.apply_allocation_constraints(
             custo,

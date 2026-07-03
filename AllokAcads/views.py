@@ -1,4 +1,6 @@
 import json
+import threading
+_thread_locals = threading.local()
 from urllib import request
 from django.shortcuts import render, redirect
 from django.conf import settings
@@ -2828,7 +2830,8 @@ def rko_chatbot(ambientid, user_input="", conversation_history=None):
             if sender == "user":
                 messages.append({"role": "user", "content": text})
             elif sender == "bot":
-                messages.append({"role": "assistant", "content": text})
+                json_content = json.dumps({"actions": [{"function": "respond_to_user", "arguments": {"message": text}}]}, ensure_ascii=False)
+                messages.append({"role": "assistant", "content": json_content})
         messages.append({"role": "user", "content": user_input})
 
         response = requests.post(
@@ -3168,6 +3171,8 @@ def _extract_requested_professor_name(text):
         name = match.group(1).strip(" .,!?:;")
         name = name.replace("professora ", "").replace("professor ", "").strip()
         words = [word for word in name.split() if word not in ["a", "o"]]
+        if any(w in ["disciplina", "disciplinas", "sala", "salas", "turma", "turmas", "materia", "materias"] for w in words):
+            continue
         if len(words) >= 2:
             return " ".join(words).title()
     return None
@@ -3420,6 +3425,8 @@ def _build_json_actions_prompt(rko_llm_constraints, ambient):
         + "Responda somente com JSON valido, sem markdown e sem explicacoes.\n"
         + "Formato obrigatorio:\n"
         + '{"actions":[{"function":"nome_da_ferramenta","arguments":{...}}]}\n'
+        + "ATENCAO: Foque APENAS na ultima mensagem do usuario para decidir quais ferramentas chamar nesta rodada. "
+        + "Nao repita acoes ja concluidas no historico e nao copie respostas anteriores.\n"
         + "Voce pode retornar multiplas actions em ordem. Ferramentas disponiveis e seus argumentos JSON:\n"
         + "- add_restriction_rule: {\"description\": \"Descricao curta\", \"conditions\": [{\"field\": \"campo\", \"operator\": \"operador\", \"value\": valor}]}\n"
         + "  * Campos disponiveis: \"professor\", \"turma\", \"disciplina\", \"sala\", \"dia\", \"periodo\"\n"
@@ -3562,6 +3569,7 @@ def _run_rko_tool_action(rko_llm_constraints, ambientid, function_name, args):
             args = {}
 
     if function_name == "run_unified_solver":
+        _thread_locals.solver_ran = True
         return rko_llm_constraints.run_tool(ambientid, function_name, args), False, True
 
     if function_name in ["run_attribution_solver", "run_allocation_solver"]:
@@ -3865,6 +3873,7 @@ def chatbot(ambientid, user_input=""):
 
 @csrf_exempt
 def chatbot_api(request, ambientid):
+    _thread_locals.solver_ran = False
     history_key = f"rko_chat_history:{ambientid}"
     pending_key = f"rko_pending_confirmation:{ambientid}"
     greeting = "Ola! Sou a IA do AllokAcad. Como posso ajustar a sua grade?"
@@ -3919,7 +3928,8 @@ def chatbot_api(request, ambientid):
             solver_ran = (
                 "Otimizador Unificado" in bot_response or
                 "Otimizador de Atribuicao" in bot_response or
-                "Otimizador de Alocacao" in bot_response
+                "Otimizador de Alocacao" in bot_response or
+                getattr(_thread_locals, "solver_ran", False)
             )
 
             if rules_changed and not solver_ran:

@@ -11,6 +11,42 @@ DAY_NAMES = ["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo
 ALLOWED_FIELDS = {"professor", "turma", "disciplina", "sala", "dia", "periodo"}
 ALLOWED_OPERATORS = {"==", "!=", "in", "not in"}
 ATTRIBUTION_FIELDS = {"professor", "turma", "disciplina", "sala"}
+FIELD_LABELS = {
+    "professor": "professor",
+    "turma": "turma",
+    "disciplina": "disciplina",
+    "sala": "sala",
+    "dia": "dia",
+    "periodo": "periodo",
+}
+FIXED_RESTRICTION_TOOLS = {
+    "add_required_value_constraint",
+    "add_forbidden_combination_constraint",
+    "add_global_allowed_values_constraint",
+    "restrict_professor_days",
+    "restrict_professor_subjects",
+    "restrict_professor_rooms",
+    "restrict_professor_periods",
+    "restrict_class_days",
+    "restrict_class_rooms",
+    "restrict_class_periods",
+    "restrict_subject_days",
+    "restrict_subject_rooms",
+    "restrict_subject_periods",
+    "restrict_room_days",
+    "restrict_room_periods",
+    "require_subject_professor",
+    "require_subject_room",
+    "require_class_room",
+    "forbid_professor_subject",
+    "forbid_professor_day",
+    "forbid_class_day",
+    "forbid_subject_day",
+}
+RESTRICTION_WRITE_TOOLS = FIXED_RESTRICTION_TOOLS | {
+    "add_restriction_rule",
+    "add_custom_restriction_rule",
+}
 
 
 LLM_TOOLS = [
@@ -193,6 +229,8 @@ def _validate_rule(description, conditions):
     if not isinstance(conditions, list) or not conditions:
         raise ValueError("A regra precisa ter ao menos uma condicao.")
 
+    conditions = _normalize_only_allowed_day_rule(description, conditions)
+
     normalized = []
     for cond in conditions:
         if not isinstance(cond, dict):
@@ -210,27 +248,478 @@ def _validate_rule(description, conditions):
         })
     
     _check_rule_contradictions(normalized)
-    
+
     return {"description": str(description).strip(), "conditions": normalized}
 
 
-def add_restriction_rule(ambientid, description, conditions):
-    description, conditions = _normalize_known_rule(description, conditions)
+def _normalize_only_allowed_day_rule(description, conditions):
+    text = _normalize(description) or ""
+    means_only_allowed = any(term in text for term in ["so pode", "somente", "apenas"])
+    if not means_only_allowed or "nao pode" in text:
+        return conditions
+
+    normalized = []
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            normalized.append(cond)
+            continue
+        fixed = cond.copy()
+        field = str(fixed.get("field", "")).strip().lower()
+        operator = str(fixed.get("operator", "")).strip().lower()
+        if field == "dia":
+            if operator == "in":
+                fixed["operator"] = "not in"
+            elif operator == "==":
+                fixed["operator"] = "!="
+        normalized.append(fixed)
+    return normalized
+
+
+def add_restriction_rule(ambientid, description, conditions, normalize=True):
+    if normalize:
+        description, conditions = _normalize_known_rule(ambientid, description, conditions)
     rule = _validate_rule(description, conditions)
+    return _save_rule(ambientid, rule)
+
+
+def _save_rule(ambientid, rule):
     rules = load_rules(ambientid)
-    if rule in rules:
-        return f"Regra ja estava ativa: {rule['description']}"
+    new_signature = _rule_signature(rule)
+    for existing in rules:
+        if _rule_signature(existing) == new_signature:
+            return f"Regra ja estava ativa: {existing.get('description', rule['description'])}"
     rules.append(rule)
     save_rules(ambientid, rules)
     return f"Regra adicionada com sucesso: {rule['description']}"
 
 
-def _normalize_known_rule(description, conditions):
-    import unicodedata
+def _rule_signature(rule):
+    conditions = rule.get("conditions") if isinstance(rule, dict) else []
+    parts = []
+    for cond in conditions or []:
+        if not isinstance(cond, dict):
+            continue
+        value = cond.get("value")
+        if isinstance(value, list):
+            value_key = tuple(sorted(str(_normalize(item)) for item in value))
+        else:
+            value_key = (str(_normalize(value)),)
+        parts.append((
+            str(cond.get("field", "")).strip().lower(),
+            str(cond.get("operator", "")).strip().lower(),
+            value_key,
+        ))
+    return tuple(sorted(parts))
 
+
+def add_required_value_constraint(ambientid, args):
+    source_field = _normalize_field(_get_arg(args, "source_field", "entity_field", "when_field"))
+    source_value = _get_arg(args, "source_value", "source_values", "entity_value", "entity_values", "when_value")
+    target_field = _normalize_field(_get_arg(args, "target_field", "required_field", "allowed_field"))
+    allowed_values = _get_arg(args, "allowed_values", "allowed_value", "required_values", "required_value")
+    description = _get_arg(args, "description")
+
+    if not source_field or not target_field:
+        raise ValueError("source_field/entity_field e target_field/required_field sao obrigatorios.")
+    if source_field == target_field:
+        raise ValueError("source_field e target_field precisam ser diferentes.")
+    if source_value is None or allowed_values is None:
+        raise ValueError("source_value/entity_value e allowed_values/required_value sao obrigatorios.")
+
+    source_values = _resolve_field_values(ambientid, source_field, source_value)
+    target_values = _resolve_field_values(ambientid, target_field, allowed_values)
+    conditions = [
+        _condition_for_values(source_field, "match", source_values),
+        _condition_for_values(target_field, "exclude", target_values),
+    ]
+    description = description or _default_required_description(source_field, source_values, target_field, target_values)
+    return add_restriction_rule(ambientid, description, conditions, normalize=False)
+
+
+def add_global_allowed_values_constraint(ambientid, args):
+    field = _normalize_field(_get_arg(args, "field", "target_field", "allowed_field"))
+    allowed_values = _get_arg(args, "allowed_values", "allowed_value", "values")
+    description = _get_arg(args, "description")
+    if not field or allowed_values is None:
+        raise ValueError("field e allowed_values sao obrigatorios.")
+
+    values = _resolve_field_values(ambientid, field, allowed_values)
+    conditions = [_condition_for_values(field, "exclude", values)]
+    description = description or f"Todas as aulas so podem ter {FIELD_LABELS[field]} em {_format_values(values)}"
+    return add_restriction_rule(ambientid, description, conditions, normalize=False)
+
+
+def add_forbidden_combination_constraint(ambientid, args):
+    matches = _get_arg(args, "matches", "conditions", "forbidden")
+    description = _get_arg(args, "description")
+    if not isinstance(matches, list) or not matches:
+        raise ValueError("matches precisa ser uma lista de campos/valores proibidos.")
+
+    conditions = []
+    for match in matches:
+        if not isinstance(match, dict):
+            raise ValueError("Cada item de matches precisa ser um objeto.")
+        field = _normalize_field(match.get("field"))
+        value = match.get("value", match.get("values"))
+        if not field or value is None:
+            raise ValueError("Cada match precisa ter field e value.")
+        values = _resolve_field_values(ambientid, field, value)
+        conditions.append(_condition_for_values(field, "match", values))
+
+    description = description or "Proibido: " + " e ".join(
+        f"{FIELD_LABELS[cond['field']]} {_format_values(cond['value'])}"
+        for cond in conditions
+    )
+    return add_restriction_rule(ambientid, description, conditions, normalize=False)
+
+
+def run_fixed_restriction_tool(ambientid, function_name, args):
+    args = args or {}
+    if function_name == "add_required_value_constraint":
+        return add_required_value_constraint(ambientid, args)
+    if function_name == "add_forbidden_combination_constraint":
+        return add_forbidden_combination_constraint(ambientid, args)
+    if function_name == "add_global_allowed_values_constraint":
+        return add_global_allowed_values_constraint(ambientid, args)
+
+    if function_name == "restrict_professor_days":
+        return _wrapped_required(
+            ambientid, "professor", _get_arg(args, "professor"),
+            "dia", _get_arg(args, "allowed_days", "dias", "days"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_professor_subjects":
+        return _wrapped_required(
+            ambientid, "professor", _get_arg(args, "professor"),
+            "disciplina", _get_arg(args, "allowed_subjects", "disciplinas", "subjects"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_professor_rooms":
+        return _wrapped_required(
+            ambientid, "professor", _get_arg(args, "professor"),
+            "sala", _get_arg(args, "allowed_rooms", "salas", "rooms"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_professor_periods":
+        return _wrapped_required(
+            ambientid, "professor", _get_arg(args, "professor"),
+            "periodo", _get_arg(args, "allowed_periods", "periodos", "periods"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_class_days":
+        return _wrapped_required(
+            ambientid, "turma", _get_arg(args, "turma", "class_name"),
+            "dia", _get_arg(args, "allowed_days", "dias", "days"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_class_rooms":
+        return _wrapped_required(
+            ambientid, "turma", _get_arg(args, "turma", "class_name"),
+            "sala", _get_arg(args, "allowed_rooms", "salas", "rooms"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_class_periods":
+        return _wrapped_required(
+            ambientid, "turma", _get_arg(args, "turma", "class_name"),
+            "periodo", _get_arg(args, "allowed_periods", "periodos", "periods"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_subject_days":
+        return _wrapped_required(
+            ambientid, "disciplina", _get_arg(args, "disciplina", "subject"),
+            "dia", _get_arg(args, "allowed_days", "dias", "days"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_subject_rooms":
+        return _wrapped_required(
+            ambientid, "disciplina", _get_arg(args, "disciplina", "subject"),
+            "sala", _get_arg(args, "allowed_rooms", "salas", "rooms"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_subject_periods":
+        return _wrapped_required(
+            ambientid, "disciplina", _get_arg(args, "disciplina", "subject"),
+            "periodo", _get_arg(args, "allowed_periods", "periodos", "periods"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_room_days":
+        return _wrapped_required(
+            ambientid, "sala", _get_arg(args, "sala", "room"),
+            "dia", _get_arg(args, "allowed_days", "dias", "days"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "restrict_room_periods":
+        return _wrapped_required(
+            ambientid, "sala", _get_arg(args, "sala", "room"),
+            "periodo", _get_arg(args, "allowed_periods", "periodos", "periods"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "require_subject_professor":
+        return _wrapped_required(
+            ambientid, "disciplina", _get_arg(args, "disciplina", "subject"),
+            "professor", _get_arg(args, "professor"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "require_subject_room":
+        return _wrapped_required(
+            ambientid, "disciplina", _get_arg(args, "disciplina", "subject"),
+            "sala", _get_arg(args, "sala", "room"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "require_class_room":
+        return _wrapped_required(
+            ambientid, "turma", _get_arg(args, "turma", "class_name"),
+            "sala", _get_arg(args, "sala", "room"),
+            _get_arg(args, "description"),
+        )
+    if function_name == "forbid_professor_subject":
+        return _wrapped_forbidden(
+            ambientid,
+            [("professor", _get_arg(args, "professor")), ("disciplina", _get_arg(args, "disciplina", "subject"))],
+            _get_arg(args, "description"),
+        )
+    if function_name == "forbid_professor_day":
+        return _wrapped_forbidden(
+            ambientid,
+            [("professor", _get_arg(args, "professor")), ("dia", _get_arg(args, "dia", "day"))],
+            _get_arg(args, "description"),
+        )
+    if function_name == "forbid_class_day":
+        return _wrapped_forbidden(
+            ambientid,
+            [("turma", _get_arg(args, "turma", "class_name")), ("dia", _get_arg(args, "dia", "day"))],
+            _get_arg(args, "description"),
+        )
+    if function_name == "forbid_subject_day":
+        return _wrapped_forbidden(
+            ambientid,
+            [("disciplina", _get_arg(args, "disciplina", "subject")), ("dia", _get_arg(args, "dia", "day"))],
+            _get_arg(args, "description"),
+        )
+
+    return None
+
+
+def _wrapped_required(ambientid, source_field, source_value, target_field, allowed_values, description=None):
+    return add_required_value_constraint(ambientid, {
+        "source_field": source_field,
+        "source_value": source_value,
+        "target_field": target_field,
+        "allowed_values": allowed_values,
+        "description": description,
+    })
+
+
+def _wrapped_forbidden(ambientid, matches, description=None):
+    return add_forbidden_combination_constraint(ambientid, {
+        "matches": [
+            {"field": field, "value": value}
+            for field, value in matches
+        ],
+        "description": description,
+    })
+
+
+def _get_arg(args, *names):
+    if not isinstance(args, dict):
+        return None
+    for name in names:
+        if name in args and args[name] is not None:
+            return args[name]
+    return None
+
+
+def _normalize_field(field):
+    if field is None:
+        return None
+    aliases = {
+        "prof": "professor",
+        "teacher": "professor",
+        "professora": "professor",
+        "class": "turma",
+        "classe": "turma",
+        "tclass": "turma",
+        "subject": "disciplina",
+        "materia": "disciplina",
+        "matéria": "disciplina",
+        "room": "sala",
+        "classroom": "sala",
+        "day": "dia",
+        "period": "periodo",
+        "periodo": "periodo",
+        "horario": "periodo",
+        "horário": "periodo",
+    }
+    normalized = _normalize(field)
+    normalized = aliases.get(normalized, normalized)
+    if normalized not in ALLOWED_FIELDS:
+        return None
+    return normalized
+
+
+def _resolve_field_values(ambientid, field, values):
+    raw_values = values if isinstance(values, list) else [values]
+    resolved = []
+    for value in raw_values:
+        resolved.append(_resolve_field_value(ambientid, field, value))
+    if not resolved:
+        raise ValueError(f"Nenhum valor informado para {field}.")
+    return resolved
+
+
+def _resolve_field_value(ambientid, field, value):
+    if value is None:
+        raise ValueError(f"Valor ausente para {field}.")
+    if field == "professor":
+        resolved = _resolve_professor_name_for_rule(
+            ambientid,
+            str(value),
+            [{"field": "professor", "operator": "==", "value": value}],
+        )
+        if resolved:
+            return resolved
+        raise ValueError(f"Professor nao encontrado: {value}")
+    if field == "disciplina":
+        resolved = _resolve_subject_name_from_value(_subject_names_for_ambient(ambientid), value)
+        if resolved:
+            return resolved
+        raise ValueError(f"Disciplina nao encontrada: {value}")
+    if field in ["turma", "sala"]:
+        resolved = _resolve_named_field_value(ambientid, field, value)
+        if resolved:
+            return resolved
+        raise ValueError(f"{FIELD_LABELS[field].title()} nao encontrada: {value}")
+    if field == "dia":
+        day_index = _day_index(value)
+        if day_index is not None:
+            return _day_name(day_index)
+        raise ValueError(f"Dia invalido: {value}")
+    if field == "periodo":
+        period_index = _period_index(value)
+        if period_index is not None:
+            return period_index
+        raise ValueError(f"Periodo invalido: {value}")
+    return value
+
+
+def _resolve_named_field_value(ambientid, field, value):
+    import difflib
+    import re
+
+    names = _names_for_field(ambientid, field)
+    if not names:
+        return None
+    normalized = _normalize(value)
+    normalized_map = {_normalize(name): name for name in names}
+    if normalized in normalized_map:
+        return normalized_map[normalized]
+
+    if field == "sala":
+        lab_match = re.search(r"\blab(?:oratorio)?\s*(\d+)\b", normalized or "")
+        if lab_match:
+            number = lab_match.group(1)
+            for name in names:
+                name_normalized = _normalize(name) or ""
+                if "laboratorio" in name_normalized and number in name_normalized:
+                    return name
+
+    close = difflib.get_close_matches(normalized, normalized_map.keys(), n=1, cutoff=0.72)
+    if close:
+        return normalized_map[close[0]]
+    return None
+
+
+def _names_for_field(ambientid, field):
+    try:
+        from AllokAcads.models import Ambient
+
+        ambient = Ambient.objects.get(ambientid=ambientid)
+    except Exception:
+        return []
+    if field == "turma":
+        return [aclass.name for aclass in ambient.classes.all() if aclass.name]
+    if field == "sala":
+        return [room.name for room in ambient.classrooms.all() if room.name]
+    return []
+
+
+def _condition_for_values(field, mode, values):
+    values = values if isinstance(values, list) else [values]
+    if mode == "match":
+        return {
+            "field": field,
+            "operator": "==" if len(values) == 1 else "in",
+            "value": values[0] if len(values) == 1 else values,
+        }
+    if mode == "exclude":
+        return {
+            "field": field,
+            "operator": "!=" if len(values) == 1 else "not in",
+            "value": values[0] if len(values) == 1 else values,
+        }
+    raise ValueError(f"Modo de condicao invalido: {mode}")
+
+
+def _default_required_description(source_field, source_values, target_field, target_values):
+    source_text = _format_values(source_values)
+    target_text = _format_values(target_values)
+    if source_field == "professor" and target_field == "dia":
+        return f"{source_text} so pode dar aula em {target_text}"
+    if source_field == "professor" and target_field == "disciplina":
+        return f"{source_text} so pode dar {target_text}"
+    if source_field == "professor" and target_field == "sala":
+        return f"{source_text} so pode dar aula em {target_text}"
+    if source_field == "professor" and target_field == "periodo":
+        return f"{source_text} so pode dar aula no periodo {target_text}"
+    if source_field == "disciplina" and target_field == "professor":
+        return f"{source_text} deve ser com {target_text}"
+    if source_field == "disciplina" and target_field == "sala":
+        return f"{source_text} deve usar {target_text}"
+    if source_field == "turma" and target_field == "sala":
+        return f"{source_text} so pode usar {target_text}"
+    return (
+        f"{FIELD_LABELS[source_field].title()} {source_text} exige "
+        f"{FIELD_LABELS[target_field]} em {target_text}"
+    )
+
+
+def _format_values(values):
+    values = values if isinstance(values, list) else [values]
+    formatted = []
+    for value in values:
+        if isinstance(value, int):
+            formatted.append(str(value + 1))
+        else:
+            formatted.append(str(value))
+    if len(formatted) <= 1:
+        return formatted[0] if formatted else ""
+    return ", ".join(formatted[:-1]) + " ou " + formatted[-1]
+
+
+def _normalize_known_rule(ambientid, description, conditions):
     raw_description = description or ""
-    text = unicodedata.normalize("NFKD", raw_description)
-    text = "".join(ch for ch in text if not unicodedata.combining(ch)).lower()
+    text = _normalize(raw_description) or ""
+    professor_name = _resolve_professor_name_for_rule(ambientid, raw_description, conditions)
+    subject_name = _resolve_subject_name_for_rule(ambientid, raw_description, conditions)
+    means_only_allowed = any(term in text for term in ["so pode", "somente", "apenas"])
+    means_mandatory = any(term in text for term in ["tem que", "deve", "obrig"])
+    is_negative = any(term in text for term in ["nao pode", "não pode", "proibir", "proiba"])
+    has_day_condition = any(
+        isinstance(cond, dict) and str(cond.get("field", "")).strip().lower() == "dia"
+        for cond in (conditions if isinstance(conditions, list) else [])
+    )
+
+    if professor_name and subject_name and not is_negative and not has_day_condition:
+        if means_only_allowed:
+            return raw_description, [
+                {"field": "professor", "operator": "==", "value": professor_name},
+                {"field": "disciplina", "operator": "!=", "value": subject_name},
+            ]
+        if means_mandatory or _has_equal_professor_subject_pair(conditions):
+            return raw_description, [
+                {"field": "disciplina", "operator": "==", "value": subject_name},
+                {"field": "professor", "operator": "!=", "value": professor_name},
+            ]
 
     if "aline paula" in text and "so pode" in text and "lingua inglesa" in text:
         return raw_description, [
@@ -251,6 +740,150 @@ def _normalize_known_rule(description, conditions):
         ]
 
     return description, conditions
+
+
+def _has_equal_professor_subject_pair(conditions):
+    if not isinstance(conditions, list):
+        return False
+    has_professor_equal = False
+    has_subject_equal = False
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            continue
+        field = str(cond.get("field", "")).strip().lower()
+        operator = str(cond.get("operator", "")).strip().lower()
+        if field == "professor" and operator == "==":
+            has_professor_equal = True
+        if field == "disciplina" and operator == "==":
+            has_subject_equal = True
+    return has_professor_equal and has_subject_equal
+
+
+def _resolve_professor_name_for_rule(ambientid, description, conditions):
+    import difflib
+
+    professors = _professor_names_for_ambient(ambientid)
+    if not professors:
+        return None
+
+    candidates = []
+    if isinstance(conditions, list):
+        for cond in conditions:
+            if isinstance(cond, dict) and str(cond.get("field", "")).strip().lower() == "professor":
+                value = cond.get("value")
+                if isinstance(value, str):
+                    candidates.append(value)
+    candidates.extend(_extract_words(description))
+
+    normalized_map = {_normalize(name): name for name in professors}
+    token_map = {}
+    for name in professors:
+        for token in (_normalize(name) or "").split():
+            token_map.setdefault(token, set()).add(name)
+
+    for candidate in candidates:
+        normalized = _normalize(candidate)
+        if not normalized:
+            continue
+        if normalized in normalized_map:
+            return normalized_map[normalized]
+        token_matches = [name for name in professors if normalized in (_normalize(name) or "").split()]
+        if len(token_matches) == 1:
+            return token_matches[0]
+        token_cutoff = 0.65 if len(normalized) >= 5 else 0.78
+        close_tokens = difflib.get_close_matches(normalized, token_map.keys(), n=2, cutoff=token_cutoff)
+        if len(close_tokens) == 1:
+            token_candidates = token_map[close_tokens[0]]
+            if len(token_candidates) == 1:
+                return next(iter(token_candidates))
+
+    text = _normalize(description) or ""
+    for normalized_name, name in normalized_map.items():
+        if normalized_name and normalized_name in text:
+            return name
+    return None
+
+
+def _resolve_subject_name_for_rule(ambientid, description, conditions):
+    subjects = _subject_names_for_ambient(ambientid)
+    if not subjects:
+        return None
+
+    if isinstance(conditions, list):
+        for cond in conditions:
+            if isinstance(cond, dict) and str(cond.get("field", "")).strip().lower() == "disciplina":
+                resolved = _resolve_subject_name_from_value(subjects, cond.get("value"))
+                if resolved:
+                    return resolved
+
+    text = _normalize(description) or ""
+    for subject in subjects:
+        subject_normalized = _normalize(subject)
+        if subject_normalized and subject_normalized in text:
+            return subject
+
+    return _resolve_subject_name_from_value(subjects, description)
+
+
+def _resolve_subject_name_from_value(subjects, value):
+    import re
+
+    raw_value = str(value or "")
+    normalized = _normalize(value)
+    if not normalized:
+        return None
+
+    normalized_map = {_normalize(subject): subject for subject in subjects}
+    if normalized in normalized_map:
+        return normalized_map[normalized]
+
+    subject_aliases = [
+        ("Sistemas Operacionais", [r"(?<!\w)S\.?O\.?(?!\w)"]),
+        ("Banco de Dados", [r"(?<!\w)B\.?D\.?(?!\w)"]),
+        ("Interação Humano/Computador", [r"(?<!\w)I\.?H\.?C\.?(?!\w)"]),
+        ("Programação Orientada a Objetos", [r"(?<!\w)P\.?O\.?O\.?(?!\w)"]),
+    ]
+    for subject, patterns in subject_aliases:
+        subject_normalized = _normalize(subject)
+        if subject_normalized not in normalized_map:
+            continue
+        if any(re.search(pattern, raw_value) for pattern in patterns):
+            return normalized_map[subject_normalized]
+    if "banco" in normalized and _normalize("Banco de Dados") in normalized_map:
+        return normalized_map[_normalize("Banco de Dados")]
+    if "web" in normalized and _normalize("Desenvolvimento WEB") in normalized_map:
+        return normalized_map[_normalize("Desenvolvimento WEB")]
+    return None
+
+
+def _professor_names_for_ambient(ambientid):
+    try:
+        from AllokAcads.models import Ambient
+
+        ambient = Ambient.objects.get(ambientid=ambientid)
+    except Exception:
+        return []
+    return [
+        member.user.name
+        for member in ambient.members.filter(is_professor=True)
+        if member.user and member.user.name
+    ]
+
+
+def _subject_names_for_ambient(ambientid):
+    try:
+        from AllokAcads.models import Ambient
+
+        ambient = Ambient.objects.get(ambientid=ambientid)
+    except Exception:
+        return []
+    return [subject.name for subject in ambient.subjects.all() if subject.name]
+
+
+def _extract_words(text):
+    import re
+
+    return re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]*", text or "")
 
 
 def clear_all_constraints(ambientid):
@@ -722,11 +1355,13 @@ def analyze_solution(ambientid):
         {
             "indice": idx,
             "descricao": rule.get("description"),
+            "conditions": rule.get("conditions", []),
             "violacoes": [],
         }
         for idx, rule in enumerate(rules)
     ]
     resource_conflicts = []
+    professor_day_usage = {}
 
     for slot in slots:
         activities = list(slot.activitie.all())
@@ -745,6 +1380,10 @@ def analyze_solution(ambientid):
                 "atividade": _activity_data(activity),
             }
             allocated_entries.append(entry)
+            professor_name = entry["atividade"].get("professor")
+            if professor_name:
+                usage_key = (professor_name, _day_name(slot.column))
+                professor_day_usage[usage_key] = professor_day_usage.get(usage_key, 0) + 1
 
             for report, rule in zip(rule_reports, rules):
                 if _rule_matches(rule, attrs):
@@ -799,7 +1438,13 @@ def analyze_solution(ambientid):
                 "ausente_da_grade": False,
             })
             pending["ausente_da_grade"] = True
+    activity_by_id = {activity.id: activity for activity in ambient.activities.all()}
     pending_unique = list(pending_by_id.values())
+    for pending in pending_unique:
+        activity = pending.get("atividade") or {}
+        activity_obj = activity_by_id.get(activity.get("id"))
+        if activity_obj:
+            pending["diagnostico"] = _diagnose_unallocated_activity(ambient, tt, activity_obj, rules)
 
     total_activities = ambient.activities.count()
     total_available_slots = ambient.available_schedules.count()
@@ -857,9 +1502,87 @@ def analyze_solution(ambientid):
         "nao_alocadas": not_allocated,
         "atividades_ausentes_da_grade": unallocated_by_absence,
         "conflitos_de_recurso": resource_conflicts,
+        "uso_professor_dia": [
+            {
+                "professor": professor,
+                "dia": day,
+                "periodos_usados": periods,
+                "periodos_disponiveis_no_dia": ambient.periods_in_a_day,
+            }
+            for (professor, day), periods in sorted(professor_day_usage.items())
+        ],
         "observacoes": complexity_notes,
     }
     return "Analise deterministica da grade:\n" + json.dumps(report, ensure_ascii=False, indent=2)
+
+
+def _diagnose_unallocated_activity(ambient, timetable_db, activity, rules):
+    duration = activity.activities_qtd or 1
+    periods = ambient.periods_in_a_day or 0
+    days = ambient.days_in_a_cicle or 0
+    windows = []
+    viable_count = 0
+
+    for col in range(days):
+        for row in range(max(0, periods - duration + 1)):
+            keys = [(row + offset, col) for offset in range(duration)]
+            window = {
+                "dia": _day_name(col),
+                "periodo_inicio": row,
+                "periodo_fim": row + duration - 1,
+                "bloqueios": [],
+            }
+
+            for line, slot_col in keys:
+                attrs = _activity_attributes(activity)
+                attrs["dia"] = slot_col
+                attrs["periodo"] = line
+                for rule in rules:
+                    if _rule_matches(rule, attrs):
+                        window["bloqueios"].append({
+                            "tipo": "restricao",
+                            "periodo": line,
+                            "restricao": rule.get("description"),
+                        })
+
+                try:
+                    slot = timetable_db.table.get(line=line, column=slot_col)
+                    slot_activities = list(slot.activitie.all())
+                except Exception:
+                    slot_activities = []
+
+                for other in slot_activities:
+                    if getattr(other, "id", None) == getattr(activity, "id", None):
+                        continue
+                    conflict_types = _activity_conflict_types(activity, other)
+                    if conflict_types:
+                        window["bloqueios"].append({
+                            "tipo": "conflito_recurso",
+                            "periodo": line,
+                            "recursos": conflict_types,
+                            "atividade": _activity_data(other),
+                        })
+
+            if window["bloqueios"]:
+                windows.append(window)
+            else:
+                viable_count += 1
+
+    relevant_windows = []
+    for window in windows:
+        has_only_restriction = any(block.get("tipo") == "restricao" for block in window["bloqueios"])
+        has_resource_conflict = any(block.get("tipo") == "conflito_recurso" for block in window["bloqueios"])
+        if has_resource_conflict or not has_only_restriction:
+            relevant_windows.append(window)
+
+    if not relevant_windows:
+        relevant_windows = windows
+
+    return {
+        "janelas_viaveis_sem_bloqueio": viable_count,
+        "janelas_analisadas": days * max(0, periods - duration + 1),
+        "principais_bloqueios": relevant_windows[:3],
+    }
 
 
 def run_unified_solver(ambientid):
@@ -1207,7 +1930,17 @@ def run_allocation_solver(ambientid):
 def run_tool(ambientid, function_name, function_args):
     args = function_args or {}
     try:
+        if function_name in FIXED_RESTRICTION_TOOLS:
+            output = run_fixed_restriction_tool(ambientid, function_name, args)
+            if output is not None:
+                return output
         if function_name == "add_restriction_rule":
+            return add_restriction_rule(
+                ambientid,
+                args.get("description"),
+                args.get("conditions"),
+            )
+        if function_name == "add_custom_restriction_rule":
             return add_restriction_rule(
                 ambientid,
                 args.get("description"),
@@ -1329,22 +2062,32 @@ def build_system_prompt(ambient):
         "- Indice 2 = 'Dia 3' (Quarta)\n"
         "- Indice 3 = 'Dia 4' (Quinta)\n"
         "Nas regras JSON das restricoes, voce deve usar 'Segunda', 'Terca', 'Quarta', 'Quinta' como valor para o campo 'dia'. Porém, ao conversar com o usuario, refira-se a eles no formato 'Dia X (DiaSemana)' para coincidir com a visualizacao da tabela no frontend.\n\n"
+        "### ARQUITETURA DAS RESTRICOES:\n"
+        "Voce deve ser um roteador de intencao, nao o autor manual de operadores. Use as tools fixas sempre que possivel; o backend monta os operadores corretos.\n"
+        "- Para 'X so pode Y', use add_required_value_constraint ou um wrapper restrict_*.\n"
+        "- Para 'X deve ser com/em Y', use add_required_value_constraint ou um wrapper require_*.\n"
+        "- Para 'X nao pode Y', use add_forbidden_combination_constraint ou um wrapper forbid_*.\n"
+        "- Use add_custom_restriction_rule somente como ultima opcao, quando nenhuma tool fixa representar a regra.\n"
+        "Campos suportados pelas tools genericas: professor, turma, disciplina, sala, dia, periodo. Isso cobre todas as restricoes triviais entre dois campos e combinacoes proibidas simples.\n\n"
         "### DIRETRIZ CRITICA DE REGRAS (ESTADOS PROIBIDOS):\n"
         "Uma regra representa um ESTADO PROIBIDO. Se todas as condicoes de uma regra forem verdadeiras em uma aula, ela recebe penalidade maxima no RKO e sera evitada a todo custo.\n"
-        "Nunca crie uma regra do tipo 'Professor == Aline Paula' se o usuario quer que a Aline Paula DEVA dar aulas. Isso iria proibi-la!\n"
-        "- Para FORCAR algo positivo (Ex: 'Aline Paula tem que dar aulas para ADS 1.1'), voce deve proibir a situacao contraria: 'turma == ADS 1.1' e 'professor != Aline Paula'.\n"
-        "- Para FORCAR um professor em uma disciplina (Ex: 'Carlos tem que dar Matematica'), proiba outros: 'disciplina == Matematica' e 'professor != Carlos'.\n"
-        "- Para FORCAR uma sala (Ex: 'Turma ADS so pode usar Lab 1'), proiba outras salas: 'turma == ADS' e 'sala != Lab 1'.\n"
-        "- Para PROIBIR uma combinacao (Ex: 'Wesley nao pode dar aula na segunda'), proiba a combinacao direta: 'professor == Wesley' e 'dia == Segunda'.\n"
-        "- Para RESTRIÇÃO DE 'SOMENTE' para um unico dia (Ex: 'Aline só pode terça'): use conditions: [{\"field\": \"professor\", \"operator\": \"==\", \"value\": \"Aline Paula\"}, {\"field\": \"dia\", \"operator\": \"!=\", \"value\": \"Terca\"}]\n"
-        + "- Para RESTRIÇÃO DE 'SOMENTE' para multiplos dias (Ex: 'Wesley só pode terça ou quinta'): use conditions: [{\"field\": \"professor\", \"operator\": \"==\", \"value\": \"Wesley Santos\"}, {\"field\": \"dia\", \"operator\": \"not in\", \"value\": [\"Terca\", \"Quinta\"]}]\n"
-        + "ATENCAO: Nunca use o operador 'in' com os dias permitidos para restricoes de 'SOMENTE', pois isso proibiria o professor justamente nos dias em que ele PODE dar aula!\n\n"
+        "As tools fixas ja fazem a inversao. Nao tente montar operators manualmente quando houver tool fixa.\n"
+        "- Exemplo: 'Wesley so pode terca ou quinta' => restrict_professor_days.\n"
+        "- Exemplo: 'Wesley so pode dar SO' => restrict_professor_subjects.\n"
+        "- Exemplo: 'SO deve ser com Wesley' => require_subject_professor.\n"
+        "- Exemplo: 'Wesley nao pode BD' => forbid_professor_subject.\n\n"
         + "### FORA DO ESCOPO ATUAL:\n"
         + "Nao finja que aplicou restricoes agregadas ou qualitativas. Ainda estao fora do formato dinamico atual: maximo/minimo de aulas por turma ou professor por dia, limite de aulas consecutivas, janelas/gaps, balanceamento global da semana, relacoes entre duas disciplinas no mesmo dia e preferencias como 'aulas mais dificeis no comeco'. Nesses casos, explique que ainda precisa de uma regra nova no decoder/analisador e nao rode a otimizacao.\n\n"
         "### INSTRUCOES DE FERRAMENTAS:\n"
         "- Para ver as restricoes ativas: use 'list_constraints'.\n"
         "- Para remover uma restricao: use 'remove_restriction_rule' informando o indice obtido em 'list_constraints'.\n"
         "- Para apagar tudo: use 'clear_all_constraints'.\n"
+        "- Se o usuario disser 'limpe/remova/apague as restricoes ativas' ou 'tire todas as restricoes', use 'clear_all_constraints' diretamente. Nao liste as restricoes nesse caso.\n"
+        "- Se o usuario disser 'remova a restricao 2', trate como a segunda regra exibida ao usuario e use index 1. Se ele disser explicitamente 'indice 0', use index 0.\n"
+        "- Antes de adicionar uma regra, confira se o usuario informou a entidade exata. Se ele disser apenas 'o professor', 'a materia', 'a turma' ou 'a sala', use 'respond_to_user' perguntando qual e o nome exato; nao invente valores e nao aplique restricao.\n"
+        "- Se houver nome de professor + 'aula' + dia, isso e disponibilidade do professor. Use 'restrict_professor_days' e nao pergunte disciplina. Ex: 'Wesley so de aula terca' => restrict_professor_days.\n"
+        "- A palavra 'aula' nao e uma disciplina. So pergunte disciplina quando o usuario falar de 'materia' ou 'disciplina' sem dizer qual.\n"
+        "- Se o nome informado nao aparecer claramente no CONTEXTO REAL DO AMBIENTE, use 'respond_to_user' pedindo confirmacao antes de executar.\n"
         "- Para ver a grade horaria/timetable gerada: use 'get_current_timetable'.\n"
         "- Para verificar se a solucao respeitou as restricoes e explicar problemas: use 'analyze_solution'.\n"
         "- Para rodar a otimizacao completa pela IA: use 'run_unified_solver'. Essa ferramenta escolhe professor, sala e horario em uma unica solucao.\n"
@@ -1353,7 +2096,7 @@ def build_system_prompt(ambient):
     )
 
 
-def apply_attribution_constraints(cost, activities, ambientid):
+def apply_attribution_constraints(cost, activities, ambientid, professor_limits=None):
     rules = [
         rule for rule in load_rules(ambientid)
         if all(cond.get("field") in ATTRIBUTION_FIELDS for cond in rule.get("conditions", []))
@@ -1364,11 +2107,12 @@ def apply_attribution_constraints(cost, activities, ambientid):
             if _rule_matches(rule, attrs):
                 cost += PENALTY
 
-    return _apply_professor_day_capacity_constraints(cost, activities, ambientid)
+    if professor_limits is None:
+        return cost
+    return _apply_professor_day_capacity_constraints(cost, activities, professor_limits)
 
 
-def _apply_professor_day_capacity_constraints(cost, activities, ambientid):
-    professor_limits = _professor_allowed_period_limits(ambientid)
+def _apply_professor_day_capacity_constraints(cost, activities, professor_limits):
     if not professor_limits:
         return cost
 
@@ -1495,6 +2239,13 @@ def _comparison_values(field, value):
             _normalize(_day_name(value)),
             _normalize(f"Dia {value + 1}"),
         }
+    if field == "periodo" and isinstance(value, int):
+        return {
+            _normalize(value),
+            _normalize(value + 1),
+            _normalize(f"Periodo {value + 1}"),
+            _normalize(f"{value + 1}o"),
+        }
     return {_normalize(value)}
 
 
@@ -1509,6 +2260,13 @@ def _expected_values(field, value):
                 values.add(_normalize(day_index))
                 values.add(_normalize(_day_name(day_index)))
                 values.add(_normalize(f"Dia {day_index + 1}"))
+        if field == "periodo":
+            period_index = _period_index(item)
+            if period_index is not None:
+                values.add(_normalize(period_index))
+                values.add(_normalize(period_index + 1))
+                values.add(_normalize(f"Periodo {period_index + 1}"))
+                values.add(_normalize(f"{period_index + 1}o"))
     return values
 
 
@@ -1560,3 +2318,17 @@ def _day_index(value):
     except ValueError:
         return None
     return max(0, number - 1)
+
+
+def _period_index(value):
+    import re
+
+    if isinstance(value, int):
+        return value if value == 0 else max(0, value - 1)
+    text = _normalize(value)
+    if text is None:
+        return None
+    match = re.search(r"\d+", text)
+    if not match:
+        return None
+    return max(0, int(match.group(0)) - 1)

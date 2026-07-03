@@ -793,6 +793,10 @@
     color: #7f1d1d;
 }
 
+.unallocated-label {
+    font-weight: 600;
+}
+
 .unallocated-professor svg, .unallocated-classroom svg {
     color: #dc2626;
     flex-shrink: 0;
