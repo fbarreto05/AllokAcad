@@ -1,0 +1,133 @@
+.chatbot-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  font-family: 'Inter', sans-serif;
+}
+
+.chat-trigger {
+  padding: 15px 25px;
+  background-color: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease; 
+}
+
+.chat-window {
+  width: calc(50vw - 40px); 
+  
+  height: 500px;
+  max-height: calc(100vh - 40px); 
+  
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.chat-header {
+  background: #4361ee;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-header button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  padding: 5px 10px;
+}
+
+.chat-body {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #f9f9f9;
+}
+
+.message-bubble {
+  padding: 12px 15px;
+  border-radius: 15px;
+  max-width: 85%;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-bubble.bot {
+  background: #e9ecef;
+  color: #333;
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+
+.message-bubble.user {
+  background: #4361ee;
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-footer {
+  padding: 15px;
+  background: white;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+}
+
+.chat-footer input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  outline: none;
+  
+  color: #333333; 
+  background-color: #ffffff; 
+  caret-color: #0f0f0f; 
+  font-size: 14px; 
+}
+
+.chat-footer button {
+  padding: 10px 15px;
+  background: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.chat-footer button:hover {
+  background: #0056b3;
+}
+
+.chat-header button:hover,
+.message-bubble.user:hover {
+  background: #0056b3;
+}
+
+.chat-trigger:hover {
+  background-color: #0056b3; 
+  transform: translateY(-5px); 
+  box-shadow: 0 6px 15px rgba(0,0,0,0.3); 
+}

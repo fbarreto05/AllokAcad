@@ -1,7 +1,10 @@
+import json
 from urllib import request
 from django.shortcuts import render, redirect
 from django.conf import settings
 import random, os, datetime, time
+
+import requests
 from .models import User, Ambient, Member, AdminTP, ClassroomTP, Formation, Subject, Formation_Preference, Classroom, Class, Professor_Preference, Classroom_Preference, Schedule_Preference, Class_Preference, Subject_Preference, Member_Formation, Activitie, Timetable, Alocation, Unregistered_Activitie
 from shutil import copyfile
 from django.db.models import Sum
@@ -12,6 +15,8 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User as UserAuth
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .decision_logger import clear_logs, log_atribuicao_sala, log_atribuicao_professor, log_alocacao_horario
 # import pwd
 # import grp
 
@@ -718,8 +723,12 @@ def professor_true(request, memberid, ambientid):
                 member = ambient.members.all().get(id=memberid)
             except Member.DoesNotExist:
                 return redirect(f'/ambient/members/{ambientid}')
+            was_prof = member.is_professor
             member.is_professor = True
             member.save()
+            if not was_prof:
+                for schedule in ambient.available_schedules.all():
+                    member.prefered_schedules.add(schedule)
             return redirect(f'/ambient/members/{ambientid}')
         else:
             return redirect('home')
@@ -901,6 +910,8 @@ def accept_solicitation(request, memberid, ambientid):
             new_member.save()
             ambient.members.add(new_member)
             ambient.save()
+            for schedule in ambient.available_schedules.all():
+                new_member.prefered_schedules.add(schedule)
             member.ambients.add(ambient)
             member.save()
             return redirect(f'/ambient/solicitations/{ambientid}')
@@ -2195,31 +2206,33 @@ def tiebreaker(professor, chosen_professor, activitie, activitie2 = None):
     #Inicia a comparação seguindo os critérios de desempate: Maior preferência da atividade > Grau de formação acadêmica > Tempo de experiência profissional > Tempo de experiência didática > Tempo no Campus > Tempo na instituição > Idade > Relevância das formações para a disciplina.
     if(tclass_professor1 != 0 and tsubjects_professor1 != 0):
         if (tclass_professor1 + tsubjects_professor1 > tclass_professor2 + tsubjects_professor2 and ((tclass_professor2 < 100 and tsubjects_professor2 < 100) or (tclass_professor1 == 100 or tsubjects_professor1 == 100))):
-            return professor, True
+            return professor, True, "Maior preferência da atividade"
         elif (tclass_professor1 + tsubjects_professor1 == tclass_professor2 + tsubjects_professor2 and ((tclass_professor2 < 100 and tsubjects_professor2 < 100) or (tclass_professor1 == 100 or tsubjects_professor1 == 100))):
             if degree_1_count > degree_2_count:
-                return professor, True
+                return professor, True, "Grau de formação acadêmica"
             elif degree_1_count == degree_2_count:
                 if professional_experience_1_count > professional_experience_2_count:
-                    return professor, True
+                    return professor, True, "Tempo de experiência profissional"
                 elif professional_experience_1_count == professional_experience_2_count:
                     if didatic_experience_1_count > didatic_experience_2_count:
-                        return professor, True
+                        return professor, True, "Tempo de experiência didática"
                     elif didatic_experience_1_count == didatic_experience_2_count:
                         if professor.time_in_campus > chosen_professor.time_in_campus:
-                            return professor, True
+                            return professor, True, "Tempo no Campus"
                         elif professor.time_in_campus == chosen_professor.time_in_campus:
                             if professor.time_in_institution > chosen_professor.time_in_institution:
-                                return professor, True
+                                return professor, True, "Tempo na instituição"
                             elif professor.time_in_institution == chosen_professor.time_in_institution:
                                 if datetime.date.today() - professor.user.birthdate > datetime.date.today() - chosen_professor.user.birthdate:
-                                    return professor, True
+                                    return professor, True, "Idade mais avançada"
                                 elif datetime.date.today() - professor.user.birthdate == datetime.date.today() - chosen_professor.user.birthdate:
                                     if formation_1_count > formation_2_count:   
-                                        return professor, True 
-    return chosen_professor, False
+                                        return professor, True, "Relevância das formações para a disciplina"
+    return chosen_professor, False, "Manutenção do professor atual (nenhum critério superado)"
 
-def check_conflitant_schedules_classroom(activities_with_classroom, timetable, classroom, switched = False):
+def check_conflitant_schedules_classroom(activities_with_classroom, timetable, classroom, switched = False, reasons=None):
+    if reasons is None:
+        reasons = []
     #Se não houverem atividades com a sala alocada, não há conflito de horários, logo a função retorna verdadeiro imediatamente.
     if not activities_with_classroom:
         return True
@@ -2259,7 +2272,16 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
     last_switch = None
     last_switched_activitie = None
     last_start = None
-    for s, start in enumerate(activitie.tclass.prefered_schedules.all()):   
+
+    class_schedules = list(activitie.tclass.prefered_schedules.all())
+    if not class_schedules:
+        class DummySchedule:
+            def __init__(self, line, column):
+                self.line = line
+                self.column = column
+        class_schedules = [DummySchedule(k[0], k[1]) for k in fixed_timetable.keys() if isinstance(k, tuple) and len(k) == 2]
+
+    for s, start in enumerate(class_schedules):   
         switched_activitie = None
         switch = False 
         available = False
@@ -2288,6 +2310,8 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
                     switch = False
                     switched_activitie = None
                     available = False
+                    if current_weight >= example_weight and slot != "Available":
+                        reasons.append("Diferença de pesos: já havia um recurso alocado e a atividade atual não tinha peso suficiente para tirá-lo.")
                     break
             else:
                 switch = False
@@ -2300,11 +2324,12 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
             last_switched_activitie = switched_activitie
             last_start = start
 
-        if s == len(activitie.tclass.prefered_schedules.all()) - 1:
-            available = True
-            start = last_start
-            switch = last_switch
-            switched_activitie = last_switched_activitie
+        if s == len(class_schedules) - 1:
+            if not available and last_start is not None:
+                available = True
+                start = last_start
+                switch = last_switch
+                switched_activitie = last_switched_activitie
         
         if available:
             #Agora, os horários definidos como disponíveis são marcados como ocupados pela atividade no dicionário, e se houver uma atividade marcada como trocada, seus horários anteriormente ocupados serão marcados como livres.
@@ -2321,7 +2346,7 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
             #Agora, o backtracking entra em ação. Se ainda houverem atividades na lista além da que deseja ser alocada, a função é chamada novamente, excluindo a atividade que acabamos de alocar, passando a grade horária alterada, a sala e a variável de controle, para garantir que haja no máximo uma atividade em troca.
             #Se não houverem mais atividades além da que foi alocada, significa que chegamos ao fim do algoritmo, então ele começa a retornar True ou o valor da atividade que foi trocada, caso exista. As chamadas anteriores fazem o mesmo, retornando True ou a atividade que foi trocada, caso a função que chamou tenha sido bem-sucedida, e False, caso a função que chamou tenha sido mal-sucedida ou resultante de uma segunda troca.
             if len(activities_with_classroom) > 1:
-                check = check_conflitant_schedules_classroom(activities_with_classroom[1:], timetable, classroom, switch)
+                check = check_conflitant_schedules_classroom(activities_with_classroom[1:], timetable, classroom, switch, reasons)
                 if check:
                     if switch:
                         if not isinstance(check, Activitie):
@@ -2341,7 +2366,9 @@ def check_conflitant_schedules_classroom(activities_with_classroom, timetable, c
                 return True 
     return False
 
-def check_conflitant_schedules_professor(activities_with_professor, timetable, professor, switched = False):
+def check_conflitant_schedules_professor(activities_with_professor, timetable, professor, switched = False, reasons=None, max_actv_in_day=0):
+    if reasons is None:
+        reasons = []
     #Se não houverem atividades com o professor alocado, não há conflito de horários, logo a função retorna verdadeiro imediatamente.
     if not activities_with_professor:
         return True
@@ -2381,7 +2408,16 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
     last_switch = None
     last_switched_activitie = None
     last_start = None
-    for s, start in enumerate(activitie.tclass.prefered_schedules.all()):
+
+    class_schedules = list(activitie.tclass.prefered_schedules.all())
+    if not class_schedules:
+        class DummySchedule:
+            def __init__(self, line, column):
+                self.line = line
+                self.column = column
+        class_schedules = [DummySchedule(k[0], k[1]) for k in fixed_timetable.keys() if isinstance(k, tuple) and len(k) == 2]
+
+    for s, start in enumerate(class_schedules):
         switched_activitie = None
         switch = False 
         available = False
@@ -2428,6 +2464,8 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
                     switch = False
                     switched_activitie = None
                     available = False
+                    if current_weight > example_weight and slot != "Available":
+                        reasons.append("Diferença de pesos: já havia um recurso alocado e a atividade atual não tinha peso suficiente para tirá-lo.")
                     break
             else:
                 switch = False
@@ -2440,14 +2478,32 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
             last_switched_activitie = switched_activitie
             last_start = start
 
-        if s == len(activitie.tclass.prefered_schedules.all()) - 1:
-            available = True
-            start = last_start
-            switch = last_switch
-            switched_activitie = last_switched_activitie
+        if s == len(class_schedules) - 1:
+            if not available and last_start is not None:
+                available = True
+                start = last_start
+                switch = last_switch
+                switched_activitie = last_switched_activitie
         
         #Agora, os horários definidos como disponíveis são marcados como ocupados pela atividade no dicionário, e se houver uma atividade marcada como trocada, seus horários anteriormente ocupados serão marcados como livres.
         #Este dicionário serve apenas para esta iteração de horário de início, sendo que, se a possibilidade for inválida e este horário precisar mudar, o dicionário é reiniciado para seu último estado válido, o que foi passado na chamada da função, e o processo se repete com o novo dicionário.
+        if available:
+            if max_actv_in_day > 0:
+                current_day_count = sum(1 for (l, c), v in fixed_timetable.items() if c == start.column and v != "Available")
+                if switched_activitie:
+                    current_day_count -= sum(1 for (l, c), v in fixed_timetable.items() if c == start.column and v == switched_activitie)
+                if current_day_count + activitie.activities_qtd > max_actv_in_day:
+                    reasons.append("Limite de aulas excedido no dia.")
+                    available = False
+                    switch = False
+                    switched_activitie = None
+                    if s == len(class_schedules) - 1 and last_start is not None:
+                        # Re-apply last switch if it was valid before this failed
+                        available = True
+                        start = last_start
+                        switch = last_switch
+                        switched_activitie = last_switched_activitie
+
         if available:
             if switched_activitie:
                 for k, v in list(timetable.items()):
@@ -2461,7 +2517,7 @@ def check_conflitant_schedules_professor(activities_with_professor, timetable, p
             #Agora, o backtracking entra em ação. Se ainda houverem atividades na lista além da que deseja ser alocada, a função é chamada novamente, excluindo a atividade que acabamos de alocar, passando a grade horária alterada, a sala e a variável de controle, para garantir que haja no máximo uma atividade em troca.
             #Se não houverem mais atividades além da que foi alocada, significa que chegamos ao fim do algoritmo, então ele começa a retornar True ou o valor da atividade que foi trocada, caso exista. As chamadas anteriores fazem o mesmo, retornando True ou a atividade que foi trocada, caso a função que chamou tenha sido bem-sucedida, e False, caso a função que chamou tenha sido mal-sucedida ou resultante de uma segunda troca.
             if len(activities_with_professor) > 1:
-                check = check_conflitant_schedules_professor(activities_with_professor[1:], timetable, professor, switch)
+                check = check_conflitant_schedules_professor(activities_with_professor[1:], timetable, professor, switch, reasons, max_actv_in_day)
                 if check:
                     if switch:
                         if not isinstance(check, Activitie):
@@ -2499,6 +2555,7 @@ def run_atribuition(request, ambientid):
             return redirect('home')
 
         if ambient.members.filter(user = user) and member.admin_type.can_run_atribuition:
+            clear_logs()
             #Limpa as atividades para iniciar uma nova atribuição.
             ambient.activities.all().delete()
             ambient.activities.clear()
@@ -2531,6 +2588,7 @@ def run_atribuition(request, ambientid):
                 highest_weight = 0
                 chosen_room = None
                 chosen_conflitant_classroom = None
+                evaluated_rooms = {}
 
                 for room in class_rooms:
                     class_classroom_weight = room.classroom_weight
@@ -2542,12 +2600,30 @@ def run_atribuition(request, ambientid):
                     timetable = list(ambient.published_timetable.table.all())
                     activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
                     activities_with_classroom.append(activitie)
-                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
+                    reasons = []
+                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom, reasons=reasons)
 
                     weight = subject_classroom_weight + class_classroom_weight
+                    
+                    cap_ok = room.classroom.classroom_capacity >= activitie.tclass.number_of_students
+                    conflict_ok = bool(conflitant_classroom)
+                    weight_ok = weight > highest_weight
+                    priority_ok = ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100))
+                    
+                    evaluated_rooms[room.classroom.id] = {
+                        'classroom': room.classroom,
+                        'weight': weight,
+                        'cap_ok': cap_ok,
+                        'conflict_ok': conflict_ok,
+                        'priority_ok': priority_ok,
+                        'priority_ok': priority_ok,
+                        'weight_ok': weight_ok,
+                        'conflict_act': conflitant_classroom,
+                        'reasons': reasons
+                    }
 
                     #Se atender aos requisitos, define como a atividade escolhida, assim como seu peso e uma possível atividade conflitante para o caso de precisar ser trocada.
-                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
+                    if priority_ok and weight_ok and cap_ok and conflict_ok:
                         highest_weight = weight
                         chosen_room = room.classroom
                         chosen_conflitant_classroom = conflitant_classroom
@@ -2561,16 +2637,63 @@ def run_atribuition(request, ambientid):
                     timetable = list(ambient.published_timetable.table.all())
                     activities_with_classroom = list(ambient.activities.filter(tclassroom = room.classroom))
                     activities_with_classroom.append(activitie)
-                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom)
+                    reasons = []
+                    conflitant_classroom = check_conflitant_schedules_classroom(activities_with_classroom, timetable, room.classroom, reasons=reasons)
 
                     weight = subject_classroom_weight
+                    
+                    cap_ok = room.classroom.classroom_capacity >= activitie.tclass.number_of_students
+                    conflict_ok = bool(conflitant_classroom)
+                    weight_ok = weight > highest_weight
+                    priority_ok = ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100))
+                    
+                    evaluated_rooms[room.classroom.id] = {
+                        'classroom': room.classroom,
+                        'weight': weight,
+                        'cap_ok': cap_ok,
+                        'conflict_ok': conflict_ok,
+                        'priority_ok': priority_ok,
+                        'priority_ok': priority_ok,
+                        'weight_ok': weight_ok,
+                        'conflict_act': conflitant_classroom,
+                        'reasons': reasons
+                    }
 
                     #Se atender aos requisitos, define como a atividade escolhida, assim como seu peso e uma possível atividade conflitante para o caso de precisar ser trocada.
-                    if ((highest_subject_classroom_weight < 100 and highest_class_classroom_weight < 100) or (subject_classroom_weight >= 100 or class_classroom_weight >= 100)) and weight > highest_weight and room.classroom.classroom_capacity >= activitie.tclass.number_of_students and conflitant_classroom:
+                    if priority_ok and weight_ok and cap_ok and conflict_ok:
                         highest_weight = weight
                         chosen_room = room.classroom
                         chosen_conflitant_classroom = conflitant_classroom
                 
+                # Log final das salas para esta atividade
+                if chosen_room and chosen_room.id in evaluated_rooms:
+                    success_reason = f"Peso de preferência atendido ({highest_weight}) com capacidade suficiente e sem conflitos impeditivos."
+                    if isinstance(chosen_conflitant_classroom, Activitie):
+                        success_reason += f" A atividade conflitante ID {chosen_conflitant_classroom.id} foi desalocada."
+                    log_atribuicao_sala(activitie, chosen_room, True, success_reason)
+                    del evaluated_rooms[chosen_room.id]
+                    
+                for room_info in evaluated_rooms.values():
+                    if room_info['weight'] <= highest_weight and highest_weight > 0:
+                        continue
+                    classroom = room_info['classroom']
+                    if not room_info['cap_ok']:
+                        reason = f"Capacidade insuficiente ({classroom.classroom_capacity} vagas para {activitie.tclass.number_of_students} alunos)."
+                    elif not room_info['conflict_ok']:
+                        if any("Diferença de pesos" in r for r in room_info.get('reasons', [])):
+                            reason = "Diferença de pesos: já havia um recurso alocado e a atividade atual não teve peso suficiente para tirá-lo."
+                        else:
+                            reason = "Conflito de horários com outras atividades nesta sala."
+                        if isinstance(room_info['conflict_act'], Activitie):
+                            reason += f" (Conflita com a atividade ID {room_info['conflict_act'].id})."
+                    elif not room_info['weight_ok']:
+                        reason = f"Falha por pesos inferiores. O peso da preferência desta sala ({room_info['weight']}) é menor ou igual ao melhor peso encontrado ({highest_weight})."
+                    elif not room_info['priority_ok']:
+                        reason = f"A sala selecionada tem preferência prioritária (peso >= 100), enquanto a sala candidata '{classroom.name}' tem peso {room_info['weight']}."
+                    else:
+                        reason = "Outra sala foi selecionada com maior prioridade ou peso."
+                    log_atribuicao_sala(activitie, classroom, False, reason)
+
                 #Após as iterações, atribui a sala escolhida definitivamente, caso os requisitos sejam atendidos. Se houver uma atividade conflitante, ela também é removida agora.
                 if(highest_weight > 0 and chosen_room != None):
                     activitie.tclassroom = chosen_room
@@ -2585,7 +2708,8 @@ def run_atribuition(request, ambientid):
                         tclassroom.save()
                         chosen_conflitant_classroom.tclassroom = None   
                         chosen_conflitant_classroom.classroom_weight = 0
-                        chosen_conflitant_classroom.save()
+                        chosen_conflitant_classroom.save() 
+                        log_atribuicao_sala(chosen_conflitant_classroom, chosen_room, False, "Diferença de pesos: a sala foi atribuída a uma nova atividade com preferência maior.")
 
             #Aqui as salas passam por um reajuste para garantir que salas que tenham um uso muito acima da média liberem algumas atividades para outras. Caso haja uma troca, o processo é repetido, com limite de 20 repetições.
             swap = True
@@ -2665,6 +2789,7 @@ def run_atribuition(request, ambientid):
                                 chosen_room.num_uses += activitie.activities_qtd
                                 chosen_room.save()
                                 activitie.save()
+                                log_atribuicao_sala(activitie, chosen_room, True, f"[REAJUSTE] Sala trocada de '{classroom_save.name}' para '{chosen_room.name}' para rebalanceamento de ocupação. Ocupação anterior: {classroom_save.num_uses + activitie.activities_qtd} usos, nova sala: {chosen_room.num_uses - activitie.activities_qtd} usos. Peso de preferência: {highest_weight}.")
 
                             #Caso não tenha escolhido uma boa sala e a preferência pela sala atual seja < 100, vai procurar uma nova sala semelhante, que tenha o mesmo tipo que a atual.
                             #Repetindo a mesma lógica de comparação de pesos e escolha de sala de sempre.
@@ -2708,6 +2833,7 @@ def run_atribuition(request, ambientid):
                                     chosen_room.num_uses += activitie.activities_qtd
                                     chosen_room.save()
                                     activitie.save()
+                                    log_atribuicao_sala(activitie, chosen_room, True, f"[REAJUSTE] Sala trocada de '{classroom_save.name}' para '{chosen_room.name}' (sala de tipo similar) para rebalanceamento de ocupação. Ocupação anterior: {classroom_save.num_uses + activitie.activities_qtd} usos, nova sala: {chosen_room.num_uses - activitie.activities_qtd} usos. Peso de preferência: {highest_weight}.")
 
             #Ao fim do ajuste, verifica se alguma atividade ficou sem uma sala, em caso positivo, lhe atribui uma aleatória, priorizando salas semelhantes e aquelas que tiverem menos ocupação
             #Repetindo a mesma lógica de comparação de pesos e escolha de sala de sempre.
@@ -2769,6 +2895,7 @@ def run_atribuition(request, ambientid):
                     activitie.save()
                     chosen_room.num_uses += activitie.activities_qtd
                     chosen_room.save()
+                    log_atribuicao_sala(activitie, chosen_room, True, f"[FALLBACK] Sala '{chosen_room.name}' atribuída como fallback à atividade ID {activitie.id}. Tipo de sala mais preferido: {most_preferred_type or 'nenhum'}. Peso de preferência: {highest_weight}.")
                     
                     if isinstance(chosen_conflitant_classroom, Activitie):
                         tclassroom = chosen_conflitant_classroom.tclassroom
@@ -2777,6 +2904,9 @@ def run_atribuition(request, ambientid):
                         chosen_conflitant_classroom.tclassroom = None   
                         chosen_conflitant_classroom.classroom_weight = 0
                         chosen_conflitant_classroom.save() 
+                        log_atribuicao_sala(chosen_conflitant_classroom, chosen_room, False, "Diferença de pesos: a sala foi atribuída a uma nova atividade com preferência maior.")
+                else:
+                    log_atribuicao_sala(activitie, None, False, f"[FALLBACK] Nenhuma sala disponível encontrada para a atividade ID {activitie.id}. Tipo de sala mais preferido: {most_preferred_type or 'nenhum'}. Todas as salas candidatas falharam por conflito de horário, capacidade insuficiente ou peso inferior.")
 
             #inicio da atribuição de professores
             activities = ambient.activities.all()
@@ -2800,6 +2930,7 @@ def run_atribuition(request, ambientid):
                     chosen_conflitant_professor = None              
                     swap = 0
                     swapAct = None
+                    evaluated_professors = {}
                     
                     #Itera sobre as preferências de turma por cada professor. Primeiro, coleta seus pesos para fins de comparação, depois, verifica se ele já ultrapassou seu limite de aulas.
                     #Caso tenha ultrapassado, verifica se alguma das atividades já atribuídas tem peso menor ou igual ao peso da atividade atual (caso seja igual, o desempate é dado pelo peso 
@@ -2854,7 +2985,8 @@ def run_atribuition(request, ambientid):
                             activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
                             activities_with_professor.append(activitie)
 
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
+                            reasons = []
+                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor, reasons=reasons, max_actv_in_day=ambient.max_actv_in_day)
 
                             if conflitant_schedules:
                                 if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
@@ -2866,20 +2998,32 @@ def run_atribuition(request, ambientid):
                                         swap = 0
                                         swapAct = None
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'weight_winner', 'has_capacity': True, 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
+                                    else:
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'preference_zero', 'has_capacity': True, 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
                                 elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
+                                    tb_result = tiebreaker(professor.professor, chosen_professor, activitie)
+                                    tchosen_professor = tb_result[0]
                                     if tchosen_professor == professor.professor:
                                         swap = 0
                                         swapAct = None
                                         chosen_professor = professor.professor
                                         highest_weight = weight
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_winner', 'has_capacity': True, 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                    else:
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_loser', 'has_capacity': True, 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                else:
+                                    evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'priority_blocked', 'has_capacity': True, 'schedule_ok': True, 'priority_ok': False, 'tb_info': None}
+                            else:
+                                evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'schedule_conflict', 'has_capacity': True, 'schedule_ok': False, 'priority_ok': True, 'tb_info': None, 'reasons': reasons}
                         elif fixed == 1:
                             timetable = list(ambient.published_timetable.table.all())
                             activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
                             activities_with_professor.append(activitie)
 
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
+                            reasons = []
+                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor, reasons=reasons, max_actv_in_day=ambient.max_actv_in_day)
                             
                             if conflitant_schedules:
                                 if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
@@ -2889,18 +3033,66 @@ def run_atribuition(request, ambientid):
                                         swap = 1
                                         swapAct = fixed_activitie
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'weight_winner_swap', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
+                                    else:
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'preference_zero', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
                                 elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
+                                    tb_result = tiebreaker(professor.professor, chosen_professor, activitie)
+                                    tchosen_professor = tb_result[0]
                                     if tchosen_professor == professor.professor:
                                         swap = 1
                                         swapAct = fixed_activitie
                                         chosen_professor = professor.professor
                                         highest_weight = weight
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_winner', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                    else:
+                                        evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_loser', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                else:
+                                    evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'priority_blocked', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': False, 'tb_info': None}
+                            else:
+                                evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'schedule_conflict', 'has_capacity': False, 'schedule_ok': False, 'priority_ok': True, 'tb_info': None, 'reasons': reasons}
                             fixed = 0
+                        else:
+                            evaluated_professors[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'capacity_exceeded', 'has_capacity': False, 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
+
+                    # Log final dos professores avaliados no loop de preferência de turma
+                    if chosen_professor and chosen_professor.id in evaluated_professors:
+                        info = evaluated_professors[chosen_professor.id]
+                        success_reason = f"Peso de preferência da turma atendido ({info['weight']}). Status: {info['status']}."
+                        if info['tb_info']:
+                            success_reason += f" Critério de desempate: {info['tb_info']}."
+                        if isinstance(chosen_conflitant_professor, Activitie):
+                            success_reason += f" A atividade conflitante ID {chosen_conflitant_professor.id} foi desalocada."
+                        log_atribuicao_professor(activitie, chosen_professor, True, success_reason)
+                        del evaluated_professors[chosen_professor.id]
+
+                    for prof_info in evaluated_professors.values():
+                        if prof_info['weight'] <= highest_weight and highest_weight > 0:
+                            continue
+                        prof = prof_info['professor']
+                        if prof_info['status'] == 'capacity_exceeded':
+                            reason = f"Capacidade excedida (usos atuais: {prof.num_uses} + atividades: {activitie.activities_qtd} > max: {ambient.max_actv_in_cicle})."
+                        elif prof_info['status'] == 'schedule_conflict':
+                            if any("Limite de aulas excedido no dia" in r for r in prof_info.get('reasons', [])):
+                                reason = "Limite de aulas excedido no dia."
+                            elif any("Diferença de pesos" in r for r in prof_info.get('reasons', [])):
+                                reason = "Diferença de pesos: já havia um recurso alocado e a atividade atual não teve peso suficiente para tirá-lo."
+                            else:
+                                reason = "Conflito de horários com outras atividades deste professor."
+                        elif prof_info['status'] == 'tiebreaker_loser':
+                            reason = f"Derrota no desempate: critério \"{prof_info['tb_info']}\" (peso {prof_info['weight']} vs {highest_weight})."
+                        elif prof_info['status'] == 'priority_blocked':
+                            reason = f"O professor selecionado tem preferência prioritária (peso >= 100), enquanto o candidato '{prof.user.name}' tem peso {prof_info['weight']}."
+                        elif prof_info['status'] == 'preference_zero':
+                            reason = "Preferência zerada pela disciplina ou turma."
+                        else:
+                            reason = f"Peso inferior ({prof_info['weight']} vs {highest_weight})."
+                        log_atribuicao_professor(activitie, prof, False, reason)
 
                     #Agora, o processo é repetido, mas levando em conta apenas as preferências da matéria. Isso é importante para os casos em que não há preferência por parte da disciplina,
                     #Mas há por parte da materia.
+                    evaluated_professors_subj = {}
                     for professor in subjects_professors:
                         subject_professor_weight = subjects_professors.get(professor = professor.professor).professor_weight if subjects_professors.filter(professor = professor.professor).exists() else 1
                         class_professor_weight = class_professors.get(professor = professor.professor).professor_weight if class_professors.filter(professor = professor.professor).exists() else 1
@@ -2933,7 +3125,8 @@ def run_atribuition(request, ambientid):
                             activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
                             activities_with_professor.append(activitie)
 
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor)
+                            reasons = []
+                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor, reasons=reasons, max_actv_in_day=ambient.max_actv_in_day)
                             if conflitant_schedules:
                                 if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
                                     highest_weight = weight
@@ -2941,20 +3134,30 @@ def run_atribuition(request, ambientid):
                                     swap = 0
                                     swapAct = None
                                     chosen_conflitant_professor = conflitant_schedules
+                                    evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'weight_winner', 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
                                 elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
+                                    tb_result = tiebreaker(professor.professor, chosen_professor, activitie)
+                                    tchosen_professor = tb_result[0]
                                     if tchosen_professor == professor.professor:
                                         swap = 0
                                         swapAct = None
                                         chosen_professor = professor.professor
                                         highest_weight = weight
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_winner', 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                    else:
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_loser', 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                else:
+                                    evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'priority_blocked', 'schedule_ok': True, 'priority_ok': False, 'tb_info': None}
+                            else:
+                                evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'schedule_conflict', 'schedule_ok': False, 'priority_ok': True, 'tb_info': None, 'reasons': reasons}
                         elif fixed == 1:
                             timetable = list(ambient.published_timetable.table.all())
                             activities_with_professor = list(ambient.activities.filter(tprofessor = professor.professor))
                             activities_with_professor.append(activitie)
 
-                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor)
+                            reasons = []
+                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, professor.professor, reasons=reasons, max_actv_in_day=ambient.max_actv_in_day)
 
                             if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
                                 if (weight > highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
@@ -2964,27 +3167,79 @@ def run_atribuition(request, ambientid):
                                         swap = 1
                                         swapAct = fixed_activitie
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'weight_winner_swap', 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
+                                    else:
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'preference_zero', 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
                                 elif (weight == highest_weight and ((highest_subject_professor_weight < 100 and highest_class_professor_weight < 100) or (subject_professor_weight >= 100 or class_professor_weight >= 100))):
-                                    tchosen_professor = tiebreaker(professor.professor, chosen_professor, activitie)[0]
+                                    tb_result = tiebreaker(professor.professor, chosen_professor, activitie)
+                                    tchosen_professor = tb_result[0]
                                     if tchosen_professor == professor.professor:
                                         swap = 1
                                         swapAct = fixed_activitie
                                         chosen_professor = professor.professor
                                         highest_weight = weight
                                         chosen_conflitant_professor = conflitant_schedules
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_winner', 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                    else:
+                                        evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'tiebreaker_loser', 'schedule_ok': True, 'priority_ok': True, 'tb_info': tb_result[2]}
+                                else:
+                                    evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'priority_blocked', 'schedule_ok': True, 'priority_ok': False, 'tb_info': None}
+                            else:
+                                evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'schedule_conflict', 'schedule_ok': False, 'priority_ok': True, 'tb_info': None}
                             fixed = 0
+                        else:
+                            evaluated_professors_subj[professor.professor.id] = {'professor': professor.professor, 'weight': weight, 'status': 'capacity_exceeded', 'schedule_ok': True, 'priority_ok': True, 'tb_info': None}
+
+                    # Log final dos professores avaliados no loop de preferência de disciplina
+                    if chosen_professor and chosen_professor.id in evaluated_professors_subj:
+                        info = evaluated_professors_subj[chosen_professor.id]
+                        success_reason = f"Peso de preferência da disciplina atendido ({info['weight']}). Status: {info['status']}."
+                        if info['tb_info']:
+                            success_reason += f" Critério de desempate: {info['tb_info']}."
+                        if isinstance(chosen_conflitant_professor, Activitie):
+                            success_reason += f" A atividade conflitante ID {chosen_conflitant_professor.id} foi desalocada."
+                        log_atribuicao_professor(activitie, chosen_professor, True, success_reason)
+                        del evaluated_professors_subj[chosen_professor.id]
+
+                    for prof_info in evaluated_professors_subj.values():
+                        if prof_info['weight'] <= highest_weight and highest_weight > 0:
+                            continue
+                        prof = prof_info['professor']
+                        if prof_info['status'] == 'capacity_exceeded':
+                            reason = f"Capacidade excedida (usos atuais: {prof.num_uses} + atividades: {activitie.activities_qtd} > max: {ambient.max_actv_in_cicle})."
+                        elif prof_info['status'] == 'schedule_conflict':
+                            if any("Limite de aulas excedido no dia" in r for r in prof_info.get('reasons', [])):
+                                reason = "Limite de aulas excedido no dia."
+                            elif any("Diferença de pesos" in r for r in prof_info.get('reasons', [])):
+                                reason = "Diferença de pesos: já havia um recurso alocado e a atividade atual não teve peso suficiente para tirá-lo."
+                            else:
+                                reason = "Conflito de horários com outras atividades deste professor."
+                        elif prof_info['status'] == 'tiebreaker_loser':
+                            reason = f"Derrota no desempate: critério \"{prof_info['tb_info']}\" (peso {prof_info['weight']} vs {highest_weight})."
+                        elif prof_info['status'] == 'priority_blocked':
+                            reason = f"O professor selecionado tem preferência prioritária (peso >= 100), enquanto o candidato '{prof.user.name}' tem peso {prof_info['weight']}."
+                        elif prof_info['status'] == 'preference_zero':
+                            reason = "Preferência zerada pela disciplina ou turma."
+                        else:
+                            reason = f"Peso inferior ({prof_info['weight']} vs {highest_weight})."
+                        log_atribuicao_professor(activitie, prof, False, reason)
                     
                     #Aqui é feita a atribuição definitiva do professor escolhido, verificando se há conflitos
                     if(highest_weight > 0 and chosen_professor != None):
+                        log_atribuicao_professor(activitie, chosen_professor, True, f"Atribuição definitiva do professor '{chosen_professor.user.name}' com peso {highest_weight}. Swap: {swap == 1}.")
                         activitie.tprofessor = chosen_professor
                         activitie.professor_weight = highest_weight
                         activitie.save()
                         chosen_professor.num_uses += activitie.activities_qtd
                         if swap:
+                            tprofessor = swapAct.tprofessor
                             swapAct.tprofessor = None
                             swapAct.professor_weight = 0
                             swapAct.save()
-                            swapAct.tprofessor.num_uses -= swapAct.activities_qtd
+                            if tprofessor:
+                                tprofessor.num_uses -= swapAct.activities_qtd
+                                tprofessor.save()
+                            log_atribuicao_professor(swapAct, tprofessor, False, "Diferença de pesos: o professor foi atribuído a uma nova atividade com preferência maior.")
                             repeat = True
                         if isinstance(chosen_conflitant_professor, Activitie):
                             tprofessor = chosen_conflitant_professor.tprofessor
@@ -2993,6 +3248,7 @@ def run_atribuition(request, ambientid):
                             chosen_conflitant_professor.tprofessor = None   
                             chosen_conflitant_professor.professor_weight = 0
                             chosen_conflitant_professor.save()
+                            log_atribuicao_professor(chosen_conflitant_professor, tprofessor, False, "Diferença de pesos: o professor foi atribuído a uma nova atividade com preferência maior.")
                             repeat = True
 
             
@@ -3031,7 +3287,8 @@ def run_atribuition(request, ambientid):
                                     chosen_professor = professor
                                     highest_weight = professor_subject.subject_weight
                             elif professor_subject.subject_weight == highest_weight:
-                                tchosen_professor = tiebreaker(professor, chosen_professor, activitie)[0]
+                                tb_result = tiebreaker(professor, chosen_professor, activitie)
+                                tchosen_professor = tb_result[0]
                                 if tchosen_professor == professor:
                                     chosen_professor = professor
                                     highest_weight = professor_subject.subject_weight
@@ -3063,7 +3320,7 @@ def run_atribuition(request, ambientid):
                                             activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
                                             activities_with_professor.append(subject_activitie)
                                             
-                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
+                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor, max_actv_in_day=ambient.max_actv_in_day)
 
                                             if conflitant_schedules:
                                                 tactv = ambient.activities.get(id = subject_activitie.id)
@@ -3073,16 +3330,20 @@ def run_atribuition(request, ambientid):
                                                 chosen_professor.num_uses += subject_activitie.tclass.necessary_subjects.get(subject = subject_activitie.tsubject).periods
                                                 chosen_professor.save()
                                                 used = 1
+                                                log_atribuicao_professor(subject_activitie, chosen_professor, True, f"[PREF. PROF-MATÉRIA] Professor atribuído com base na preferência pela matéria '{subject.name}'. Peso da preferência: {professor_subject.subject_weight}. Atividade sem professor anterior.")
                                                 if isinstance(conflitant_schedules, Activitie):
                                                     conflitant_professor = conflitant_schedules.tprofessor
                                                     conflitant_schedules.tprofessor = None
-                                                    conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
+                                                    if conflitant_professor:
+                                                        conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
+                                                        conflitant_professor.save()
                                                     conflitant_schedules.save()
-                                                    conflitant_professor.save()
+                                                    log_atribuicao_professor(conflitant_schedules, conflitant_professor, False, "Diferença de pesos: o professor foi atribuído a uma nova atividade com preferência maior.")
                                                     repeat = True
                                                     
                                     else:
-                                        tchosen_professor = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)[0]
+                                        tb_result_swap = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)
+                                        tchosen_professor = tb_result_swap[0]
                                         if tchosen_professor == chosen_professor:
                                             if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
                                                 subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
@@ -3092,9 +3353,10 @@ def run_atribuition(request, ambientid):
                                                 timetable = list(ambient.published_timetable.table.all())
                                                 activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
                                                 activities_with_professor.append(subject_activitie)
-                                                conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
+                                                conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor, max_actv_in_day=ambient.max_actv_in_day)
 
                                                 if conflitant_schedules:
+                                                    log_atribuicao_professor(subject_activitie, chosen_professor, True, f"[PREF. PROF-MATÉRIA] Professor substituiu o professor anterior por vitória no desempate (critério: '{tb_result_swap[2]}'). Peso da preferência pela matéria: {professor_subject.subject_weight}.")
                                                     subject_activitie.tprofessor = chosen_professor
                                                     subject_activitie.professor_weight = professor_subject.subject_weight
                                                     subject_activitie.save()
@@ -3103,13 +3365,17 @@ def run_atribuition(request, ambientid):
                                                     subject_activitie.tprofessor.save()
                                                     chosen_professor.save()
                                                     used = 1
-                                                    if isinstance(conflitant_schedules, Activitie): #tem que trocar isso aqui pelo chosen_conflitant_professor
+                                                    if isinstance(conflitant_schedules, Activitie):
                                                         conflitant_professor = conflitant_schedules.tprofessor
                                                         conflitant_schedules.tprofessor = None
-                                                        conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
+                                                        if conflitant_professor:
+                                                            conflitant_professor.num_uses -= conflitant_schedules.activities_qtd
+                                                            conflitant_professor.save()
                                                         conflitant_schedules.save()
-                                                        conflitant_professor.save()
+                                                        log_atribuicao_professor(conflitant_schedules, conflitant_professor, False, "Diferença de pesos: o professor foi atribuído a uma nova atividade com preferência maior.")
                                                         repeat = True
+                                        else:
+                                            log_atribuicao_professor(subject_activitie, chosen_professor, False, f"[PREF. PROF-MATÉRIA] Professor perdeu no desempate contra professor atual (critério: '{tb_result_swap[2]}'). Peso da preferência pela matéria: {professor_subject.subject_weight}.")
                                 else:
                                     for c_activitie in current_activities:
                                         if c_activitie.professor_weight < professor_subject.subject_weight:
@@ -3127,9 +3393,10 @@ def run_atribuition(request, ambientid):
                                                         activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
                                                         activities_with_professor.append(subject_activitie)
                                                         
-                                                        conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
+                                                        conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor, max_actv_in_day=ambient.max_actv_in_day)
 
                                                         if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
+                                                            log_atribuicao_professor(subject_activitie, chosen_professor, True, f"[PREF. PROF-MATÉRIA] Professor atribuído após swap: atividade ID {c_activitie.id} (peso {c_activitie.professor_weight}) removida para liberar capacidade. Peso da preferência pela matéria: {professor_subject.subject_weight}.")
                                                             c_activitie.tprofessor = None
                                                             c_activitie.professor_weight = 0
                                                             c_activitie.save()
@@ -3142,7 +3409,8 @@ def run_atribuition(request, ambientid):
                                                             used = 1
                                                             repeat = True
                                                 else:
-                                                    tchosen_professor = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)[0]
+                                                    tb_result_swap2 = tiebreaker(chosen_professor, subject_activitie.tprofessor, subject_activitie)
+                                                    tchosen_professor = tb_result_swap2[0]
                                                     if tchosen_professor == chosen_professor:
                                                         if subject_activitie.tclass.favorite_professors.all().filter(professor = chosen_professor):
                                                             subject_preference = subject_activitie.tsubject.favorite_professors.all().get(professor = chosen_professor).professor_weight
@@ -3152,9 +3420,10 @@ def run_atribuition(request, ambientid):
                                                             timetable = list(ambient.published_timetable.table.all())
                                                             activities_with_professor = list(ambient.activities.filter(tprofessor = chosen_professor))
                                                             activities_with_professor.append(subject_activitie)
-                                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor)
+                                                            conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, chosen_professor, max_actv_in_day=ambient.max_actv_in_day)
 
                                                             if conflitant_schedules and not isinstance(conflitant_schedules, Activitie):
+                                                                log_atribuicao_professor(subject_activitie, chosen_professor, True, f"[PREF. PROF-MATÉRIA] Professor atribuído via swap+desempate (critério: '{tb_result_swap2[2]}'). Atividade ID {c_activitie.id} removida para liberar capacidade. Peso: {professor_subject.subject_weight}.")
                                                                 c_activitie.tprofessor = None
                                                                 c_activitie.professor_weight = 0
                                                                 c_activitie.save()
@@ -3167,6 +3436,8 @@ def run_atribuition(request, ambientid):
                                                                 chosen_professor.save()
                                                                 used = 1
                                                                 repeat = True
+                                                    else:
+                                                        log_atribuicao_professor(subject_activitie, chosen_professor, False, f"[PREF. PROF-MATÉRIA] Professor perdeu no desempate do swap (critério: '{tb_result_swap2[2]}'). Peso: {professor_subject.subject_weight}.")
 
                         #Se, ao chegar ao fim, a variável de controle user permanecer a mesma, significa que ele não foi atribuido a nenhuma atividade, portanto deve
                         #ser retirado da lista. Se nenhum professor for selecionado em chosen_professor, a variável selected é alterada para 0, e dessa forma, o loop acaba.
@@ -3203,22 +3474,30 @@ def run_atribuition(request, ambientid):
                             #Se houver, os critérios de desempate são aplicados, e o que vencer, permanece. Após verificar se há conflitos, o professor é pré-atribuído.
                             if subject_preference != 0 and class_preference != 0 and weight > highest_weight and candidate.num_uses + not_atribuited_activitie.tclass.necessary_subjects.get(subject = not_atribuited_activitie.tsubject).periods <= ambient.max_actv_in_cicle:
                                 if chosen_professor:
-                                    tchosen_professor = tiebreaker(candidate, chosen_professor, not_atribuited_activitie)[0]
+                                    tb_result_form = tiebreaker(candidate, chosen_professor, not_atribuited_activitie)
+                                    tchosen_professor = tb_result_form[0]
                                 else:
                                     tchosen_professor = candidate
+                                    tb_result_form = None
 
                                 if tchosen_professor == candidate:
                                     timetable = list(ambient.published_timetable.table.all())
                                     activities_with_professor = list(ambient.activities.filter(tprofessor = tchosen_professor))
                                     activities_with_professor.append(not_atribuited_activitie)
-                                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, tchosen_professor)
+                                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, tchosen_professor, max_actv_in_day=ambient.max_actv_in_day)
 
                                     if conflitant_schedules:
                                         chosen_conflitant_schedules = conflitant_schedules
                                         chosen_professor = candidate
                                         highest_weight = weight
+                                    else:
+                                        log_atribuicao_professor(not_atribuited_activitie, candidate, False, f"[FORMAÇÕES] Conflito de horários ao tentar atribuir professor com formação '{formation.formation}' (peso {weight}).")
+                                else:
+                                    tb_info = tb_result_form[2] if tb_result_form else 'N/A'
+                                    log_atribuicao_professor(not_atribuited_activitie, candidate, False, f"[FORMAÇÕES] Derrota no desempate (critério: '{tb_info}'). Formação '{formation.formation}', peso {weight}.")
                     #Atribuição definitiva.      
                     if chosen_professor:
+                        log_atribuicao_professor(not_atribuited_activitie, chosen_professor, True, f"[FORMAÇÕES] Professor atribuído com base em formação relevante. Peso da formação: {highest_weight}.")
                         not_atribuited_activitie.tprofessor = chosen_professor
                         not_atribuited_activitie.professor_weight = highest_weight
                         not_atribuited_activitie.save()
@@ -3250,7 +3529,7 @@ def run_atribuition(request, ambientid):
                     timetable = list(ambient.published_timetable.table.all())
                     activities_with_professor = list(ambient.activities.filter(tprofessor = candidate))
                     activities_with_professor.append(not_atribuited_activitie)
-                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, candidate)
+                    conflitant_schedules = check_conflitant_schedules_professor(activities_with_professor, timetable, candidate, max_actv_in_day=ambient.max_actv_in_day)
 
                     if subject_preference != 0 and class_preference != 0 and candidate.num_uses + not_atribuited_activitie.activities_qtd <= ambient.max_actv_in_cicle and conflitant_schedules:          
                         chosen_professor = candidate
@@ -3258,12 +3537,20 @@ def run_atribuition(request, ambientid):
                         break
 
                 if chosen_professor:
+                    log_atribuicao_professor(not_atribuited_activitie, chosen_professor, True, f"[FALLBACK] Professor atribuído como fallback à atividade ID {not_atribuited_activitie.id}. Decisão aleatória baseada em menor número de usos ({chosen_professor.num_uses}).")
                     not_atribuited_activitie.tprofessor = chosen_professor
                     not_atribuited_activitie.professor_weight = highest_weight
                     chosen_professor.num_uses += not_atribuited_activitie.activities_qtd
                     not_atribuited_activitie.save()
                     chosen_professor.save()
+                else:
+                    log_atribuicao_professor(not_atribuited_activitie, None, False, f"[FALLBACK] Nenhum professor disponível encontrado para a atividade ID {not_atribuited_activitie.id}. Todos os candidatos falharam por conflito de horários, capacidade excedida ou preferência zerada.")
 
+            
+            from dashboard.services import calculateProfessor, calculateSpace
+            calculateProfessor.update_statistics_semester(ambient.id)
+            calculateSpace.update_statistics_semester(ambient.id)
+            
             return redirect(f'/ambient/{ambientid}')
         else:
             return redirect('home')
@@ -3275,28 +3562,22 @@ def run_atribuition(request, ambientid):
 #atividade anterior. Se chegar ao fim das possibilidades de horário desta, ele volta para a atividade anterior e testa a próxima possibilidade de horário dela, e assim 
 #por diante. Se chegar ao fim das possibilidades de horário da primeira atividade, significa que não há solução possível para aquela ordem de atividades.
 def alocate(ambient, timetable, activities):
-    #seleciona a primeira atividade, que será alocada no momento
     activitie = activities[0]
     
-    #Obtém os horários preferidos do professor para priorizar aqueles que também são preferidos da turma
     professor_preferred_schedules = set()
     if activitie.tprofessor and hasattr(activitie.tprofessor, 'prefered_schedules'):
         for schedule in activitie.tprofessor.prefered_schedules.all():
             professor_preferred_schedules.add((schedule.line, schedule.column))
     
-    #Ordena os horários preferidos da turma: primeiro os que também são preferidos do professor
     class_schedules = list(activitie.tclass.prefered_schedules.all())
+    if not class_schedules:
+        class_schedules = list(ambient.available_schedules.all())
     class_schedules.sort(key=lambda s: (s.line, s.column) not in professor_preferred_schedules)
     
     for start in class_schedules:
         available = True
         fixed_timetable = {key: value.copy() for key, value in timetable.items()}
-        #Define o início da atividade com start, o ponto de onde a alocação irá partir, pré-define como disponível e cria uma cópia da grade horária para não alterar a original
-        #caso seja necessário voltar atrás e usá-la como estava antes
         
-        #Tenta, a partir do ponto de início, alocar a atividade com todos os períodos necessários, somando uma linha a cada período e verificando se naquele slot, existe 
-        #um array [] vazio ou com outras atividades. Se houver, verifica se uma delas tem a mesma sala, professor ou classe da atividade que se quer alocar, o que significaria 
-        #um conflito e, portanto, define o status de available como false.
         for i in range(activitie.activities_qtd):
             try:
                 key = (start.line + i, start.column)
@@ -3304,20 +3585,16 @@ def alocate(ambient, timetable, activities):
             except:
                 slot = None
             if slot == [] or slot:
-                available = True
                 for act in slot:
-                    if act.tclass == activitie.tclass or act.tprofessor == activitie.tprofessor or act.tclassroom == activitie.tclassroom:
+                    if (act.tclass == activitie.tclass) or (act.tprofessor == activitie.tprofessor and act.tprofessor is not None) or (act.tclassroom == activitie.tclassroom and act.tclassroom is not None):
                         available = False
                         break
+                if not available:
+                    break
             else:
                 available = False
                 break
         
-        #Se o horário estiver disponível, a atividade é adicionada aos slots no dicionário, para que as outras atividades também saibam que ela está ali, e uma nova função é
-        #chamada caso o tamanho de atividades seja maior que 1, indicando que ainda há atividades para serem atribuidas, incluindo o estado atual do dicionário com todas 
-        #as atividades já alocadas e as atividades restantes, Se o tamanho da atividades for igual a 1, significa que o algorimo chegou ao fim, então ele retorna o dicionário 
-        #final para ser alocado na grade horária do ambiente. Caso algo aconteça de errado e uma atividade não possa ser alocada em nenhum horário, ela retorna falso e o 
-        #processo reinicia de onde parou.
         if available:
             for i in range(activitie.activities_qtd):
                 key = (start.line + i, start.column)
@@ -3326,11 +3603,61 @@ def alocate(ambient, timetable, activities):
             if len(activities) > 1:
                 check = alocate(ambient, fixed_timetable, activities[1:])
                 if check:
+                    log_alocacao_horario(activitie, start.line, start.column, True, f"Atividade alocada com sucesso no horário Dia {start.column}, Período {start.line}.")
                     return check
             else:
+                log_alocacao_horario(activitie, start.line, start.column, True, f"Atividade alocada com sucesso no horário Dia {start.column}, Período {start.line}.")
                 return fixed_timetable
+                
     return False
 
+def alocate_greedy(ambient, timetable, activities):
+    fixed_timetable = {key: value.copy() for key, value in timetable.items()}
+    
+    for activitie in activities:
+        professor_preferred_schedules = set()
+        if activitie.tprofessor and hasattr(activitie.tprofessor, 'prefered_schedules'):
+            for schedule in activitie.tprofessor.prefered_schedules.all():
+                professor_preferred_schedules.add((schedule.line, schedule.column))
+        
+        class_schedules = list(activitie.tclass.prefered_schedules.all())
+        if not class_schedules:
+            class_schedules = list(ambient.available_schedules.all())
+        class_schedules.sort(key=lambda s: (s.line, s.column) not in professor_preferred_schedules)
+        
+        allocated = False
+        for start in class_schedules:
+            available = True
+            
+            for i in range(activitie.activities_qtd):
+                try:
+                    key = (start.line + i, start.column)
+                    slot = fixed_timetable[key]
+                except:
+                    slot = None
+                if slot == [] or slot:
+                    for act in slot:
+                        if (act.tclass == activitie.tclass) or (act.tprofessor == activitie.tprofessor and act.tprofessor is not None) or (act.tclassroom == activitie.tclassroom and act.tclassroom is not None):
+                            available = False
+                            break
+                    if not available:
+                        break
+                else:
+                    available = False
+                    break
+            
+            if available:
+                for i in range(activitie.activities_qtd):
+                    key = (start.line + i, start.column)
+                    fixed_timetable[key].append(activitie)
+                log_alocacao_horario(activitie, start.line, start.column, True, f"Atividade alocada com sucesso no horário Dia {start.column}, Período {start.line}.")
+                allocated = True
+                break
+        
+        if not allocated:
+            log_alocacao_horario(activitie, None, None, False, "Alocação falhou por restrição de horários, professores ou salas.")
+
+    return fixed_timetable
 
 def run_alocation(request, ambientid):
     
@@ -3371,6 +3698,10 @@ def run_alocation(request, ambientid):
 
             #A função é chamada, o dicionário é criado e a grade horária do ambiente é definida
             tdict = alocate(ambient, fixed_timetable, activities)
+            if not tdict:
+                # Fallback: se não encontrar solução perfeita, usa o método guloso para alocar o máximo possível
+                tdict = alocate_greedy(ambient, fixed_timetable, activities)
+            
             if tdict:
                 for key, value in tdict.items():
                     alocation = ambient.published_timetable.table.all().get(line = key[0], column = key[1])
@@ -3388,6 +3719,262 @@ def run_alocation(request, ambientid):
                 un_activitie = Unregistered_Activitie(activitie = n_activitie)
                 un_activitie.save()
                 ambient.published_timetable.not_alocated.add(un_activitie)
+        from dashboard.services import calculateProfessor, calculateSpace
+        calculateProfessor.update_statistics_semester(ambient.id)
+        calculateSpace.update_statistics_semester(ambient.id)
+        
         return redirect(f'/ambient/{ambientid}')
     else:
         return redirect('/')
+    
+#AI zone
+
+def professor_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        subject_professor, created = subject.favorite_professors.get_or_create(professor = professor)
+        subject_professor.professor_weight = weight
+        subject_professor.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        professor = ambient.members.get(user__name = preference, is_professor = True)
+        class_professor, created = tclass.favorite_professors.get_or_create(professor = professor)
+        class_professor.professor_weight = weight
+        class_professor.save()
+def classroom_preference_adjustment(ambientid, origin_type, origin, preference, weight):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    if origin_type == 'Matéria':
+        subject = ambient.subjects.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        subject_classroom, created = subject.favorite_classrooms.get_or_create(classroom = classroom)
+        subject_classroom.classroom_weight = weight
+        subject_classroom.save()
+    elif origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        classroom = ambient.classrooms.get(name = preference)
+        class_classroom, created = tclass.favorite_classrooms.get_or_create(classroom = classroom)
+        class_classroom.classroom_weight = weight
+        class_classroom.save()
+def schedule_preference_adjustment(ambientid, origin_type, origin, preference, true_false):
+    ambient = Ambient.objects.get(ambientid = ambientid)
+    
+    if str(preference).lower() == "all":
+        if origin_type == 'Turma':
+            tclass = ambient.classes.get(name = origin)
+            if true_false:
+                tclass.prefered_schedules.add(*list(ambient.available_schedules.all()))
+            else:
+                tclass.prefered_schedules.clear()
+        elif origin_type == 'Professor':
+            professor = ambient.members.get(user__name = origin, is_professor = True)
+            if true_false:
+                professor.prefered_schedules.add(*list(ambient.available_schedules.all()))
+            else:
+                professor.prefered_schedules.clear()
+        return
+    
+    is_day_only = False
+    day_index = None
+    
+    if isinstance(preference, int):
+        is_day_only = True
+        day_index = preference
+    elif isinstance(preference, str):
+        val = preference.lower().replace("dia", "").strip()
+        try:
+            if "dia" in preference.lower():
+                day_index = int(val) - 1
+            else:
+                day_index = int(val)
+            is_day_only = True
+        except ValueError:
+            pass
+
+    schedules_to_adjust = []
+    if is_day_only and day_index is not None:
+        periods = ambient.periods_in_a_day
+        for line in range(periods):
+            try:
+                schedule = ambient.available_schedules.get(line = line, column = day_index)
+                schedules_to_adjust.append(schedule)
+            except Exception as e:
+                print(f"Erro ao obter horário do dia {day_index}, período {line}: {e}")
+    else:
+        try:
+            schedule = ambient.available_schedules.get(line = preference[0], column = preference[1])
+            schedules_to_adjust = [schedule]
+        except Exception as e:
+            print(f"Erro ao obter horário com coordenadas {preference}: {e}")
+
+    if origin_type == 'Turma':
+        tclass = ambient.classes.get(name = origin)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                tclass.prefered_schedules.add(schedule)
+            else:
+                tclass.prefered_schedules.remove(schedule)
+    if origin_type == 'Professor':
+        professor = ambient.members.get(user__name = origin, is_professor = True)
+        for schedule in schedules_to_adjust:
+            if true_false:
+                professor.prefered_schedules.add(schedule)
+            else:
+                professor.prefered_schedules.remove(schedule)
+
+
+def chatbot(ambientid, user_input=""):
+    functions = {
+        "schedule_preference_adjustment": schedule_preference_adjustment,
+        "professor_preference_adjustment": professor_preference_adjustment,
+        "classroom_preference_adjustment": classroom_preference_adjustment,
+    }
+
+    if not user_input:
+        return "Nenhum comando enviado para o chatbot."
+
+    prompt = f"""
+    Você é um assistente Python. Analise o comando do usuário e responda em JSON com o nome da função e os argumentos.
+    Como argumentos, você receberá o tipo de origem da preferência (professor, matéria ou turma), o nome da origem, 
+    o nome da preferência (horário, professor ou sala) e o peso da preferência (número entre 0 e 100) ou se a 
+    preferência é verdadeira ou falsa, em casos de preferência horária. Caso o usuário não forneça algum dado, você
+    é livre para preencher o formato de resposta da maneira que achar melhor, desde que seja possível entender qual é a preferência, a origem e o peso ou se é verdadeira ou falsa, no caso de preferência horária.
+    Padrões e exemplos de resposta: 
+    1) Para ajustar uma preferência de horário específico: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', [2,3], True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para o horário 3 do dia 4.
+    2) Para ajustar a preferência de horário para um DIA INTEIRO: {{"function": "schedule_preference_adjustment", "args": ['Professor', 'Carlos Silva', 2, True]}} - Define como verdadeira a preferência de horário do professor Carlos Silva para TODOS os horários do dia 3 (dia indexado em 2). Se o usuário disser "dia Y", passe o número Y-1 como o terceiro argumento.
+    3) Para ajustar uma preferência de matéria: {{"function": "professor_preference_adjustment", "args": ['Matéria', 'Matemática', 'Carlos Silva', 100]}} - Define o peso da preferência da matéria de Matemática pelo professor Carlos Silva como 100, o que pode influenciar na alocação de atividades desta matéria para ele.
+    4) Para ajustar uma preferência de sala: {{"function": "classroom_preference_adjustment", "args": ['Turma', 'Ciência da Computação I', 'Laboratório de Informática I', 100]}} - Define o peso da preferência da turma de Ciência da Computação I pelo Laboratório de Informática I como 100, o que pode influenciar na alocação de atividades desta turma para esta sala.
+    Caso o usuário diga para não colocar uma preferência, o peso deve ser definido como 0, ou, no caso de preferência horária, a preferência deve ser definida como falsa.
+    Caso o usuário diga que uma preferência DEVE ser atendida, o peso deve ser definido como 100, ou, no caso de preferência horária, a preferência deve ser definida como verdadeira.
+    Caso o usuário não especifique uma forte necessidade, o peso pode ser definido como 50
+    
+    Para definir horários específicos, o primeiro número sempre será o horário e o segundo sempre será o dia, e a contagem inicia em 0, então [0,0] representa o horário 1 do dia 1. 
+    Se for especificado um dia inteiro, use apenas o número do dia indexado em 0.
+    Para remover a preferência de TODOS os horários de uma pessoa/turma de uma só vez, passe a string "all" como preferência e false como último argumento.
+    IMPORTANTE: Se a requisição do usuário disser que a pessoa "SÓ PODE" em dias ou horários específicos, isso significa que você deve REMOVER os demais. Nesse caso, você DEVE retornar uma LISTA (array) de objetos JSON (várias chamadas): 
+    A primeira chamada deve ser enviando "all" e false para limpar todos os horários atuais.
+    As chamadas seguintes devem ser para cada dia/horário permitido com true.
+    MAPEAMENTO DE DIAS DA SEMANA (sempre indexado em 0, este é o número que você deve passar):
+    - Segunda = 0
+    - Terça = 1
+    - Quarta = 2
+    - Quinta = 3
+    - Sexta = 4
+    - Sábado = 5
+    - Domingo = 6
+    Exemplo: Se o usuário disser "Quinta", passe o número 3 como terceiro argumento. Se o usuário disser "dia 2", passe o número 1.
+
+    Comando: {user_input}
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "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")
+    model = os.environ.get("OPENROUTER_MODEL", "cohere/north-mini-code:free")
+
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=15
+        )
+    except requests.exceptions.Timeout:
+        return "Erro: A Inteligência Artificial demorou muito para responder (timeout). Tente novamente."
+    except requests.exceptions.RequestException as e:
+        return f"Erro na conexão com a IA: {str(e)}"
+
+    result = response.json()
+    if "error" in result:
+        error_msg = result["error"].get("message", "Erro desconhecido")
+        print("Erro do OpenRouter:", error_msg)
+        return f"Erro na API do OpenRouter: {error_msg}. Por favor, certifique-se de configurar uma chave de API válida na variável de ambiente OPENROUTER_API_KEY."
+
+    try:
+        content = result["choices"][0]["message"]["content"]
+        content_clean = content.replace("```json", "").replace("```", "").strip()
+        content_clean = content_clean.replace("'", '"').replace("True", "true").replace("False", "false")
+        print(content_clean)
+        data = json.loads(content_clean)
+        
+        commands = data if isinstance(data, list) else [data]
+        responses = []
+        
+        for cmd in commands:
+            func_name = cmd.get("function")
+            args = cmd.get("args", [])
+            
+            func = functions.get(func_name)
+            if func:
+                func(ambientid, *args)
+                if func_name == "schedule_preference_adjustment":
+                    origin_type, origin, preference, true_false = args
+                    status = "ativa" if true_false else "inativa"
+                    
+                    if str(preference).lower() == "all":
+                        responses.append(f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' para A SEMANA INTEIRA para {status}.")
+                    elif isinstance(preference, int) or (isinstance(preference, str) and not isinstance(preference, list)):
+                        try:
+                            val = int(str(preference).lower().replace("dia", "").strip())
+                            days_map = {0: "Segunda", 1: "Terça", 2: "Quarta", 3: "Quinta", 4: "Sexta", 5: "Sábado", 6: "Domingo"}
+                            display_day = days_map.get(val, f"Dia {val+1}")
+                        except:
+                            display_day = str(preference)
+                        responses.append(f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' para TODOS os horários de {display_day} para {status}.")
+                    else:
+                        responses.append(f"Entendi! Ajustei a preferência de horário do {origin_type} '{origin}' no horário/dia {preference} para {status}.")
+                elif func_name == "professor_preference_adjustment":
+                    origin_type, origin, preference, weight = args
+                    responses.append(f"Entendi! Defini a preferência do {origin_type} '{origin}' pelo professor '{preference}' com peso {weight}.")
+                elif func_name == "classroom_preference_adjustment":
+                    origin_type, origin, preference, weight = args
+                    responses.append(f"Entendi! Defini a preferência do {origin_type} '{origin}' pela sala '{preference}' com peso {weight}.")
+                else:
+                    responses.append(f"Comando '{func_name}' executado com sucesso.")
+            else:
+                responses.append(f"Desculpe, não encontrei a função '{func_name}' nas minhas configurações.")
+                
+        return "\n\n".join(responses)
+    except Exception as e:
+        print("Erro ao processar resposta da LLM:", e)
+        try:
+            fallback = result["choices"][0]["message"]["content"]
+            if fallback:
+                return fallback
+        except:
+            pass
+        return f"Desculpe, ocorreu um erro ao processar sua solicitação: {str(e)}"
+
+
+@csrf_exempt
+def chatbot_api(request, ambientid):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "not_authenticated", "response": "Usuário não autenticado."}, status=401)
+    
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            user_input = data.get("message", "").strip()
+            if not user_input:
+                return JsonResponse({"response": "Por favor, digite uma mensagem válida."}, status=400)
+            
+            bot_response = chatbot(ambientid, user_input)
+            
+            # Executa a atribuição e alocação automaticamente
+            run_atribuition(request, ambientid)
+            run_alocation(request, ambientid)
+            
+            if bot_response and not any(err in bot_response for err in ["Desculpe", "Erro na API", "Nenhum"]):
+                bot_response += "\n\n🔄 A atribuição e a alocação de horários foram recalculadas automaticamente com base neste ajuste!"
+            
+            return JsonResponse({"response": bot_response})
+        except Exception as e:
+            return JsonResponse({"error": "invalid_request", "response": f"Erro ao processar requisição: {str(e)}"}, status=400)
+    
+    return JsonResponse({"error": "method_not_allowed", "response": "Método não permitido."}, status=405)

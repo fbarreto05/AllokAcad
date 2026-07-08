@@ -8,6 +8,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ambient.css' %}">
+<link rel="stylesheet" href="{% static 'css/chat-widget.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -395,8 +396,11 @@
     </div>
 </div>
 
+<div id="root"></div>
+
 {% endblock content %}
 
 {% block extra_js %}
 <script src="{% static 'js/ambient.js' %}"></script>
+<script type="module" crossorigin src="{% static 'js/chat-widget.js' %}"></script>
 {% endblock %}
